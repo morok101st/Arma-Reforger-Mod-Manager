@@ -63,6 +63,7 @@ type ChangelogEntry = {
 };
 
 function App() {
+  const detailRef = React.useRef<HTMLElement | null>(null);
   const [mods, setMods] = React.useState<Mod[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [modId, setModId] = React.useState("");
@@ -95,6 +96,10 @@ function App() {
   React.useEffect(() => {
     setExpandedChangelogVersions(changelogEntries[0] ? new Set([changelogEntries[0].version]) : new Set());
   }, [selected?.id, selected?.versions[0]?.changelog]);
+
+  React.useEffect(() => {
+    detailRef.current?.scrollTo({ top: 0 });
+  }, [selected?.id]);
 
   async function loadMods() {
     setError(null);
@@ -269,7 +274,7 @@ function App() {
         </div>
       </section>
 
-      <section className="detail" aria-label="Mod Details">
+      <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {selected ? (
           <>
             <header className="detail-header">
