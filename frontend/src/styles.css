@@ -221,32 +221,6 @@ button:disabled {
   padding: 12px;
 }
 
-.view-toggle {
-  background: #edf1ed;
-  border: 1px solid #d5ddd6;
-  border-radius: 8px;
-  display: grid;
-  gap: 4px;
-  grid-template-columns: 1fr 1fr;
-  padding: 4px;
-}
-
-.view-toggle button {
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  color: #53605a;
-  cursor: pointer;
-  font-weight: 800;
-  min-height: 36px;
-}
-
-.view-toggle button.active {
-  background: #ffffff;
-  color: #1f5f4b;
-  box-shadow: 0 1px 2px rgb(20 38 31 / 12%);
-}
-
 .mod-list {
   display: grid;
   gap: 8px;
@@ -304,10 +278,6 @@ button:disabled {
   padding: 38px;
 }
 
-.graph-detail {
-  min-width: 0;
-}
-
 .status-band {
   align-items: center;
   border: 1px solid #cbd4cc;
@@ -359,108 +329,6 @@ button:disabled {
 
 .status-icon.unknown {
   color: #69736d;
-}
-
-.graph-summary {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.graph-summary span {
-  background: #ffffff;
-  border: 1px solid #d9dfdb;
-  border-radius: 8px;
-  color: #1d2a26;
-  font-size: 13px;
-  font-weight: 800;
-  padding: 10px 12px;
-}
-
-.graph-canvas {
-  background:
-    linear-gradient(90deg, rgb(31 95 75 / 7%) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(31 95 75 / 7%) 1px, transparent 1px),
-    #f8faf8;
-  background-size: 48px 48px;
-  border: 1px solid #d9dfdb;
-  border-radius: 8px;
-  min-height: 540px;
-  overflow: hidden;
-}
-
-.graph-canvas svg {
-  display: block;
-  min-height: 540px;
-  width: 100%;
-}
-
-#graph-arrow path {
-  fill: #718079;
-}
-
-.graph-edge {
-  marker-end: url("#graph-arrow");
-  stroke: #9aa69f;
-  stroke-linecap: round;
-  stroke-width: 2;
-}
-
-.graph-edge.active {
-  stroke: #1f5f4b;
-  stroke-width: 3;
-}
-
-.graph-node {
-  cursor: pointer;
-}
-
-.graph-node circle {
-  fill: #ffffff;
-  stroke: #9aa69f;
-  stroke-width: 2;
-  transition: stroke-width 120ms ease, transform 120ms ease;
-}
-
-.graph-node.installed circle {
-  stroke-width: 4;
-}
-
-.graph-node.selected circle {
-  filter: drop-shadow(0 8px 14px rgb(31 95 75 / 22%));
-  stroke: #1f5f4b;
-  stroke-width: 5;
-}
-
-.graph-node.update_available circle {
-  fill: #fff8e3;
-  stroke: #b7791f;
-}
-
-.graph-node.up_to_date circle {
-  fill: #edf8f1;
-  stroke: #237245;
-}
-
-.graph-node.unknown circle {
-  fill: #f2f4f2;
-  stroke: #85948a;
-}
-
-.graph-node text {
-  fill: #17231f;
-  font-size: 13px;
-  font-weight: 900;
-  pointer-events: none;
-  text-anchor: middle;
-}
-
-.graph-node .graph-node-meta {
-  fill: #64716a;
-  font-size: 11px;
-  font-weight: 800;
 }
 
 .metrics {
@@ -634,11 +502,6 @@ pre {
     padding: 24px;
   }
 
-  .graph-canvas,
-  .graph-canvas svg {
-    min-height: 420px;
-  }
-
   .metrics {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
@@ -658,10 +521,6 @@ pre {
   .detail-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .graph-summary {
-    justify-content: flex-start;
   }
 
   .metrics {
