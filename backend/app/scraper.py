@@ -33,7 +33,7 @@ class WorkshopScraper:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(20.0, connect=10.0),
             follow_redirects=True,
-            headers={"User-Agent": "RWMS/0.1"},
+            headers={"User-Agent": "Arma-Reforger-Mod-Manager/0.1"},
         ) as client:
             detail_response = await client.get(detail_url)
             detail_response.raise_for_status()

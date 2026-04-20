@@ -1,6 +1,6 @@
-# Reforger Workshop Monitoring System (RWMS)
+# Arma Reforger Mod Manager
 
-RWMS is an MVP for a monitoring system that stores Arma Reforger Workshop mods, regularly fetches Workshop data, and compares installed versions with the latest detected version.
+Arma Reforger Mod Manager is an MVP for a monitoring system that stores Arma Reforger Workshop mods, regularly fetches Workshop data, and compares installed versions with the latest detected version.
 
 ## Start
 

@@ -198,7 +198,7 @@ function App() {
       <section className="sidebar" aria-label="Mod management">
         <div className="brand">
           <div>
-            <p>RWMS</p>
+            <p>Arma Reforger Mod Manager</p>
             <h1>Workshop Monitor</h1>
           </div>
           <button className="icon-button" onClick={() => loadMods().catch((err: Error) => setError(err.message))} title="Refresh list">
