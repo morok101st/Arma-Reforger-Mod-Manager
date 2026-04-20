@@ -225,9 +225,11 @@ button:disabled {
 }
 
 .mod-list {
+  align-content: start;
   display: grid;
   flex: 1;
   gap: 8px;
+  grid-auto-rows: max-content;
   min-height: 0;
   overflow: auto;
 }
