@@ -246,7 +246,7 @@ function App() {
 
         <label>
           Search
-          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Name, ID or version" />
+          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Mod name" />
         </label>
 
         <div className="mod-list">
@@ -504,19 +504,7 @@ function filterMods(mods: Mod[], searchQuery: string): Mod[] {
   if (!query) return mods;
 
   return mods.filter((mod) => {
-    const searchable = [
-      mod.name,
-      mod.id,
-      mod.current_version,
-      mod.latest_version,
-      mod.status,
-      ...mod.dependencies.map((dependency) => dependency.name),
-      ...mod.dependents.map((dependent) => dependent.name ?? dependent.id),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return searchable.includes(query);
+    return (mod.name ?? "").toLowerCase().includes(query);
   });
 }
 
