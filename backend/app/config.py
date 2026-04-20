@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./rwms.db"
+    database_url: str = "sqlite:///./armm.db"
     workshop_base_url: str = "https://reforger.armaplatform.com/workshop"
     scrape_interval_minutes: int = 60
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
