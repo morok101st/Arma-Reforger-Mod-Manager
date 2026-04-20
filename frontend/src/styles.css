@@ -258,7 +258,7 @@ button:disabled {
   margin-top: 4px;
 }
 
-.dependency-count {
+.relation-count {
   color: #1f5f4b;
   display: inline-block;
   font-weight: 800;

@@ -253,7 +253,8 @@ function App() {
                 <strong>{mod.name ?? mod.id}</strong>
                 <small>
                   {mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}
-                  <span className="dependency-count">{mod.dependencies.length} deps</span>
+                  <span className="relation-count">{mod.dependencies.length} deps</span>
+                  <span className="relation-count">{mod.dependents.length} req by</span>
                 </small>
               </span>
               {mod.pinned && <Pin size={14} />}
