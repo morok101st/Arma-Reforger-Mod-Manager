@@ -4,6 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    armm_env: str = "development"
+    armm_secret_key: str = "development-only-change-me"
+    armm_admin_username: str | None = None
+    armm_admin_password: str | None = None
     database_url: str = "sqlite:///./armm.db"
     workshop_base_url: str = "https://reforger.armaplatform.com/workshop"
     scrape_interval_minutes: int = 60
@@ -14,6 +18,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.armm_env.casefold() == "production"
 
 
 @lru_cache

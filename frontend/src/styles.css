@@ -48,6 +48,12 @@ select {
   justify-content: space-between;
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .brand p,
 .detail-header p {
   color: #69736d;
@@ -117,6 +123,51 @@ h3 {
 }
 
 .add-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-shell {
+  align-content: center;
+  background:
+    radial-gradient(circle at top left, rgba(31, 95, 75, 0.16), transparent 32rem),
+    linear-gradient(135deg, #eef1ee 0%, #dfe7e1 100%);
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #d7ddd7;
+  border-radius: 18px;
+  box-shadow: 0 24px 80px rgba(24, 33, 31, 0.12);
+  display: grid;
+  gap: 14px;
+  margin: 0 auto;
+  max-width: 440px;
+  padding: 34px;
+  width: 100%;
+}
+
+.auth-card > svg {
+  color: #1f5f4b;
+}
+
+.auth-card p {
+  color: #69736d;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.auth-card span {
+  color: #47524b;
+}
+
+.login-form,
+.user-form {
   display: grid;
   gap: 12px;
 }
@@ -321,6 +372,37 @@ button:disabled {
   gap: 12px;
   grid-template-columns: minmax(180px, 320px) auto auto;
   max-width: 650px;
+}
+
+.user-form {
+  align-items: end;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) minmax(140px, 180px) auto;
+}
+
+.user-list {
+  display: grid;
+  gap: 12px;
+}
+
+.user-row {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d9dfdb;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr minmax(120px, 160px) auto;
+  padding: 14px;
+}
+
+.user-row strong,
+.user-row small {
+  display: block;
+}
+
+.user-row small {
+  color: #65716a;
+  margin-top: 4px;
 }
 
 .status-band.update_available {
@@ -544,6 +626,11 @@ pre {
   .version-editor {
     grid-template-columns: 1fr;
     max-width: none;
+  }
+
+  .user-form,
+  .user-row {
+    grid-template-columns: 1fr;
   }
 }
 

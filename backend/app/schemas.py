@@ -15,6 +15,44 @@ class TrackingReason(StrEnum):
     dependency = "dependency"
 
 
+class UserRole(StrEnum):
+    admin = "admin"
+    user = "user"
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class AuthUserRead(BaseModel):
+    id: int
+    username: str
+    role: UserRole
+
+
+class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=80, pattern=r"^[A-Za-z0-9_.-]+$")
+    password: str = Field(min_length=12, max_length=256)
+    role: UserRole = UserRole.user
+    is_active: bool = True
+
+
+class UserUpdate(BaseModel):
+    password: str | None = Field(default=None, min_length=12, max_length=256)
+    role: UserRole | None = None
+    is_active: bool | None = None
+
+
+class UserRead(BaseModel):
+    id: int
+    username: str
+    role: UserRole
+    is_active: bool
+    created_at: datetime
+    last_login_at: datetime | None
+
+
 class ModCreate(BaseModel):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{3,80}$")
     current_version: str | None = Field(default=None, max_length=80)
