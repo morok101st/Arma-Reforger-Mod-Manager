@@ -59,8 +59,8 @@ def api_get_mod(mod_id: str, db: Session = Depends(get_db)) -> ModRead:
 
 
 @app.patch("/mods/{mod_id}", response_model=ModRead)
-def api_update_user_mod(mod_id: str, payload: UserModUpdate, db: Session = Depends(get_db)) -> ModRead:
-    mod = update_user_mod(db, mod_id, payload)
+async def api_update_user_mod(mod_id: str, payload: UserModUpdate, db: Session = Depends(get_db)) -> ModRead:
+    mod = await update_user_mod(db, mod_id, payload)
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
     return mod

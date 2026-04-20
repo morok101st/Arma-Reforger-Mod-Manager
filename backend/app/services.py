@@ -80,7 +80,7 @@ async def create_mod(db: Session, payload: ModCreate) -> ModRead:
     return read
 
 
-def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> ModRead | None:
+async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> ModRead | None:
     mod = get_mod_or_none(db, mod_id)
     if not mod:
         return None
@@ -98,7 +98,8 @@ def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> ModRead
     db.commit()
     refreshed = get_mod_or_none(db, mod_id)
     if refreshed:
-        _track_dependencies_for_installed_mod(db, refreshed)
+        scraper = WorkshopScraper(get_settings().workshop_base_url)
+        await _track_and_refresh_dependencies_for_installed_mod(db, refreshed, scraper)
     return get_mod_read(db, mod_id)
 
 
@@ -108,7 +109,7 @@ async def refresh_mod(db: Session, mod_id: str) -> ModRead:
     _upsert_scraped_mod(db, scraped)
     refreshed = get_mod_or_none(db, mod_id)
     assert refreshed is not None
-    _track_dependencies_for_installed_mod(db, refreshed)
+    await _track_and_refresh_dependencies_for_installed_mod(db, refreshed, scraper)
     read = get_mod_read(db, mod_id)
     assert read is not None
     return read
@@ -186,11 +187,11 @@ def _normalize_match_value(value: str | None) -> str:
     return " ".join(value.casefold().split())
 
 
-def _track_dependencies_for_installed_mod(db: Session, mod: Mod) -> None:
+async def _track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, scraper: WorkshopScraper) -> None:
     if not mod.user_mod or not mod.user_mod.current_version:
         return
 
-    tracked_count = 0
+    dependency_ids_to_refresh: list[str] = []
     for dependency in _normalize_dependencies(mod.dependencies or []):
         dependency_id = _dependency_mod_id(dependency, db)
         if not dependency_id or dependency_id == mod.id:
@@ -207,10 +208,19 @@ def _track_dependencies_for_installed_mod(db: Session, mod: Mod) -> None:
 
         if not dependency_mod.user_mod:
             db.add(UserMod(mod_id=dependency_mod.id, current_version=None, pinned=False))
-            tracked_count += 1
+            dependency_ids_to_refresh.append(dependency_mod.id)
+        elif not dependency_mod.latest_version:
+            dependency_ids_to_refresh.append(dependency_mod.id)
 
-    if tracked_count:
+    if dependency_ids_to_refresh:
         db.commit()
+        await _refresh_dependency_mods(db, dependency_ids_to_refresh, scraper)
+
+
+async def _refresh_dependency_mods(db: Session, mod_ids: list[str], scraper: WorkshopScraper) -> None:
+    for mod_id in dict.fromkeys(mod_ids):
+        scraped = await scraper.fetch_mod(mod_id)
+        _upsert_scraped_mod(db, scraped)
 
 
 def _dependency_mod_id(dependency: DependencyRead, db: Session) -> str | None:
