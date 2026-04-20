@@ -180,7 +180,7 @@ function App() {
       });
       if (!response.ok) throw new Error("Could not update installed version.");
       const updated = (await response.json()) as Mod;
-      setMods((previous) => previous.map((mod) => (mod.id === updated.id ? updated : mod)));
+      await loadMods();
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");
       setSaveState("saved");
