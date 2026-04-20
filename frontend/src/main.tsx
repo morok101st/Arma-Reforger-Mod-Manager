@@ -246,7 +246,7 @@ function App() {
 
         <label>
           Search
-          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Mod name" />
+          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Mod name or ID" />
         </label>
 
         <div className="mod-list">
@@ -504,7 +504,7 @@ function filterMods(mods: Mod[], searchQuery: string): Mod[] {
   if (!query) return mods;
 
   return mods.filter((mod) => {
-    return (mod.name ?? "").toLowerCase().includes(query);
+    return [mod.name, mod.id].filter(Boolean).join(" ").toLowerCase().includes(query);
   });
 }
 
