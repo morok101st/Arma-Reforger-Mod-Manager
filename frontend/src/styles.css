@@ -451,7 +451,6 @@ pre {
 }
 
 .chips span,
-.chips a,
 .chips button {
   background: #ffffff;
   border: 1px solid #d9dfdb;
@@ -468,14 +467,12 @@ pre {
   font-weight: 400;
 }
 
-.chips a,
 .chips button {
   border-color: #9fc8ad;
   color: #1f5f4b;
   font-weight: 800;
 }
 
-.chips a:hover,
 .chips button:hover {
   border-color: #1f5f4b;
 }

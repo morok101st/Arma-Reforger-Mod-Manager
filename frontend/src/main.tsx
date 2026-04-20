@@ -79,6 +79,10 @@ function App() {
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
   const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
   const changelogEntries = parseChangelog(selected?.versions[0]?.changelog ?? null);
+  const trackedDependencyMatches = React.useMemo(
+    () => new Map((selected?.dependencies ?? []).map((dependency) => [dependencyKey(dependency), findTrackedDependency(dependency, mods)])),
+    [mods, selected?.dependencies],
+  );
 
   React.useEffect(() => {
     setInstalledVersionEdit(selected?.current_version ?? "");
@@ -352,15 +356,16 @@ function App() {
               <h3>Dependencies</h3>
               {selected.dependencies.length > 0 ? (
                 <div className="chips">
-                  {selected.dependencies.map((dependency) =>
-                    dependency.url ? (
-                      <a href={dependency.url} key={`${dependency.name}-${dependency.url}`} target="_blank" rel="noreferrer">
+                  {selected.dependencies.map((dependency) => {
+                    const trackedDependency = trackedDependencyMatches.get(dependencyKey(dependency));
+                    return trackedDependency ? (
+                      <button key={dependencyKey(dependency)} onClick={() => setSelectedId(trackedDependency.id)} type="button">
                         {dependency.name}
-                      </a>
+                      </button>
                     ) : (
-                      <span key={dependency.name}>{dependency.name}</span>
-                    ),
-                  )}
+                      <span key={dependencyKey(dependency)}>{dependency.name}</span>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="muted">No dependencies detected.</p>
@@ -523,6 +528,28 @@ function compareByName(left: Mod, right: Mod): number {
 
 function timestamp(value: string | null): number {
   return value ? new Date(value).getTime() || 0 : 0;
+}
+
+function findTrackedDependency(dependency: Dependency, mods: Mod[]): Mod | null {
+  return mods.find((mod) => dependencyMatchesMod(dependency, mod)) ?? null;
+}
+
+function dependencyMatchesMod(dependency: Dependency, mod: Mod): boolean {
+  const modId = normalizeMatchValue(mod.id);
+  const modName = normalizeMatchValue(mod.name);
+  const dependencyName = normalizeMatchValue(dependency.name);
+  const dependencyUrl = normalizeMatchValue(dependency.url);
+
+  return Boolean(dependencyUrl && modId && dependencyUrl.includes(modId)) || dependencyName === modId || Boolean(modName && dependencyName === modName);
+}
+
+function dependencyKey(dependency: Dependency): string {
+  return `${dependency.name}-${dependency.url ?? ""}`;
+}
+
+function normalizeMatchValue(value: string | null): string {
+  if (!value) return "";
+  return value.toLowerCase().trim().replace(/\s+/g, " ");
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
