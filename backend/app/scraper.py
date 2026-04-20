@@ -61,7 +61,7 @@ class WorkshopScraper:
             name=_strip_suffix(name),
             summary=summary,
             description=description,
-            latest_version=_label_value(page_text, ["version", "mod version", "latest version"]),
+            latest_version=_version_value(soup, page_text),
             game_version=_label_value(page_text, ["game version", "required game version"]),
             size=_label_value(page_text, ["size", "file size"]),
             dependencies=_dependencies(soup, page_text),
@@ -105,6 +105,37 @@ def _label_value(text: str, labels: list[str]) -> str | None:
             value = _clean_text(match.group(1))
             if value and value.lower() not in {"version", "game version", "size"}:
                 return value
+    return None
+
+
+def _version_value(soup: BeautifulSoup, page_text: str) -> str | None:
+    value = _metadata_value(soup, ["version", "mod version", "latest version"])
+    if value and _looks_like_version(value):
+        return value
+
+    value = _label_value(page_text, ["mod version", "latest version", "version"])
+    return value if value and _looks_like_version(value) else None
+
+
+def _metadata_value(soup: BeautifulSoup, labels: list[str]) -> str | None:
+    normalized_labels = {label.lower() for label in labels}
+    for label_node in soup.find_all(["dt", "th"]):
+        label = _clean_text(label_node.get_text(" ")).lower()
+        if label not in normalized_labels:
+            continue
+
+        value_node = label_node.find_next_sibling(["dd", "td"])
+        if value_node:
+            value = _clean_text(value_node.get_text(" "))
+            if value:
+                return value
+
+        parent = label_node.parent
+        if parent:
+            parts = [_clean_text(part) for part in parent.stripped_strings]
+            parts = [part for part in parts if part and part.lower() != label]
+            if parts:
+                return parts[0]
     return None
 
 
