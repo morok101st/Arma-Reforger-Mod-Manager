@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 
 settings = get_settings()
-app = FastAPI(title="Arma Reforger Mod Manager API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Arma Reforger Mod Manager API", version="0.1.0", root_path="/api", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
