@@ -33,6 +33,12 @@ type Dependency = {
   url: string | null;
 };
 
+type ModReference = {
+  id: string;
+  name: string | null;
+  source_url: string | null;
+};
+
 type Mod = {
   id: string;
   name: string | null;
@@ -42,6 +48,7 @@ type Mod = {
   game_version: string | null;
   size: string | null;
   dependencies: Dependency[];
+  dependents: ModReference[];
   source_url: string | null;
   last_checked: string | null;
   current_version: string | null;
@@ -360,6 +367,21 @@ function App() {
             </section>
 
             <section className="content-section">
+              <h3>Required by</h3>
+              {selected.dependents.length > 0 ? (
+                <div className="chips">
+                  {selected.dependents.map((dependent) => (
+                    <button key={dependent.id} onClick={() => setSelectedId(dependent.id)} type="button">
+                      {dependent.name ?? dependent.id}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">No tracked mods depend on this mod.</p>
+              )}
+            </section>
+
+            <section className="content-section">
               <h3>Changelog</h3>
               {changelogEntries.length > 0 ? (
                 <div className="changelog-list">
@@ -483,6 +505,7 @@ function filterMods(mods: Mod[], searchQuery: string): Mod[] {
       mod.latest_version,
       mod.status,
       ...mod.dependencies.map((dependency) => dependency.name),
+      ...mod.dependents.map((dependent) => dependent.name ?? dependent.id),
     ]
       .filter(Boolean)
       .join(" ")

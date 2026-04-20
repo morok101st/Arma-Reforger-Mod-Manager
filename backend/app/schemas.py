@@ -26,6 +26,12 @@ class DependencyRead(BaseModel):
     url: str | None = None
 
 
+class ModReferenceRead(BaseModel):
+    id: str
+    name: str | None = None
+    source_url: str | None = None
+
+
 class ModVersionRead(BaseModel):
     id: int
     version: str
@@ -45,6 +51,7 @@ class ModRead(BaseModel):
     game_version: str | None
     size: str | None
     dependencies: list[DependencyRead]
+    dependents: list[ModReferenceRead] = Field(default_factory=list)
     source_url: str | None
     last_checked: datetime | None
     current_version: str | None

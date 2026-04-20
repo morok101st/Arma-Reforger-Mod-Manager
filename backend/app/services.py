@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import get_settings
 from app.models import Mod, ModVersion, UserMod
-from app.schemas import DependencyRead, ModCreate, ModRead, RefreshResult, UserModUpdate
+from app.schemas import DependencyRead, ModCreate, ModRead, ModReferenceRead, RefreshResult, UserModUpdate
 from app.scraper import ScrapedMod, WorkshopScraper
 from app.versioning import compare_versions
 
 
-def mod_to_read(mod: Mod) -> ModRead:
+def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
     user_mod = mod.user_mod
     current_version = user_mod.current_version if user_mod else None
     return ModRead(
@@ -20,6 +20,7 @@ def mod_to_read(mod: Mod) -> ModRead:
         game_version=mod.game_version,
         size=mod.size,
         dependencies=_normalize_dependencies(mod.dependencies or []),
+        dependents=_find_dependents(mod, all_tracked_mods or []),
         source_url=mod.source_url,
         last_checked=mod.last_checked,
         current_version=current_version,
@@ -30,12 +31,25 @@ def mod_to_read(mod: Mod) -> ModRead:
 
 
 def list_mods(db: Session) -> list[ModRead]:
-    mods = db.scalars(
+    mods = _list_tracked_mods(db)
+    return [mod_to_read(mod, mods) for mod in mods]
+
+
+def get_mod_read(db: Session, mod_id: str) -> ModRead | None:
+    mods = _list_tracked_mods(db)
+    mod = next((candidate for candidate in mods if candidate.id == mod_id), None)
+    if not mod:
+        return None
+    return mod_to_read(mod, mods)
+
+
+def _list_tracked_mods(db: Session) -> list[Mod]:
+    return list(db.scalars(
         select(Mod)
+        .join(UserMod)
         .options(selectinload(Mod.user_mod), selectinload(Mod.versions))
         .order_by(func.lower(Mod.name).nullslast(), Mod.id)
-    ).all()
-    return [mod_to_read(mod) for mod in mods]
+    ).all())
 
 
 def get_mod_or_none(db: Session, mod_id: str) -> Mod | None:
@@ -61,7 +75,9 @@ async def create_mod(db: Session, payload: ModCreate) -> ModRead:
     await refresh_mod(db, payload.id)
     refreshed = get_mod_or_none(db, payload.id)
     assert refreshed is not None
-    return mod_to_read(refreshed)
+    read = get_mod_read(db, payload.id)
+    assert read is not None
+    return read
 
 
 def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> ModRead | None:
@@ -80,9 +96,7 @@ def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> ModRead
         user_mod.pinned = payload.pinned
 
     db.commit()
-    refreshed = get_mod_or_none(db, mod_id)
-    assert refreshed is not None
-    return mod_to_read(refreshed)
+    return get_mod_read(db, mod_id)
 
 
 async def refresh_mod(db: Session, mod_id: str) -> ModRead:
@@ -91,7 +105,9 @@ async def refresh_mod(db: Session, mod_id: str) -> ModRead:
     _upsert_scraped_mod(db, scraped)
     refreshed = get_mod_or_none(db, mod_id)
     assert refreshed is not None
-    return mod_to_read(refreshed)
+    read = get_mod_read(db, mod_id)
+    assert read is not None
+    return read
 
 
 async def refresh_all_mods(db: Session) -> RefreshResult:
@@ -134,6 +150,36 @@ def _normalize_dependencies(dependencies: list[object]) -> list[DependencyRead]:
             url = str(url_value).strip() if url_value else None
             normalized.append(DependencyRead(name=name, url=url))
     return normalized
+
+
+def _find_dependents(target: Mod, all_tracked_mods: list[Mod]) -> list[ModReferenceRead]:
+    dependents: list[ModReferenceRead] = []
+    for candidate in all_tracked_mods:
+        if candidate.id == target.id:
+            continue
+        dependencies = _normalize_dependencies(candidate.dependencies or [])
+        if any(_dependency_matches_mod(dependency, target) for dependency in dependencies):
+            dependents.append(ModReferenceRead(id=candidate.id, name=candidate.name, source_url=candidate.source_url))
+    return dependents
+
+
+def _dependency_matches_mod(dependency: DependencyRead, target: Mod) -> bool:
+    target_id = _normalize_match_value(target.id)
+    target_name = _normalize_match_value(target.name)
+    dependency_name = _normalize_match_value(dependency.name)
+    dependency_url = _normalize_match_value(dependency.url)
+
+    return (
+        bool(dependency_url and target_id in dependency_url)
+        or dependency_name == target_id
+        or bool(target_name and dependency_name == target_name)
+    )
+
+
+def _normalize_match_value(value: str | None) -> str:
+    if not value:
+        return ""
+    return " ".join(value.casefold().split())
 
 
 def _upsert_scraped_mod(db: Session, scraped: ScrapedMod) -> None:

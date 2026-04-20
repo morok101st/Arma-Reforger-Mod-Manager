@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.database import Base, engine, get_db
 from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.scheduler import start_scheduler
-from app.services import create_mod, delete_mod, get_mod_or_none, list_mods, mod_to_read, refresh_all_mods, refresh_mod, update_user_mod
+from app.services import create_mod, delete_mod, get_mod_or_none, get_mod_read, list_mods, refresh_all_mods, refresh_mod, update_user_mod
 
 
 @asynccontextmanager
@@ -52,10 +52,10 @@ async def api_create_mod(payload: ModCreate, db: Session = Depends(get_db)) -> M
 
 @app.get("/mods/{mod_id}", response_model=ModRead)
 def api_get_mod(mod_id: str, db: Session = Depends(get_db)) -> ModRead:
-    mod = get_mod_or_none(db, mod_id)
+    mod = get_mod_read(db, mod_id)
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
-    return mod_to_read(mod)
+    return mod
 
 
 @app.patch("/mods/{mod_id}", response_model=ModRead)
