@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rwms-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rwms}
+      POSTGRES_USER: ${POSTGRES_USER:-rwms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rwms}
+    volumes:
+      - rwms-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rwms} -d ${POSTGRES_DB:-rwms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: rwms-backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://rwms:rwms@db:5432/rwms}
+      WORKSHOP_BASE_URL: ${WORKSHOP_BASE_URL:-https://reforger.armaplatform.com/workshop}
+      SCRAPE_INTERVAL_MINUTES: ${SCRAPE_INTERVAL_MINUTES:-60}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${FRONTEND_API_BASE_URL:-/api}
+    container_name: rwms-frontend
+    depends_on:
+      - backend
+    networks:
+      - default
+      - traefik_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_default"
+      - "traefik.http.routers.rwms.entrypoints=websecure"
+      - "traefik.http.routers.rwms.rule=Host(`rwms.mothes-cloud.de`)"
+      - "traefik.http.services.rwms.loadbalancer.server.port=80"
+      - "traefik.http.routers.rwms.tls=true"
+      - "traefik.http.routers.rwms.tls.certresolver=production"
+      - "traefik.http.routers.rwms.tls.domains[0].main=mothes-cloud.de"
+      - "traefik.http.routers.rwms.tls.domains[0].sans=*.mothes-cloud.de"
+
+volumes:
+  rwms-db-data:
+
+networks:
+  traefik_default:
+    external: true
