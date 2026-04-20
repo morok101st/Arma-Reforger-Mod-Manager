@@ -13,6 +13,7 @@ from app.versioning import compare_versions
 def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
     user_mod = mod.user_mod
     current_version = user_mod.current_version if user_mod else None
+    tracking_reason = user_mod.tracking_reason if user_mod else "manual"
     return ModRead(
         id=mod.id,
         name=mod.name,
@@ -27,6 +28,7 @@ def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
         last_checked=mod.last_checked,
         current_version=current_version,
         pinned=bool(user_mod.pinned) if user_mod else False,
+        tracking_reason=tracking_reason,
         status=compare_versions(current_version, mod.latest_version),
         versions=mod.versions[:10],
     )
@@ -68,10 +70,18 @@ async def create_mod(db: Session, payload: ModCreate) -> ModRead:
         db.flush()
 
     if not mod.user_mod:
-        db.add(UserMod(mod_id=payload.id, current_version=payload.current_version, pinned=payload.pinned))
+        db.add(
+            UserMod(
+                mod_id=payload.id,
+                current_version=payload.current_version,
+                pinned=payload.pinned,
+                tracking_reason="manual",
+            )
+        )
     else:
         mod.user_mod.current_version = payload.current_version
         mod.user_mod.pinned = payload.pinned
+        mod.user_mod.tracking_reason = "manual"
 
     db.commit()
     await refresh_mod(db, payload.id)
@@ -87,13 +97,14 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> M
 
     user_mod = mod.user_mod
     if not user_mod:
-        user_mod = UserMod(mod_id=mod_id)
+        user_mod = UserMod(mod_id=mod_id, tracking_reason="manual")
         db.add(user_mod)
 
     if payload.current_version is not None:
         user_mod.current_version = payload.current_version
     if payload.pinned is not None:
         user_mod.pinned = payload.pinned
+    user_mod.tracking_reason = "manual"
 
     db.commit()
     refreshed = get_mod_or_none(db, mod_id)
@@ -207,7 +218,14 @@ async def _track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mo
             dependency_mod.source_url = dependency_mod.source_url or dependency.url
 
         if not dependency_mod.user_mod:
-            db.add(UserMod(mod_id=dependency_mod.id, current_version=None, pinned=False))
+            db.add(
+                UserMod(
+                    mod_id=dependency_mod.id,
+                    current_version=None,
+                    pinned=False,
+                    tracking_reason="dependency",
+                )
+            )
             dependency_ids_to_refresh.append(dependency_mod.id)
         elif not dependency_mod.latest_version:
             dependency_ids_to_refresh.append(dependency_mod.id)

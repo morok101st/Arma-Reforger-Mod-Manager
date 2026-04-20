@@ -19,6 +19,7 @@ const UNKNOWN_VALUE = "unknown";
 
 type ModStatus = "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
 type SortMode = "name" | "status" | "last_checked" | "updates";
+type TrackingReason = "manual" | "dependency";
 
 type ModVersion = {
   id: number;
@@ -53,6 +54,7 @@ type Mod = {
   last_checked: string | null;
   current_version: string | null;
   pinned: boolean;
+  tracking_reason: TrackingReason;
   status: ModStatus;
   versions: ModVersion[];
 };
@@ -264,6 +266,7 @@ function App() {
                   {mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}
                   <span className="relation-count">{mod.dependencies.length} deps</span>
                   <span className="relation-count">{mod.dependents.length} req</span>
+                  {mod.tracking_reason === "dependency" && <span className="tracking-badge">dep</span>}
                 </small>
               </span>
               {mod.pinned && <Pin size={14} />}
@@ -353,6 +356,7 @@ function App() {
               <Info label="Size" value={selected.size} />
               <Info label="Last checked" value={formatDate(selected.last_checked)} />
               <Info label="Latest version" value={selected.latest_version} />
+              <Info label="Tracking" value={trackingReasonLabel(selected.tracking_reason)} />
             </div>
 
             {selected.summary && <p className="summary">{selected.summary}</p>}
@@ -453,6 +457,10 @@ function statusLabel(status: ModStatus) {
   if (status === "UPDATE_AVAILABLE") return "Update available";
   if (status === "UP_TO_DATE") return "Up to date";
   return "Status unknown";
+}
+
+function trackingReasonLabel(reason: TrackingReason) {
+  return reason === "dependency" ? "Dependency" : "Manual";
 }
 
 function formatDate(value: string | null) {

@@ -10,6 +10,11 @@ class ModStatus(StrEnum):
     update_available = "UPDATE_AVAILABLE"
 
 
+class TrackingReason(StrEnum):
+    manual = "manual"
+    dependency = "dependency"
+
+
 class ModCreate(BaseModel):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{3,80}$")
     current_version: str | None = Field(default=None, max_length=80)
@@ -56,6 +61,7 @@ class ModRead(BaseModel):
     last_checked: datetime | None
     current_version: str | None
     pinned: bool
+    tracking_reason: TrackingReason
     status: ModStatus
     versions: list[ModVersionRead] = []
 

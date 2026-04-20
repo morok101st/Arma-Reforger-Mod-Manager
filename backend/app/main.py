@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import Base, engine, get_db
+from app.migrations import migrate_schema
 from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.scheduler import start_scheduler
 from app.services import create_mod, delete_mod, get_mod_or_none, get_mod_read, list_mods, refresh_all_mods, refresh_mod, update_user_mod
@@ -14,6 +15,7 @@ from app.services import create_mod, delete_mod, get_mod_or_none, get_mod_read, 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    migrate_schema(engine)
     scheduler = start_scheduler()
     try:
         yield
