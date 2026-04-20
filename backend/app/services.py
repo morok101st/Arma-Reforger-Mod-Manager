@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -73,8 +75,6 @@ async def create_mod(db: Session, payload: ModCreate) -> ModRead:
 
     db.commit()
     await refresh_mod(db, payload.id)
-    refreshed = get_mod_or_none(db, payload.id)
-    assert refreshed is not None
     read = get_mod_read(db, payload.id)
     assert read is not None
     return read
@@ -96,6 +96,9 @@ def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> ModRead
         user_mod.pinned = payload.pinned
 
     db.commit()
+    refreshed = get_mod_or_none(db, mod_id)
+    if refreshed:
+        _track_dependencies_for_installed_mod(db, refreshed)
     return get_mod_read(db, mod_id)
 
 
@@ -105,6 +108,7 @@ async def refresh_mod(db: Session, mod_id: str) -> ModRead:
     _upsert_scraped_mod(db, scraped)
     refreshed = get_mod_or_none(db, mod_id)
     assert refreshed is not None
+    _track_dependencies_for_installed_mod(db, refreshed)
     read = get_mod_read(db, mod_id)
     assert read is not None
     return read
@@ -180,6 +184,65 @@ def _normalize_match_value(value: str | None) -> str:
     if not value:
         return ""
     return " ".join(value.casefold().split())
+
+
+def _track_dependencies_for_installed_mod(db: Session, mod: Mod) -> None:
+    if not mod.user_mod or not mod.user_mod.current_version:
+        return
+
+    tracked_count = 0
+    for dependency in _normalize_dependencies(mod.dependencies or []):
+        dependency_id = _dependency_mod_id(dependency, db)
+        if not dependency_id or dependency_id == mod.id:
+            continue
+
+        dependency_mod = db.get(Mod, dependency_id)
+        if not dependency_mod:
+            dependency_mod = Mod(id=dependency_id, name=dependency.name, source_url=dependency.url)
+            db.add(dependency_mod)
+            db.flush()
+        else:
+            dependency_mod.name = dependency_mod.name or dependency.name
+            dependency_mod.source_url = dependency_mod.source_url or dependency.url
+
+        if not dependency_mod.user_mod:
+            db.add(UserMod(mod_id=dependency_mod.id, current_version=None, pinned=False))
+            tracked_count += 1
+
+    if tracked_count:
+        db.commit()
+
+
+def _dependency_mod_id(dependency: DependencyRead, db: Session) -> str | None:
+    mod_id = _workshop_mod_id_from_url(dependency.url)
+    if mod_id:
+        return mod_id
+
+    known_mod = db.scalar(select(Mod).where(func.lower(Mod.id) == dependency.name.casefold()))
+    if known_mod:
+        return known_mod.id
+
+    normalized_dependency_name = _normalize_match_value(dependency.name)
+    if not normalized_dependency_name:
+        return None
+
+    known_mods = db.scalars(select(Mod)).all()
+    for known_mod in known_mods:
+        if _normalize_match_value(known_mod.name) == normalized_dependency_name:
+            return known_mod.id
+    return None
+
+
+def _workshop_mod_id_from_url(url: str | None) -> str | None:
+    if not url:
+        return None
+
+    match = re.search(r"/workshop/([^/?#]+)", url)
+    if not match:
+        return None
+
+    candidate = match.group(1).split("-", 1)[0].strip()
+    return candidate or None
 
 
 def _upsert_scraped_mod(db: Session, scraped: ScrapedMod) -> None:
