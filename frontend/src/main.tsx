@@ -19,6 +19,7 @@ const UNKNOWN_VALUE = "unknown";
 
 type ModStatus = "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
 type SortMode = "name" | "status" | "last_checked" | "updates";
+type ViewMode = "monitor" | "graph";
 
 type ModVersion = {
   id: number;
@@ -62,6 +63,17 @@ type ChangelogEntry = {
   lines: string[];
 };
 
+type GraphNode = {
+  mod: Mod;
+  x: number;
+  y: number;
+};
+
+type GraphEdge = {
+  from: string;
+  to: string;
+};
+
 function App() {
   const [mods, setMods] = React.useState<Mod[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -71,6 +83,7 @@ function App() {
   const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [viewMode, setViewMode] = React.useState<ViewMode>("monitor");
   const [loading, setLoading] = React.useState(false);
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
   const [error, setError] = React.useState<string | null>(null);
@@ -78,6 +91,7 @@ function App() {
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
   const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
+  const graphSelectedId = selectedId && mods.some((mod) => mod.id === selectedId) ? selectedId : selected?.id ?? null;
   const changelogEntries = parseChangelog(selected?.versions[0]?.changelog ?? null);
   const trackedDependencyMatches = React.useMemo(
     () => new Map((selected?.dependencies ?? []).map((dependency) => [dependencyKey(dependency), findTrackedDependency(dependency, mods)])),
@@ -234,6 +248,15 @@ function App() {
 
         {error && <div className="error-box">{error}</div>}
 
+        <div className="view-toggle" aria-label="View mode">
+          <button className={viewMode === "monitor" ? "active" : ""} onClick={() => setViewMode("monitor")} type="button">
+            Monitor
+          </button>
+          <button className={viewMode === "graph" ? "active" : ""} onClick={() => setViewMode("graph")} type="button">
+            Graph
+          </button>
+        </div>
+
         <label className="sort-control">
           Sort by
           <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
@@ -269,8 +292,17 @@ function App() {
         </div>
       </section>
 
-      <section className="detail" aria-label="Mod Details">
-        {selected ? (
+      {viewMode === "graph" ? (
+        <GraphView
+          mods={mods}
+          selectedId={graphSelectedId}
+          loading={loading}
+          onRefresh={() => loadMods().catch((err: Error) => setError(err.message))}
+          onSelect={setSelectedId}
+        />
+      ) : (
+        <section className="detail" aria-label="Mod Details">
+          {selected ? (
           <>
             <header className="detail-header">
               <div>
@@ -423,9 +455,111 @@ function App() {
             <h2>Add a mod</h2>
             <p>Enter a Workshop ID on the left to start the first fetch.</p>
           </div>
-        )}
-      </section>
+          )}
+        </section>
+      )}
     </main>
+  );
+}
+
+function GraphView({
+  mods,
+  selectedId,
+  loading,
+  onRefresh,
+  onSelect,
+}: {
+  mods: Mod[];
+  selectedId: string | null;
+  loading: boolean;
+  onRefresh: () => void;
+  onSelect: (id: string) => void;
+}) {
+  const graph = React.useMemo(() => buildGraph(mods), [mods]);
+  const selectedNode = selectedId ? graph.nodes.find((node) => node.mod.id === selectedId) : null;
+
+  return (
+    <section className="detail graph-detail" aria-label="Mod dependency graph">
+      <header className="detail-header">
+        <div>
+          <p>Dependency Graph</p>
+          <h2>Tracked Mods</h2>
+        </div>
+        <div className="graph-summary">
+          <span>{graph.nodes.length} mods</span>
+          <span>{graph.edges.length} links</span>
+          <button className="icon-button" onClick={onRefresh} disabled={loading} title="Refresh graph" type="button">
+            <RefreshCw size={18} />
+          </button>
+        </div>
+      </header>
+
+      {graph.nodes.length > 0 ? (
+        <div className="graph-canvas">
+          <svg role="img" viewBox="0 0 1000 700" aria-label="Tracked mod dependency graph">
+            <defs>
+              <marker id="graph-arrow" markerHeight="10" markerWidth="10" orient="auto" refX="9" refY="3" viewBox="0 0 10 6">
+                <path d="M0,0 L10,3 L0,6 Z" />
+              </marker>
+            </defs>
+
+            {graph.edges.map((edge) => {
+              const from = graph.nodeMap.get(edge.from);
+              const to = graph.nodeMap.get(edge.to);
+              if (!from || !to) return null;
+              const endpoints = edgeEndpoints(from, to);
+              return (
+                <line
+                  className={`graph-edge ${selectedId && (edge.from === selectedId || edge.to === selectedId) ? "active" : ""}`}
+                  key={`${edge.from}-${edge.to}`}
+                  markerEnd="url(#graph-arrow)"
+                  x1={endpoints.x1}
+                  x2={endpoints.x2}
+                  y1={endpoints.y1}
+                  y2={endpoints.y2}
+                />
+              );
+            })}
+
+            {graph.nodes.map((node) => {
+              const isSelected = node.mod.id === selectedId;
+              const label = node.mod.name ?? node.mod.id;
+              return (
+                <g
+                  className={`graph-node ${node.mod.status.toLowerCase()} ${isSelected ? "selected" : ""} ${node.mod.current_version ? "installed" : ""}`}
+                  key={node.mod.id}
+                  onClick={() => onSelect(node.mod.id)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <title>{label}</title>
+                  <circle cx={node.x} cy={node.y} r={isSelected ? 48 : 40} />
+                  <text x={node.x} y={node.y - 4}>
+                    {shortGraphLabel(label)}
+                  </text>
+                  <text className="graph-node-meta" x={node.x} y={node.y + 18}>
+                    {node.mod.dependencies.length} deps · {node.mod.dependents.length} req
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      ) : (
+        <div className="placeholder">
+          <h2>No graph data</h2>
+          <p>Add tracked mods to build the dependency graph.</p>
+        </div>
+      )}
+
+      {selectedNode && (
+        <div className={`status-band ${selectedNode.mod.status.toLowerCase()}`}>
+          <StatusIcon status={selectedNode.mod.status} />
+          <strong>{selectedNode.mod.name ?? selectedNode.mod.id}</strong>
+          <span>Installed {selectedNode.mod.current_version ?? UNKNOWN_VALUE} · Latest {selectedNode.mod.latest_version ?? UNKNOWN_VALUE}</span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -550,6 +684,56 @@ function dependencyKey(dependency: Dependency): string {
 function normalizeMatchValue(value: string | null): string {
   if (!value) return "";
   return value.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+function buildGraph(mods: Mod[]): { nodes: GraphNode[]; edges: GraphEdge[]; nodeMap: Map<string, GraphNode> } {
+  const sorted = sortMods(mods, "name");
+  const centerX = 500;
+  const centerY = 350;
+  const radiusX = sorted.length <= 2 ? 210 : 370;
+  const radiusY = sorted.length <= 2 ? 150 : 245;
+
+  const nodes = sorted.map((mod, index) => {
+    if (sorted.length === 1) return { mod, x: centerX, y: centerY };
+    const angle = -Math.PI / 2 + (index / sorted.length) * Math.PI * 2;
+    return {
+      mod,
+      x: Math.round(centerX + Math.cos(angle) * radiusX),
+      y: Math.round(centerY + Math.sin(angle) * radiusY),
+    };
+  });
+  const nodeMap = new Map(nodes.map((node) => [node.mod.id, node]));
+  const edgeMap = new Map<string, GraphEdge>();
+
+  for (const mod of sorted) {
+    for (const dependency of mod.dependencies) {
+      const target = findTrackedDependency(dependency, sorted);
+      if (!target || target.id === mod.id) continue;
+      const key = `${mod.id}-${target.id}`;
+      edgeMap.set(key, { from: mod.id, to: target.id });
+    }
+  }
+
+  return { nodes, edges: [...edgeMap.values()], nodeMap };
+}
+
+function edgeEndpoints(from: GraphNode, to: GraphNode): { x1: number; y1: number; x2: number; y2: number } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const distance = Math.hypot(dx, dy) || 1;
+  const startOffset = 48;
+  const endOffset = 52;
+
+  return {
+    x1: from.x + (dx / distance) * startOffset,
+    y1: from.y + (dy / distance) * startOffset,
+    x2: to.x - (dx / distance) * endOffset,
+    y2: to.y - (dy / distance) * endOffset,
+  };
+}
+
+function shortGraphLabel(value: string): string {
+  return value.length > 24 ? `${value.slice(0, 21)}...` : value;
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
