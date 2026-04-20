@@ -42,12 +42,12 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_default"
       - "traefik.http.routers.rwms.entrypoints=websecure"
-      - "traefik.http.routers.rwms.rule=Host(`rwms.mothes-cloud.de`)"
+      - "traefik.http.routers.rwms.rule=Host(`armm.example.com`)"
       - "traefik.http.services.rwms.loadbalancer.server.port=80"
       - "traefik.http.routers.rwms.tls=true"
       - "traefik.http.routers.rwms.tls.certresolver=production"
-      - "traefik.http.routers.rwms.tls.domains[0].main=mothes-cloud.de"
-      - "traefik.http.routers.rwms.tls.domains[0].sans=*.mothes-cloud.de"
+      - "traefik.http.routers.rwms.tls.domains[0].main=example.com"
+      - "traefik.http.routers.rwms.tls.domains[0].sans=*.example.com"
 
 volumes:
   rwms-db-data:

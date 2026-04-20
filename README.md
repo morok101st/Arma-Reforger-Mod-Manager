@@ -6,14 +6,18 @@ Arma Reforger Mod Manager is an MVP for a monitoring system that stores Arma Ref
 
 ```bash
 cp .env.example .env
+cp docker-compose.example.yml docker-compose.yml
 docker compose up --build
 ```
 
 After startup:
 
-- Frontend via Traefik: https://rwms.mothes-cloud.de
-- Health check: https://rwms.mothes-cloud.de/api/health
+- Frontend via Traefik: https://armm.example.com
+- Health check: https://armm.example.com/api/health
 - API docs internally: http://backend:8000/docs
+
+`docker-compose.yml` is treated as a local production file and is ignored by Git.
+Only `docker-compose.example.yml` is tracked.
 
 ## MVP Features
 
