@@ -557,7 +557,6 @@ function App() {
               <Info label="Size" value={selected.size} />
               <Info label="Last checked" value={formatDate(selected.last_checked)} />
               <Info label="Latest version" value={selected.latest_version} />
-              <Info label="Tracking" value={trackingReasonLabel(selected.tracking_reason)} />
             </div>
 
             {selected.summary && <p className="summary">{selected.summary}</p>}
@@ -760,10 +759,6 @@ function statusLabel(status: ModStatus) {
   if (status === "UPDATE_AVAILABLE") return "Update available";
   if (status === "UP_TO_DATE") return "Up to date";
   return "Status unknown";
-}
-
-function trackingReasonLabel(reason: TrackingReason) {
-  return reason === "dependency" ? "Dependency" : "Manual";
 }
 
 function formatDate(value: string | null) {
