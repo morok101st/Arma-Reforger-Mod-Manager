@@ -29,12 +29,28 @@ type AuthUser = {
   id: number;
   username: string;
   role: UserRole;
+  session_expires_at: string | null;
 };
 
-type UserAccount = AuthUser & {
+type UserAccount = {
+  id: number;
+  username: string;
+  role: UserRole;
   is_active: boolean;
   created_at: string;
   last_login_at: string | null;
+};
+
+type AuditLog = {
+  id: number;
+  actor_username: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  detail: Record<string, unknown>;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
 };
 
 type ModVersion = {
@@ -92,6 +108,10 @@ function App() {
   const [newUsername, setNewUsername] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [newRole, setNewRole] = React.useState<UserRole>("user");
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newOwnPassword, setNewOwnPassword] = React.useState("");
+  const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
+  const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
   const [mods, setMods] = React.useState<Mod[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [modId, setModId] = React.useState("");
@@ -128,6 +148,7 @@ function App() {
   React.useEffect(() => {
     if (authUser?.role !== "admin") return;
     loadUsers().catch((err: Error) => setError(err.message));
+    loadAuditLogs().catch((err: Error) => setError(err.message));
   }, [authUser?.id, authUser?.role]);
 
   React.useEffect(() => {
@@ -218,6 +239,36 @@ function App() {
     setUsers((await response.json()) as UserAccount[]);
   }
 
+  async function loadAuditLogs() {
+    const response = await apiFetch("/audit?limit=25");
+    if (!response.ok) throw new Error("Could not load audit log.");
+    setAuditLogs((await response.json()) as AuditLog[]);
+  }
+
+  async function changeOwnPassword(event: React.FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiFetch("/auth/password", {
+        method: "PATCH",
+        body: JSON.stringify({ current_password: currentPassword, new_password: newOwnPassword }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail ?? "Could not change password.");
+      }
+      setAuthUser((await response.json()) as AuthUser);
+      setCurrentPassword("");
+      setNewOwnPassword("");
+      await loadAuditLogs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function addUser(event: React.FormEvent) {
     event.preventDefault();
     if (!newUsername.trim() || !newPassword) return;
@@ -237,6 +288,7 @@ function App() {
       setNewPassword("");
       setNewRole("user");
       await loadUsers();
+      await loadAuditLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -254,6 +306,29 @@ function App() {
         throw new Error(errorPayload?.detail ?? "Could not update user.");
       }
       await loadUsers();
+      await loadAuditLogs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetUserPassword(userId: number) {
+    const password = resetPasswords[userId] ?? "";
+    if (password.length < 12) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiFetch(`/users/${userId}/password`, { method: "PATCH", body: JSON.stringify({ password }) });
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(errorPayload?.detail ?? "Could not reset password.");
+      }
+      setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
+      await loadUsers();
+      await loadAuditLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -390,11 +465,9 @@ function App() {
             <h1>Workshop Monitor</h1>
           </div>
           <div className="header-actions">
-            {authUser.role === "admin" && (
-              <button className="icon-button" onClick={() => setShowUserAdmin((value) => !value)} title="Users">
-                <Users size={18} />
-              </button>
-            )}
+            <button className="icon-button" onClick={() => setShowUserAdmin((value) => !value)} title="Security">
+              {authUser.role === "admin" ? <Users size={18} /> : <Shield size={18} />}
+            </button>
             <button className="icon-button" onClick={() => loadMods().catch((err: Error) => setError(err.message))} title="Refresh list">
               <RefreshCw size={18} />
             </button>
@@ -465,7 +538,7 @@ function App() {
       </section>
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
-        {showUserAdmin && authUser.role === "admin" ? (
+        {showUserAdmin ? (
           <UserAdmin
             users={users}
             currentUser={authUser}
@@ -473,11 +546,21 @@ function App() {
             newUsername={newUsername}
             newPassword={newPassword}
             newRole={newRole}
+            currentPassword={currentPassword}
+            newOwnPassword={newOwnPassword}
+            resetPasswords={resetPasswords}
+            auditLogs={auditLogs}
             setNewUsername={setNewUsername}
             setNewPassword={setNewPassword}
             setNewRole={setNewRole}
+            setCurrentPassword={setCurrentPassword}
+            setNewOwnPassword={setNewOwnPassword}
+            setResetPasswords={setResetPasswords}
             addUser={addUser}
+            changeOwnPassword={changeOwnPassword}
             updateUserAccount={updateUserAccount}
+            resetUserPassword={resetUserPassword}
+            loadAuditLogs={loadAuditLogs}
           />
         ) : selected ? (
           <>
@@ -659,11 +742,21 @@ function UserAdmin({
   newUsername,
   newPassword,
   newRole,
+  currentPassword,
+  newOwnPassword,
+  resetPasswords,
+  auditLogs,
   setNewUsername,
   setNewPassword,
   setNewRole,
+  setCurrentPassword,
+  setNewOwnPassword,
+  setResetPasswords,
   addUser,
+  changeOwnPassword,
   updateUserAccount,
+  resetUserPassword,
+  loadAuditLogs,
 }: {
   users: UserAccount[];
   currentUser: AuthUser;
@@ -671,71 +764,144 @@ function UserAdmin({
   newUsername: string;
   newPassword: string;
   newRole: UserRole;
+  currentPassword: string;
+  newOwnPassword: string;
+  resetPasswords: Record<number, string>;
+  auditLogs: AuditLog[];
   setNewUsername: (value: string) => void;
   setNewPassword: (value: string) => void;
   setNewRole: (value: UserRole) => void;
+  setCurrentPassword: (value: string) => void;
+  setNewOwnPassword: (value: string) => void;
+  setResetPasswords: React.Dispatch<React.SetStateAction<Record<number, string>>>;
   addUser: (event: React.FormEvent) => void;
+  changeOwnPassword: (event: React.FormEvent) => void;
   updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => void;
+  resetUserPassword: (userId: number) => void;
+  loadAuditLogs: () => Promise<void>;
 }) {
   return (
     <>
       <header className="detail-header">
         <div>
-          <p>Administration</p>
-          <h2>Users</h2>
+          <p>{currentUser.role === "admin" ? "Administration" : "Account"}</p>
+          <h2>Security</h2>
         </div>
       </header>
 
-      <form className="user-form" onSubmit={addUser}>
+      <section className="content-section">
+        <h3>Session</h3>
+        <div className="metrics">
+          <Info label="Signed in as" value={currentUser.username} />
+          <Info label="Role" value={currentUser.role} />
+          <Info label="Session expires" value={formatDate(currentUser.session_expires_at)} />
+          <Info label="Lifetime" value="7 days" />
+        </div>
+      </section>
+
+      <form className="user-form" onSubmit={changeOwnPassword}>
         <label>
-          Username
-          <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
+          Current password
+          <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
         </label>
         <label>
-          Initial password
-          <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="at least 12 characters" />
+          New password
+          <input value={newOwnPassword} onChange={(event) => setNewOwnPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="at least 12 characters" />
         </label>
-        <label className="sort-control">
-          Role
-          <select value={newRole} onChange={(event) => setNewRole(event.target.value as UserRole)}>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </label>
-        <button className="primary-button compact" disabled={loading || newPassword.length < 12 || !newUsername.trim()}>
-          <Plus size={18} />
-          Create user
+        <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
+          <Save size={18} />
+          Change password
         </button>
       </form>
 
-      <div className="user-list">
-        {users.map((user) => (
-          <article className="user-row" key={user.id}>
-            <div>
-              <strong>{user.username}</strong>
-              <small>
-                {user.role} · {user.is_active ? "active" : "disabled"} · Last login {formatDate(user.last_login_at) ?? "never"}
-              </small>
-            </div>
-            <select
-              value={user.role}
-              disabled={loading}
-              onChange={(event) => updateUserAccount(user.id, { role: event.target.value as UserRole })}
-            >
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
-            <button
-              className="secondary-button compact"
-              disabled={loading || user.id === currentUser.id}
-              onClick={() => updateUserAccount(user.id, { is_active: !user.is_active })}
-              type="button"
-            >
-              {user.is_active ? "Disable" : "Enable"}
+      {currentUser.role === "admin" && (
+        <>
+          <form className="user-form" onSubmit={addUser}>
+            <label>
+              Username
+              <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
+            </label>
+            <label>
+              Initial password
+              <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="at least 12 characters" />
+            </label>
+            <label className="sort-control">
+              Role
+              <select value={newRole} onChange={(event) => setNewRole(event.target.value as UserRole)}>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <button className="primary-button compact" disabled={loading || newPassword.length < 12 || !newUsername.trim()}>
+              <Plus size={18} />
+              Create user
             </button>
-          </article>
-        ))}
-      </div>
+          </form>
+
+          <div className="user-list">
+            {users.map((user) => (
+              <article className="user-row" key={user.id}>
+                <div>
+                  <strong>{user.username}</strong>
+                  <small>
+                    {user.role} · {user.is_active ? "active" : "disabled"} · Last login {formatDate(user.last_login_at) ?? "never"}
+                  </small>
+                </div>
+                <select
+                  value={user.role}
+                  disabled={loading}
+                  onChange={(event) => updateUserAccount(user.id, { role: event.target.value as UserRole })}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button
+                  className="secondary-button compact"
+                  disabled={loading || user.id === currentUser.id}
+                  onClick={() => updateUserAccount(user.id, { is_active: !user.is_active })}
+                  type="button"
+                >
+                  {user.is_active ? "Disable" : "Enable"}
+                </button>
+                <input
+                  value={resetPasswords[user.id] ?? ""}
+                  onChange={(event) => setResetPasswords((previous) => ({ ...previous, [user.id]: event.target.value }))}
+                  type="password"
+                  placeholder="new password"
+                />
+                <button
+                  className="secondary-button compact"
+                  disabled={loading || (resetPasswords[user.id] ?? "").length < 12}
+                  onClick={() => resetUserPassword(user.id)}
+                  type="button"
+                >
+                  Reset password
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <section className="content-section">
+            <div className="section-title-row">
+              <h3>Audit log</h3>
+              <button className="secondary-button compact" disabled={loading} onClick={() => loadAuditLogs().catch(() => null)} type="button">
+                <RefreshCw size={18} />
+                Refresh
+              </button>
+            </div>
+            <div className="audit-list">
+              {auditLogs.map((entry) => (
+                <article className="audit-row" key={entry.id}>
+                  <strong>{auditActionLabel(entry.action)}</strong>
+                  <span>{entry.actor_username ?? "system"} · {entry.entity_type}{entry.entity_id ? ` ${entry.entity_id}` : ""}</span>
+                  <small>{formatDate(entry.created_at)} · {entry.ip_address ?? "no ip"}</small>
+                </article>
+              ))}
+              {auditLogs.length === 0 && <p className="muted">No audit entries stored.</p>}
+            </div>
+          </section>
+        </>
+      )}
     </>
   );
 }
@@ -759,6 +925,10 @@ function statusLabel(status: ModStatus) {
   if (status === "UPDATE_AVAILABLE") return "Update available";
   if (status === "UP_TO_DATE") return "Up to date";
   return "Status unknown";
+}
+
+function auditActionLabel(action: string) {
+  return action.replace(/_/g, " ");
 }
 
 function formatDate(value: string | null) {

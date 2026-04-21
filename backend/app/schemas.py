@@ -29,6 +29,16 @@ class AuthUserRead(BaseModel):
     id: int
     username: str
     role: UserRole
+    session_expires_at: datetime | None = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=12, max_length=256)
+
+
+class PasswordReset(BaseModel):
+    password: str = Field(min_length=12, max_length=256)
 
 
 class UserCreate(BaseModel):
@@ -51,6 +61,20 @@ class UserRead(BaseModel):
     is_active: bool
     created_at: datetime
     last_login_at: datetime | None
+
+
+class AuditLogRead(BaseModel):
+    id: int
+    actor_username: str | None
+    action: str
+    entity_type: str
+    entity_id: str | None
+    detail: dict[str, object]
+    ip_address: str | None
+    user_agent: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class ModCreate(BaseModel):

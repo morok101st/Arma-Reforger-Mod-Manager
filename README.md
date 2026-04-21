@@ -36,8 +36,12 @@ Only anonymized example files are tracked.
 
 - The API requires login for all mod and user management endpoints.
 - The first admin user is bootstrapped from `ARMM_ADMIN_USERNAME` and `ARMM_ADMIN_PASSWORD`.
-- Sessions are stored in an `HttpOnly` cookie.
+- Sessions are stored in an `HttpOnly` cookie and are valid for 7 days.
 - In production, the session cookie is marked `Secure`.
+- Logout deletes the browser session cookie; expired or invalid sessions return `401`.
+- Users can change their own password from the Security view.
+- Admins can create users, disable users, change roles, and reset user passwords.
+- Login, logout, password changes, user changes, and mod changes are written to the audit log.
 - `/api/health` stays public for health checks.
 - Swagger/OpenAPI are disabled in production.
 - User management supports `admin` and `user` roles.

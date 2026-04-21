@@ -391,7 +391,7 @@ button:disabled {
   border-radius: 8px;
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr minmax(120px, 160px) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(120px, 160px) auto minmax(180px, 240px) auto;
   padding: 14px;
 }
 
@@ -476,6 +476,32 @@ button:disabled {
 .content-section {
   display: grid;
   gap: 12px;
+}
+
+.section-title-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.audit-list {
+  display: grid;
+  gap: 8px;
+}
+
+.audit-row {
+  background: #ffffff;
+  border: 1px solid #d9dfdb;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.audit-row span,
+.audit-row small {
+  color: #65716a;
 }
 
 pre {

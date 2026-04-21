@@ -88,6 +88,16 @@ def decode_session_token(token: str) -> dict[str, object] | None:
     return payload
 
 
+def session_expires_at(token: str | None) -> datetime | None:
+    if not token:
+        return None
+    payload = decode_session_token(token)
+    exp = payload.get("exp") if payload else None
+    if not isinstance(exp, int):
+        return None
+    return datetime.fromtimestamp(exp, tz=timezone.utc)
+
+
 def set_session_cookie(response: Response, user: User) -> None:
     settings = get_settings()
     response.set_cookie(
