@@ -466,7 +466,6 @@ function App() {
         <div className="brand">
           <div>
             <p>Arma Reforger Mod Manager</p>
-            <h1>Workshop Monitor</h1>
           </div>
           <div className="header-actions">
             <button className="icon-button" onClick={() => setShowUserAdmin((value) => !value)} title="Security">
