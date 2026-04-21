@@ -810,7 +810,7 @@ function UserAdmin({
         </label>
         <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
           <Save size={18} />
-          Change password
+          Change
         </button>
       </form>
 
