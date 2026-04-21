@@ -1,10 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {
+  Activity,
+  BarChart3,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Clock,
   ExternalLink,
+  Home,
   LogOut,
   Pin,
   Plus,
@@ -104,6 +108,7 @@ function App() {
   const [loginPassword, setLoginPassword] = React.useState("");
   const [loginError, setLoginError] = React.useState<string | null>(null);
   const [users, setUsers] = React.useState<UserAccount[]>([]);
+  const [showDashboard, setShowDashboard] = React.useState(true);
   const [showUserAdmin, setShowUserAdmin] = React.useState(false);
   const [newUsername, setNewUsername] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
@@ -168,7 +173,7 @@ function App() {
 
   React.useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
-  }, [selected?.id, showUserAdmin]);
+  }, [selected?.id, showDashboard, showUserAdmin]);
 
   async function apiFetch(path: string, options: RequestInit = {}) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -183,6 +188,7 @@ function App() {
     if (response.status === 401) {
       setAuthUser(null);
       setMods([]);
+      setShowDashboard(true);
       setShowUserAdmin(false);
     }
     return response;
@@ -224,6 +230,7 @@ function App() {
     setAuthUser(null);
     setMods([]);
     setUsers([]);
+    setShowDashboard(true);
     setShowUserAdmin(false);
   }
 
@@ -359,6 +366,7 @@ function App() {
       const created = (await response.json()) as Mod;
       await loadMods();
       setSelectedId(created.id);
+      setShowDashboard(false);
       setShowUserAdmin(false);
       setModId("");
       setCurrentVersion("");
@@ -470,7 +478,24 @@ function App() {
             <p>Arma Reforger Mod Manager</p>
           </div>
           <div className="header-actions">
-            <button className="icon-button" onClick={() => setShowUserAdmin((value) => !value)} title="Security">
+            <button
+              className="icon-button"
+              onClick={() => {
+                setShowDashboard(true);
+                setShowUserAdmin(false);
+              }}
+              title="Dashboard"
+            >
+              <Home size={18} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => {
+                setShowDashboard(false);
+                setShowUserAdmin((value) => !value);
+              }}
+              title="Security"
+            >
               {authUser.role === "admin" ? <Users size={18} /> : <Shield size={18} />}
             </button>
             <button className="icon-button" onClick={() => loadMods().catch((err: Error) => setError(err.message))} title="Refresh list">
@@ -532,9 +557,10 @@ function App() {
           {sortedMods.map((mod) => (
             <button
               key={mod.id}
-              className={`mod-row ${!showUserAdmin && selected?.id === mod.id ? "active" : ""}`}
+              className={`mod-row ${!showDashboard && !showUserAdmin && selected?.id === mod.id ? "active" : ""}`}
               onClick={() => {
                 setSelectedId(mod.id);
+                setShowDashboard(false);
                 setShowUserAdmin(false);
               }}
             >
@@ -557,7 +583,18 @@ function App() {
       </section>
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
-        {showUserAdmin ? (
+        {showDashboard ? (
+          <Dashboard
+            mods={mods}
+            loading={loading}
+            refreshMods={() => loadMods().catch((err: Error) => setError(err.message))}
+            openMod={(id) => {
+              setSelectedId(id);
+              setShowDashboard(false);
+              setShowUserAdmin(false);
+            }}
+          />
+        ) : showUserAdmin ? (
           <UserAdmin
             users={users}
             currentUser={authUser}
@@ -674,7 +711,14 @@ function App() {
                   {selected.dependencies.map((dependency) => {
                     const trackedDependency = trackedDependencyMatches.get(dependencyKey(dependency));
                     return trackedDependency ? (
-                      <button key={dependencyKey(dependency)} onClick={() => setSelectedId(trackedDependency.id)} type="button">
+                      <button
+                        key={dependencyKey(dependency)}
+                        onClick={() => {
+                          setSelectedId(trackedDependency.id);
+                          setShowDashboard(false);
+                        }}
+                        type="button"
+                      >
                         {dependency.name}
                       </button>
                     ) : (
@@ -692,7 +736,14 @@ function App() {
               {selected.dependents.length > 0 ? (
                 <div className="chips">
                   {selected.dependents.map((dependent) => (
-                    <button key={dependent.id} onClick={() => setSelectedId(dependent.id)} type="button">
+                    <button
+                      key={dependent.id}
+                      onClick={() => {
+                        setSelectedId(dependent.id);
+                        setShowDashboard(false);
+                      }}
+                      type="button"
+                    >
                       {dependent.name ?? dependent.id}
                     </button>
                   ))}
@@ -770,6 +821,139 @@ function Dialog({ title, children, onClose }: { title: string; children: React.R
         </header>
         {children}
       </section>
+    </div>
+  );
+}
+
+function Dashboard({
+  mods,
+  loading,
+  refreshMods,
+  openMod,
+}: {
+  mods: Mod[];
+  loading: boolean;
+  refreshMods: () => void;
+  openMod: (id: string) => void;
+}) {
+  const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
+
+  return (
+    <>
+      <header className="dashboard-hero">
+        <div>
+          <p>Overview</p>
+          <h2>Dashboard</h2>
+          <span>{stats.summaryText}</span>
+        </div>
+        <button className="secondary-button compact" disabled={loading} onClick={refreshMods} type="button">
+          <RefreshCw size={18} />
+          Refresh
+        </button>
+      </header>
+
+      <div className="dashboard-stats">
+        <Info label="Tracked mods" value={String(stats.total)} />
+        <Info label="Updates" value={String(stats.updateAvailable)} />
+        <Info label="Unknown" value={String(stats.unknown)} />
+        <Info label="Auto deps" value={String(stats.dependencyTracked)} />
+        <Info label="No installed version" value={String(stats.noInstalledVersion)} />
+        <Info label="Dependency links" value={String(stats.dependencyLinks)} />
+      </div>
+
+      <div className="dashboard-grid">
+        <section className="dashboard-card priority-card">
+          <div className="section-title-row">
+            <h3>Needs attention</h3>
+            <TriangleAlert size={20} />
+          </div>
+          {stats.attentionMods.length > 0 ? (
+            <div className="compact-list">
+              {stats.attentionMods.map((mod) => (
+                <button key={mod.id} onClick={() => openMod(mod.id)} type="button">
+                  <StatusIcon status={mod.status} />
+                  <span>
+                    <strong>{mod.name ?? mod.id}</strong>
+                    <small>{mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No update or unknown version state detected.</p>
+          )}
+        </section>
+
+        <section className="dashboard-card">
+          <div className="section-title-row">
+            <h3>Version health</h3>
+            <BarChart3 size={20} />
+          </div>
+          <div className="health-bars">
+            <HealthBar label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
+            <HealthBar label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
+            <HealthBar label="Unknown" value={stats.unknown} total={stats.total} tone="neutral" />
+          </div>
+        </section>
+
+        <section className="dashboard-card">
+          <div className="section-title-row">
+            <h3>Recently checked</h3>
+            <Clock size={20} />
+          </div>
+          {stats.recentlyChecked.length > 0 ? (
+            <div className="compact-list">
+              {stats.recentlyChecked.map((mod) => (
+                <button key={mod.id} onClick={() => openMod(mod.id)} type="button">
+                  <Activity size={20} />
+                  <span>
+                    <strong>{mod.name ?? mod.id}</strong>
+                    <small>{formatDate(mod.last_checked)}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No crawl timestamp stored yet.</p>
+          )}
+        </section>
+
+        <section className="dashboard-card">
+          <div className="section-title-row">
+            <h3>Tracking mix</h3>
+            <Pin size={20} />
+          </div>
+          <div className="tracking-mix">
+            <div>
+              <span>Manual</span>
+              <strong>{stats.manualTracked}</strong>
+            </div>
+            <div>
+              <span>Dependencies</span>
+              <strong>{stats.dependencyTracked}</strong>
+            </div>
+            <p className="muted">
+              Automatically tracked dependencies are kept visible, but separated from manually added mods.
+            </p>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function HealthBar({ label, value, total, tone }: { label: string; value: number; total: number; tone: "ok" | "warn" | "neutral" }) {
+  const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+
+  return (
+    <div className="health-bar">
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <div className="health-track">
+        <span className={`health-fill ${tone}`} style={{ width: `${percent}%` }} />
+      </div>
     </div>
   );
 }
@@ -1024,6 +1208,48 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+function getDashboardStats(mods: Mod[]) {
+  const total = mods.length;
+  const updateAvailable = mods.filter((mod) => mod.status === "UPDATE_AVAILABLE").length;
+  const upToDate = mods.filter((mod) => mod.status === "UP_TO_DATE").length;
+  const unknown = mods.filter((mod) => mod.status === "UNKNOWN").length;
+  const manualTracked = mods.filter((mod) => mod.tracking_reason === "manual").length;
+  const dependencyTracked = mods.filter((mod) => mod.tracking_reason === "dependency").length;
+  const noInstalledVersion = mods.filter((mod) => !mod.current_version).length;
+  const dependencyLinks = mods.reduce((sum, mod) => sum + mod.dependencies.length, 0);
+  const recentlyChecked = [...mods]
+    .filter((mod) => mod.last_checked)
+    .sort((left, right) => timestamp(right.last_checked) - timestamp(left.last_checked))
+    .slice(0, 5);
+  const attentionMods = [...mods]
+    .filter((mod) => mod.status !== "UP_TO_DATE" || !mod.current_version)
+    .sort((left, right) => {
+      const missingVersionRank = Number(!right.current_version) - Number(!left.current_version);
+      if (missingVersionRank !== 0) return missingVersionRank;
+      return statusPriority(left.status) - statusPriority(right.status) || compareByName(left, right);
+    })
+    .slice(0, 6);
+
+  const summaryText =
+    total === 0
+      ? "No mods are tracked yet."
+      : `${total} tracked mods, ${updateAvailable} updates, ${unknown} unknown states, ${dependencyTracked} dependency-tracked mods.`;
+
+  return {
+    total,
+    updateAvailable,
+    upToDate,
+    unknown,
+    manualTracked,
+    dependencyTracked,
+    noInstalledVersion,
+    dependencyLinks,
+    recentlyChecked,
+    attentionMods,
+    summaryText,
+  };
+}
+
 function parseChangelog(value: string | null): ChangelogEntry[] {
   if (!value) return [];
   const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -1042,6 +1268,12 @@ function parseChangelog(value: string | null): ChangelogEntry[] {
   }
 
   return entries;
+}
+
+function statusPriority(status: ModStatus): number {
+  if (status === "UPDATE_AVAILABLE") return 0;
+  if (status === "UNKNOWN") return 1;
+  return 2;
 }
 
 function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
