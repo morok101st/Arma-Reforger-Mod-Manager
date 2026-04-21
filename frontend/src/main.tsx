@@ -861,10 +861,10 @@ function Dashboard({
       </div>
 
       <div className="dashboard-grid">
-        <section className="dashboard-card priority-card">
+        <section className={`dashboard-card priority-card ${stats.attentionMods.length === 0 ? "ok" : "warn"}`}>
           <div className="section-title-row">
             <h3>Needs attention</h3>
-            <TriangleAlert size={20} />
+            {stats.attentionMods.length === 0 ? <CheckCircle2 className="status-icon ok" size={20} /> : <TriangleAlert className="status-icon warn" size={20} />}
           </div>
           {stats.attentionMods.length > 0 ? (
             <div className="compact-list">

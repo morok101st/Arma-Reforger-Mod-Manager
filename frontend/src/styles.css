@@ -497,8 +497,12 @@ button:disabled {
   padding: 18px;
 }
 
-.priority-card {
+.priority-card.warn {
   border-color: #dec165;
+}
+
+.priority-card.ok {
+  border-color: #9fc8ad;
 }
 
 .compact-list {
