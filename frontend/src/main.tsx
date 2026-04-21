@@ -889,7 +889,7 @@ function UserAdmin({
                   onClick={() => setResetUserId(user.id)}
                   type="button"
                 >
-                  Reset
+                  Reset Password
                 </button>
               </article>
             ))}
