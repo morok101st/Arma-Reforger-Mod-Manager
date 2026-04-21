@@ -118,6 +118,7 @@ function App() {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [modId, setModId] = React.useState("");
   const [currentVersion, setCurrentVersion] = React.useState("");
+  const [showAddModDialog, setShowAddModDialog] = React.useState(false);
   const [installedVersionEdit, setInstalledVersionEdit] = React.useState("");
   const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
@@ -361,6 +362,7 @@ function App() {
       setShowUserAdmin(false);
       setModId("");
       setCurrentVersion("");
+      setShowAddModDialog(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -480,20 +482,33 @@ function App() {
           </div>
         </div>
 
-        <form className="add-form" onSubmit={addMod}>
-          <label>
-            Workshop ID
-            <input value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
-          </label>
-          <label>
-            Installed version
-            <input value={currentVersion} onChange={(event) => setCurrentVersion(event.target.value)} placeholder="optional" />
-          </label>
-          <button className="primary-button" disabled={loading}>
-            <Plus size={18} />
-            Add mod
-          </button>
-        </form>
+        <button className="primary-button" onClick={() => setShowAddModDialog(true)} type="button">
+          <Plus size={18} />
+          Add mod
+        </button>
+
+        {showAddModDialog && (
+          <Dialog title="Add mod" onClose={() => setShowAddModDialog(false)}>
+            <form className="dialog-form" onSubmit={addMod}>
+              <label>
+                Workshop ID
+                <input value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
+              </label>
+              <label>
+                Installed version
+                <input value={currentVersion} onChange={(event) => setCurrentVersion(event.target.value)} placeholder="optional" />
+              </label>
+              <div className="dialog-actions">
+                <button className="secondary-button compact" onClick={() => setShowAddModDialog(false)} type="button">
+                  Cancel
+                </button>
+                <button className="primary-button compact" disabled={loading || !modId.trim()}>
+                  Add
+                </button>
+              </div>
+            </form>
+          </Dialog>
+        )}
 
         {error && <div className="error-box">{error}</div>}
 
@@ -720,7 +735,7 @@ function App() {
         ) : (
           <div className="placeholder">
             <h2>Add a mod</h2>
-            <p>Enter a Workshop ID on the left to start the first fetch.</p>
+            <p>Use Add mod to start the first fetch.</p>
           </div>
         )}
       </section>
