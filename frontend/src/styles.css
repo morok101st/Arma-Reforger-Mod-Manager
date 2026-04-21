@@ -479,7 +479,7 @@ button:disabled {
 .dashboard-stats {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
 }
 
 .dashboard-grid {
@@ -546,15 +546,13 @@ button:disabled {
   gap: 8px;
 }
 
-.health-bar > div:first-child,
-.tracking-mix > div {
+.health-bar > div:first-child {
   align-items: center;
   display: flex;
   justify-content: space-between;
 }
 
-.health-bar span,
-.tracking-mix span {
+.health-bar span {
   color: #65716a;
   font-size: 13px;
   font-weight: 800;
@@ -584,15 +582,6 @@ button:disabled {
 
 .health-fill.neutral {
   background: #69736d;
-}
-
-.tracking-mix {
-  display: grid;
-  gap: 12px;
-}
-
-.tracking-mix strong {
-  font-size: 28px;
 }
 
 .info {

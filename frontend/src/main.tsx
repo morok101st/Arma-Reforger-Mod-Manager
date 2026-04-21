@@ -856,7 +856,6 @@ function Dashboard({
         <Info label="Tracked mods" value={String(stats.total)} />
         <Info label="Updates" value={String(stats.updateAvailable)} />
         <Info label="Unknown" value={String(stats.unknown)} />
-        <Info label="Auto deps" value={String(stats.dependencyTracked)} />
         <Info label="No installed version" value={String(stats.noInstalledVersion)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
       </div>
@@ -918,25 +917,6 @@ function Dashboard({
           )}
         </section>
 
-        <section className="dashboard-card">
-          <div className="section-title-row">
-            <h3>Tracking mix</h3>
-            <Pin size={20} />
-          </div>
-          <div className="tracking-mix">
-            <div>
-              <span>Manual</span>
-              <strong>{stats.manualTracked}</strong>
-            </div>
-            <div>
-              <span>Dependencies</span>
-              <strong>{stats.dependencyTracked}</strong>
-            </div>
-            <p className="muted">
-              Automatically tracked dependencies are kept visible, but separated from manually added mods.
-            </p>
-          </div>
-        </section>
       </div>
     </>
   );
@@ -1213,7 +1193,6 @@ function getDashboardStats(mods: Mod[]) {
   const updateAvailable = mods.filter((mod) => mod.status === "UPDATE_AVAILABLE").length;
   const upToDate = mods.filter((mod) => mod.status === "UP_TO_DATE").length;
   const unknown = mods.filter((mod) => mod.status === "UNKNOWN").length;
-  const manualTracked = mods.filter((mod) => mod.tracking_reason === "manual").length;
   const dependencyTracked = mods.filter((mod) => mod.tracking_reason === "dependency").length;
   const noInstalledVersion = mods.filter((mod) => !mod.current_version).length;
   const dependencyLinks = mods.reduce((sum, mod) => sum + mod.dependencies.length, 0);
@@ -1240,7 +1219,6 @@ function getDashboardStats(mods: Mod[]) {
     updateAvailable,
     upToDate,
     unknown,
-    manualTracked,
     dependencyTracked,
     noInstalledVersion,
     dependencyLinks,
