@@ -391,7 +391,7 @@ button:disabled {
   border-radius: 8px;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(160px, 1fr) minmax(120px, 160px) auto minmax(180px, 240px) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(120px, 160px) auto auto;
   padding: 14px;
 }
 
@@ -483,6 +483,42 @@ button:disabled {
   display: flex;
   gap: 12px;
   justify-content: space-between;
+}
+
+.dialog-backdrop {
+  align-items: center;
+  background: rgba(24, 33, 31, 0.48);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 10;
+}
+
+.dialog-panel {
+  background: #f9faf8;
+  border: 1px solid #cbd4cc;
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgba(24, 33, 31, 0.28);
+  display: grid;
+  gap: 18px;
+  max-width: 460px;
+  padding: 22px;
+  width: min(100%, 460px);
+}
+
+.dialog-header,
+.dialog-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.dialog-form {
+  display: grid;
+  gap: 14px;
 }
 
 .audit-list {

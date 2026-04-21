@@ -111,6 +111,8 @@ function App() {
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newOwnPassword, setNewOwnPassword] = React.useState("");
   const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
+  const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
+  const [resetUserId, setResetUserId] = React.useState<number | null>(null);
   const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
   const [mods, setMods] = React.useState<Mod[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -287,6 +289,7 @@ function App() {
       setNewUsername("");
       setNewPassword("");
       setNewRole("user");
+      setShowCreateUserDialog(false);
       await loadUsers();
       await loadAuditLogs();
     } catch (err) {
@@ -327,6 +330,7 @@ function App() {
         throw new Error(errorPayload?.detail ?? "Could not reset password.");
       }
       setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
+      setResetUserId(null);
       await loadUsers();
       await loadAuditLogs();
     } catch (err) {
@@ -549,6 +553,8 @@ function App() {
             currentPassword={currentPassword}
             newOwnPassword={newOwnPassword}
             resetPasswords={resetPasswords}
+            showCreateUserDialog={showCreateUserDialog}
+            resetUserId={resetUserId}
             auditLogs={auditLogs}
             setNewUsername={setNewUsername}
             setNewPassword={setNewPassword}
@@ -556,6 +562,8 @@ function App() {
             setCurrentPassword={setCurrentPassword}
             setNewOwnPassword={setNewOwnPassword}
             setResetPasswords={setResetPasswords}
+            setShowCreateUserDialog={setShowCreateUserDialog}
+            setResetUserId={setResetUserId}
             addUser={addUser}
             changeOwnPassword={changeOwnPassword}
             updateUserAccount={updateUserAccount}
@@ -735,6 +743,22 @@ function AuthFrame({ title, subtitle, children }: { title: string; subtitle: str
   );
 }
 
+function Dialog({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="dialog-panel" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
+        <header className="dialog-header">
+          <h3>{title}</h3>
+          <button className="icon-button" onClick={onClose} type="button" title="Close">
+            ×
+          </button>
+        </header>
+        {children}
+      </section>
+    </div>
+  );
+}
+
 function UserAdmin({
   users,
   currentUser,
@@ -745,6 +769,8 @@ function UserAdmin({
   currentPassword,
   newOwnPassword,
   resetPasswords,
+  showCreateUserDialog,
+  resetUserId,
   auditLogs,
   setNewUsername,
   setNewPassword,
@@ -752,6 +778,8 @@ function UserAdmin({
   setCurrentPassword,
   setNewOwnPassword,
   setResetPasswords,
+  setShowCreateUserDialog,
+  setResetUserId,
   addUser,
   changeOwnPassword,
   updateUserAccount,
@@ -767,6 +795,8 @@ function UserAdmin({
   currentPassword: string;
   newOwnPassword: string;
   resetPasswords: Record<number, string>;
+  showCreateUserDialog: boolean;
+  resetUserId: number | null;
   auditLogs: AuditLog[];
   setNewUsername: (value: string) => void;
   setNewPassword: (value: string) => void;
@@ -774,12 +804,16 @@ function UserAdmin({
   setCurrentPassword: (value: string) => void;
   setNewOwnPassword: (value: string) => void;
   setResetPasswords: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+  setShowCreateUserDialog: (value: boolean) => void;
+  setResetUserId: (value: number | null) => void;
   addUser: (event: React.FormEvent) => void;
   changeOwnPassword: (event: React.FormEvent) => void;
   updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => void;
   resetUserPassword: (userId: number) => void;
   loadAuditLogs: () => Promise<void>;
 }) {
+  const resetUser = users.find((user) => user.id === resetUserId) ?? null;
+
   return (
     <>
       <header className="detail-header">
@@ -816,27 +850,13 @@ function UserAdmin({
 
       {currentUser.role === "admin" && (
         <>
-          <form className="user-form" onSubmit={addUser}>
-            <label>
-              Username
-              <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
-            </label>
-            <label>
-              Initial password
-              <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="at least 12 characters" />
-            </label>
-            <label className="sort-control">
-              Role
-              <select value={newRole} onChange={(event) => setNewRole(event.target.value as UserRole)}>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
-            <button className="primary-button compact" disabled={loading || newPassword.length < 12 || !newUsername.trim()}>
+          <div className="section-title-row">
+            <h3>Users</h3>
+            <button className="primary-button compact" onClick={() => setShowCreateUserDialog(true)} type="button">
               <Plus size={18} />
               Create user
             </button>
-          </form>
+          </div>
 
           <div className="user-list">
             {users.map((user) => (
@@ -863,23 +883,76 @@ function UserAdmin({
                 >
                   {user.is_active ? "Disable" : "Enable"}
                 </button>
-                <input
-                  value={resetPasswords[user.id] ?? ""}
-                  onChange={(event) => setResetPasswords((previous) => ({ ...previous, [user.id]: event.target.value }))}
-                  type="password"
-                  placeholder="new password"
-                />
                 <button
                   className="secondary-button compact"
-                  disabled={loading || (resetPasswords[user.id] ?? "").length < 12}
-                  onClick={() => resetUserPassword(user.id)}
+                  disabled={loading}
+                  onClick={() => setResetUserId(user.id)}
                   type="button"
                 >
-                  Reset password
+                  Reset
                 </button>
               </article>
             ))}
           </div>
+
+          {showCreateUserDialog && (
+            <Dialog title="Create user" onClose={() => setShowCreateUserDialog(false)}>
+              <form className="dialog-form" onSubmit={addUser}>
+                <label>
+                  Username
+                  <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
+                </label>
+                <label>
+                  Initial password
+                  <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="at least 12 characters" />
+                </label>
+                <label className="sort-control">
+                  Role
+                  <select value={newRole} onChange={(event) => setNewRole(event.target.value as UserRole)}>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setShowCreateUserDialog(false)} type="button">
+                    Cancel
+                  </button>
+                  <button className="primary-button compact" disabled={loading || newPassword.length < 12 || !newUsername.trim()}>
+                    Create
+                  </button>
+                </div>
+              </form>
+            </Dialog>
+          )}
+
+          {resetUser && (
+            <Dialog title={`Reset password for ${resetUser.username}`} onClose={() => setResetUserId(null)}>
+              <div className="dialog-form">
+                <label>
+                  New password
+                  <input
+                    value={resetPasswords[resetUser.id] ?? ""}
+                    onChange={(event) => setResetPasswords((previous) => ({ ...previous, [resetUser.id]: event.target.value }))}
+                    type="password"
+                    placeholder="at least 12 characters"
+                  />
+                </label>
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setResetUserId(null)} type="button">
+                    Cancel
+                  </button>
+                  <button
+                    className="primary-button compact"
+                    disabled={loading || (resetPasswords[resetUser.id] ?? "").length < 12}
+                    onClick={() => resetUserPassword(resetUser.id)}
+                    type="button"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </Dialog>
+          )}
 
           <section className="content-section">
             <div className="section-title-row">
