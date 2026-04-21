@@ -512,20 +512,21 @@ function App() {
 
         {error && <div className="error-box">{error}</div>}
 
-        <label className="sort-control">
-          Sort by
-          <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
-            <option value="updates">Updates first</option>
-            <option value="name">Name</option>
-            <option value="status">Status</option>
-            <option value="last_checked">Last checked</option>
-          </select>
-        </label>
-
-        <label>
-          Search
-          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Mod name or ID" />
-        </label>
+        <div className="filter-row">
+          <label>
+            Search
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Mod name or ID" />
+          </label>
+          <label className="sort-control">
+            Sort by
+            <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+              <option value="updates">Updates first</option>
+              <option value="name">Name</option>
+              <option value="status">Status</option>
+              <option value="last_checked">Last checked</option>
+            </select>
+          </label>
+        </div>
 
         <div className="mod-list">
           {sortedMods.map((mod) => (

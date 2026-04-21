@@ -206,6 +206,13 @@ select {
   position: relative;
 }
 
+.filter-row {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 150px);
+}
+
 .sort-control::after {
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
@@ -688,6 +695,10 @@ pre {
   .version-editor {
     grid-template-columns: 1fr;
     max-width: none;
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
   }
 
   .user-form,
