@@ -1179,10 +1179,7 @@ function UserAdmin({
                     <strong>{auditActionLabel(entry.action)}</strong>
                     <span className={`audit-badge ${auditSeverity(entry)}`}>{auditSeverity(entry)}</span>
                   </div>
-                  <span>
-                    {entry.actor_username ?? "system"} · {entry.entity_type}
-                    {entry.entity_id ? ` ${entry.entity_id}` : ""}
-                  </span>
+                  <span>{auditEntityLine(entry)}</span>
                   <small>{formatDate(entry.created_at)} · {entry.ip_address ?? "no ip"}</small>
                   {auditDetailText(entry.detail) && <p>{auditDetailText(entry.detail)}</p>}
                 </article>
@@ -1238,6 +1235,13 @@ function filterAuditLogs(logs: AuditLog[], filter: AuditFilter) {
 
 function auditSeverity(entry: AuditLog) {
   return entry.action.includes("failed") || entry.action.includes("rate_limited") ? "failure" : "event";
+}
+
+function auditEntityLine(entry: AuditLog) {
+  const actor = entry.actor_username ?? "system";
+  const modName = entry.entity_type === "mod" && typeof entry.detail.mod_name === "string" ? entry.detail.mod_name : null;
+  const entityName = modName ? `${entry.entity_type} ${modName}` : entry.entity_type;
+  return `${actor} · ${entityName}${entry.entity_id ? ` ${entry.entity_id}` : ""}`;
 }
 
 function auditDetailText(detail: Record<string, unknown>) {
