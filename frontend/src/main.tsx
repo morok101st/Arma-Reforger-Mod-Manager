@@ -870,7 +870,6 @@ function Dashboard({
       <div className="dashboard-stats">
         <Info label="Tracked mods" value={String(stats.total)} />
         <Info label="Updates" value={String(stats.updateAvailable)} />
-        <Info label="Unknown" value={String(stats.unknown)} />
         <Info label="No installed version" value={String(stats.noInstalledVersion)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
         <Info label="Last auto crawl" value={formatDate(schedulerStatus?.last_automatic_completed_at ?? null)} />
