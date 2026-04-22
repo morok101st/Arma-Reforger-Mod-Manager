@@ -1243,6 +1243,9 @@ function auditEntityLine(entry: AuditLog) {
   if (entry.entity_type === "mod" && modName) {
     return `${actor} · ${modName}${entry.entity_id ? ` - ${entry.entity_id}` : ""}`;
   }
+  if (entry.entity_type === "mod") {
+    return `${actor} · ${entry.entity_id ?? "unknown mod"}`;
+  }
   const entityName = modName ? `${entry.entity_type} ${modName}` : entry.entity_type;
   return `${actor} · ${entityName}${entry.entity_id ? ` ${entry.entity_id}` : ""}`;
 }
