@@ -1240,6 +1240,9 @@ function auditSeverity(entry: AuditLog) {
 function auditEntityLine(entry: AuditLog) {
   const actor = entry.actor_username ?? "system";
   const modName = entry.entity_type === "mod" && typeof entry.detail.mod_name === "string" ? entry.detail.mod_name : null;
+  if (entry.entity_type === "mod" && modName) {
+    return `${actor} · ${modName}${entry.entity_id ? ` - ${entry.entity_id}` : ""}`;
+  }
   const entityName = modName ? `${entry.entity_type} ${modName}` : entry.entity_type;
   return `${actor} · ${entityName}${entry.entity_id ? ` ${entry.entity_id}` : ""}`;
 }
