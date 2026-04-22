@@ -383,7 +383,12 @@ async def api_create_mod(
             entity_id=created.id,
             actor=current_user,
             request=request,
-            detail={"current_version": created.current_version, "pinned": created.pinned},
+            detail={
+                "mod_name": created.name,
+                "current_version": created.current_version,
+                "latest_version": created.latest_version,
+                "pinned": created.pinned,
+            },
         )
         return created
     except Exception as exc:
@@ -394,7 +399,7 @@ async def api_create_mod(
             entity_id=payload.id,
             actor=current_user,
             request=request,
-            detail={"reason": str(exc), "current_version_provided": payload.current_version is not None},
+            detail={"reason": str(exc), "mod_name": None, "current_version_provided": payload.current_version is not None},
         )
         raise HTTPException(status_code=502, detail=f"Workshop fetch failed: {exc}") from exc
 
@@ -429,7 +434,13 @@ async def api_update_user_mod(
         entity_id=mod_id,
         actor=current_user,
         request=request,
-        detail={"current_version_changed": payload.current_version is not None, "pinned_changed": payload.pinned is not None},
+        detail={
+            "mod_name": mod.name,
+            "current_version_changed": payload.current_version is not None,
+            "current_version": mod.current_version,
+            "pinned_changed": payload.pinned is not None,
+            "pinned": mod.pinned,
+        },
     )
     return mod
 
@@ -441,7 +452,8 @@ async def api_refresh_mod(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
 ) -> ModRead:
-    if not get_mod_or_none(db, mod_id):
+    existing_mod = get_mod_or_none(db, mod_id)
+    if not existing_mod:
         record_audit(
             db,
             action="mod_refresh_failed",
@@ -449,7 +461,7 @@ async def api_refresh_mod(
             entity_id=mod_id,
             actor=current_user,
             request=request,
-            detail={"reason": "mod_not_found"},
+            detail={"reason": "mod_not_found", "mod_name": None},
         )
         raise HTTPException(status_code=404, detail="Mod not found")
     try:
@@ -461,7 +473,7 @@ async def api_refresh_mod(
             entity_id=mod_id,
             actor=current_user,
             request=request,
-            detail={"latest_version": refreshed.latest_version, "status": refreshed.status.value},
+            detail={"mod_name": refreshed.name, "latest_version": refreshed.latest_version, "status": refreshed.status.value},
         )
         return refreshed
     except Exception as exc:
@@ -472,7 +484,7 @@ async def api_refresh_mod(
             entity_id=mod_id,
             actor=current_user,
             request=request,
-            detail={"reason": str(exc)},
+            detail={"reason": str(exc), "mod_name": existing_mod.name},
         )
         raise HTTPException(status_code=502, detail=f"Workshop fetch failed: {exc}") from exc
 
@@ -484,7 +496,8 @@ def api_delete_mod(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
 ) -> Response:
-    if not delete_mod(db, mod_id):
+    existing_mod = get_mod_or_none(db, mod_id)
+    if not existing_mod:
         record_audit(
             db,
             action="mod_delete_failed",
@@ -492,10 +505,20 @@ def api_delete_mod(
             entity_id=mod_id,
             actor=current_user,
             request=request,
-            detail={"reason": "mod_not_found"},
+            detail={"reason": "mod_not_found", "mod_name": None},
         )
         raise HTTPException(status_code=404, detail="Mod not found")
-    record_audit(db, action="mod_deleted", entity_type="mod", entity_id=mod_id, actor=current_user, request=request, detail={"mod_id": mod_id})
+    mod_name = existing_mod.name
+    delete_mod(db, mod_id)
+    record_audit(
+        db,
+        action="mod_deleted",
+        entity_type="mod",
+        entity_id=mod_id,
+        actor=current_user,
+        request=request,
+        detail={"mod_id": mod_id, "mod_name": mod_name},
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
