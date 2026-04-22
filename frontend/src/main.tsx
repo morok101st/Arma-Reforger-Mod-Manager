@@ -102,6 +102,16 @@ type ChangelogEntry = {
   lines: string[];
 };
 
+type SchedulerStatus = {
+  scrape_interval_minutes: number;
+  last_automatic_started_at: string | null;
+  last_automatic_completed_at: string | null;
+  next_automatic_run_at: string | null;
+  last_refreshed: number | null;
+  last_failed: Record<string, string> | null;
+  last_error: string | null;
+};
+
 function App() {
   const detailRef = React.useRef<HTMLElement | null>(null);
   const [authChecked, setAuthChecked] = React.useState(false);
@@ -121,6 +131,7 @@ function App() {
   const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
   const [resetUserId, setResetUserId] = React.useState<number | null>(null);
   const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
+  const [schedulerStatus, setSchedulerStatus] = React.useState<SchedulerStatus | null>(null);
   const [mods, setMods] = React.useState<Mod[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [modId, setModId] = React.useState("");
@@ -153,6 +164,7 @@ function App() {
   React.useEffect(() => {
     if (!authUser) return;
     loadMods().catch((err: Error) => setError(err.message));
+    loadSchedulerStatus().catch((err: Error) => setError(err.message));
   }, [authUser?.id]);
 
   React.useEffect(() => {
@@ -190,6 +202,7 @@ function App() {
     if (response.status === 401) {
       setAuthUser(null);
       setMods([]);
+      setSchedulerStatus(null);
       setShowDashboard(true);
       setShowUserAdmin(false);
     }
@@ -232,6 +245,7 @@ function App() {
     setAuthUser(null);
     setMods([]);
     setUsers([]);
+    setSchedulerStatus(null);
     setShowDashboard(true);
     setShowUserAdmin(false);
   }
@@ -255,6 +269,12 @@ function App() {
     const response = await apiFetch("/audit?limit=25");
     if (!response.ok) throw new Error("Could not load audit log.");
     setAuditLogs((await response.json()) as AuditLog[]);
+  }
+
+  async function loadSchedulerStatus() {
+    const response = await apiFetch("/scheduler/status");
+    if (!response.ok) throw new Error("Could not load scheduler status.");
+    setSchedulerStatus((await response.json()) as SchedulerStatus);
   }
 
   async function changeOwnPassword(event: React.FormEvent) {
@@ -500,9 +520,6 @@ function App() {
             >
               {authUser.role === "admin" ? <Users size={18} /> : <Shield size={18} />}
             </button>
-            <button className="icon-button" onClick={() => loadMods().catch((err: Error) => setError(err.message))} title="Refresh list">
-              <RefreshCw size={18} />
-            </button>
             <button className="icon-button" onClick={logout} title={`Logout ${authUser.username}`}>
               <LogOut size={18} />
             </button>
@@ -588,8 +605,7 @@ function App() {
         {showDashboard ? (
           <Dashboard
             mods={mods}
-            loading={loading}
-            refreshMods={() => loadMods().catch((err: Error) => setError(err.message))}
+            schedulerStatus={schedulerStatus}
             openMod={(id) => {
               setSelectedId(id);
               setShowDashboard(false);
@@ -832,13 +848,11 @@ function Dialog({ title, children, onClose }: { title: string; children: React.R
 
 function Dashboard({
   mods,
-  loading,
-  refreshMods,
+  schedulerStatus,
   openMod,
 }: {
   mods: Mod[];
-  loading: boolean;
-  refreshMods: () => void;
+  schedulerStatus: SchedulerStatus | null;
   openMod: (id: string) => void;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
@@ -851,10 +865,6 @@ function Dashboard({
           <h2>Dashboard</h2>
           <span>{stats.summaryText}</span>
         </div>
-        <button className="secondary-button compact" disabled={loading} onClick={refreshMods} type="button">
-          <RefreshCw size={18} />
-          Refresh
-        </button>
       </header>
 
       <div className="dashboard-stats">
@@ -863,6 +873,8 @@ function Dashboard({
         <Info label="Unknown" value={String(stats.unknown)} />
         <Info label="No installed version" value={String(stats.noInstalledVersion)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
+        <Info label="Last auto crawl" value={formatDate(schedulerStatus?.last_automatic_completed_at ?? null)} />
+        <Info label="Next auto crawl" value={formatDate(schedulerStatus?.next_automatic_run_at ?? null)} />
       </div>
 
       <div className="dashboard-grid">

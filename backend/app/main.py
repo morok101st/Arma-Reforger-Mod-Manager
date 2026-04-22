@@ -37,12 +37,13 @@ from app.schemas import (
     PasswordChange,
     PasswordReset,
     RefreshResult,
+    SchedulerStatusRead,
     UserCreate,
     UserModUpdate,
     UserRead,
     UserUpdate,
 )
-from app.scheduler import start_scheduler
+from app.scheduler import get_scheduler_status, start_scheduler
 from app.services import create_mod, delete_mod, get_mod_or_none, get_mod_read, list_mods, refresh_all_mods, refresh_mod, update_user_mod
 from app.user_service import auth_user_to_read, create_user, list_users, update_user
 
@@ -365,6 +366,11 @@ async def api_refresh_all(
         detail={"refreshed": result.refreshed, "failed": len(result.failed)},
     )
     return result
+
+
+@app.get("/scheduler/status", response_model=SchedulerStatusRead)
+def api_scheduler_status(_: User = Depends(require_current_user)) -> SchedulerStatusRead:
+    return SchedulerStatusRead(**get_scheduler_status())
 
 
 def _ensure_admin_change_is_safe(db: Session, user_id: int, payload: UserUpdate) -> None:
