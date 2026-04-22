@@ -1190,7 +1190,14 @@ function auditActionLabel(action: string) {
 
 function formatDate(value: string | null) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function getDashboardStats(mods: Mod[]) {
