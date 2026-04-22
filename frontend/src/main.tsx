@@ -168,6 +168,14 @@ function App() {
   }, [authUser?.id]);
 
   React.useEffect(() => {
+    if (!authUser) return;
+    const intervalId = window.setInterval(() => {
+      loadSchedulerStatus().catch((err: Error) => setError(err.message));
+    }, 30_000);
+    return () => window.clearInterval(intervalId);
+  }, [authUser?.id]);
+
+  React.useEffect(() => {
     if (authUser?.role !== "admin") return;
     loadUsers().catch((err: Error) => setError(err.message));
     loadAuditLogs().catch((err: Error) => setError(err.message));

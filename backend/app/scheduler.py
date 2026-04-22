@@ -28,6 +28,7 @@ def start_scheduler() -> BackgroundScheduler:
         "interval",
         minutes=settings.scrape_interval_minutes,
         id="refresh-workshop-mods",
+        next_run_time=datetime.now(timezone.utc),
         replace_existing=True,
         max_instances=1,
     )
