@@ -672,6 +672,28 @@ button:disabled {
   gap: 8px;
 }
 
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audit-filters button {
+  background: #ffffff;
+  border: 1px solid #d9dfdb;
+  border-radius: 999px;
+  color: #1c2824;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 7px 12px;
+}
+
+.audit-filters button.active {
+  background: #edf8f1;
+  border-color: #1f5f4b;
+  color: #1f5f4b;
+}
+
 .audit-row {
   background: #ffffff;
   border: 1px solid #d9dfdb;
@@ -681,9 +703,42 @@ button:disabled {
   padding: 12px 14px;
 }
 
+.audit-row-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
 .audit-row span,
 .audit-row small {
   color: #65716a;
+}
+
+.audit-row p {
+  color: #33413b;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.audit-badge {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+.audit-badge.event {
+  background: #edf8f1;
+  color: #1f5f4b;
+}
+
+.audit-badge.failure {
+  background: #fff3f0;
+  color: #a63333;
 }
 
 pre {

@@ -28,6 +28,7 @@ type ModStatus = "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
 type SortMode = "name" | "status" | "last_checked" | "updates";
 type TrackingReason = "manual" | "dependency";
 type UserRole = "admin" | "user";
+type AuditFilter = "all" | "auth" | "user" | "mod" | "failures";
 
 type AuthUser = {
   id: number;
@@ -1008,6 +1009,8 @@ function UserAdmin({
   loadAuditLogs: () => Promise<void>;
 }) {
   const resetUser = users.find((user) => user.id === resetUserId) ?? null;
+  const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
+  const filteredAuditLogs = React.useMemo(() => filterAuditLogs(auditLogs, auditFilter), [auditLogs, auditFilter]);
 
   return (
     <>
@@ -1157,15 +1160,35 @@ function UserAdmin({
                 Refresh
               </button>
             </div>
+            <div className="audit-filters" aria-label="Audit filters">
+              {(["all", "auth", "user", "mod", "failures"] as AuditFilter[]).map((filter) => (
+                <button
+                  className={auditFilter === filter ? "active" : ""}
+                  key={filter}
+                  onClick={() => setAuditFilter(filter)}
+                  type="button"
+                >
+                  {auditFilterLabel(filter)}
+                </button>
+              ))}
+            </div>
             <div className="audit-list">
-              {auditLogs.map((entry) => (
+              {filteredAuditLogs.map((entry) => (
                 <article className="audit-row" key={entry.id}>
-                  <strong>{auditActionLabel(entry.action)}</strong>
-                  <span>{entry.actor_username ?? "system"} · {entry.entity_type}{entry.entity_id ? ` ${entry.entity_id}` : ""}</span>
+                  <div className="audit-row-header">
+                    <strong>{auditActionLabel(entry.action)}</strong>
+                    <span className={`audit-badge ${auditSeverity(entry)}`}>{auditSeverity(entry)}</span>
+                  </div>
+                  <span>
+                    {entry.actor_username ?? "system"} · {entry.entity_type}
+                    {entry.entity_id ? ` ${entry.entity_id}` : ""}
+                  </span>
                   <small>{formatDate(entry.created_at)} · {entry.ip_address ?? "no ip"}</small>
+                  {auditDetailText(entry.detail) && <p>{auditDetailText(entry.detail)}</p>}
                 </article>
               ))}
               {auditLogs.length === 0 && <p className="muted">No audit entries stored.</p>}
+              {auditLogs.length > 0 && filteredAuditLogs.length === 0 && <p className="muted">No audit entries match this filter.</p>}
             </div>
           </section>
         </>
@@ -1197,6 +1220,42 @@ function statusLabel(status: ModStatus) {
 
 function auditActionLabel(action: string) {
   return action.replace(/_/g, " ");
+}
+
+function auditFilterLabel(filter: AuditFilter) {
+  if (filter === "auth") return "Auth";
+  if (filter === "user") return "Users";
+  if (filter === "mod") return "Mods";
+  if (filter === "failures") return "Failures";
+  return "All";
+}
+
+function filterAuditLogs(logs: AuditLog[], filter: AuditFilter) {
+  if (filter === "all") return logs;
+  if (filter === "failures") return logs.filter((entry) => auditSeverity(entry) === "failure");
+  return logs.filter((entry) => entry.entity_type === filter);
+}
+
+function auditSeverity(entry: AuditLog) {
+  return entry.action.includes("failed") || entry.action.includes("rate_limited") ? "failure" : "event";
+}
+
+function auditDetailText(detail: Record<string, unknown>) {
+  const values = Object.entries(detail)
+    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .slice(0, 6)
+    .map(([key, value]) => `${auditDetailLabel(key)}: ${auditDetailValue(value)}`);
+  return values.join(" · ");
+}
+
+function auditDetailLabel(value: string) {
+  return value.replace(/_/g, " ");
+}
+
+function auditDetailValue(value: unknown): string {
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 function formatDate(value: string | null) {

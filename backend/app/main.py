@@ -97,9 +97,21 @@ def health() -> dict[str, str]:
 @app.post("/auth/login", response_model=AuthUserRead)
 def api_login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> AuthUserRead:
     username = payload.username.strip()
-    check_login_rate_limit(request, username)
+    try:
+        check_login_rate_limit(request, username)
+    except HTTPException:
+        record_audit(
+            db,
+            action="login_rate_limited",
+            entity_type="auth",
+            entity_id=username,
+            request=request,
+            detail={"username": username, "reason": "too_many_failed_attempts"},
+        )
+        raise
     user = authenticate_user(db, username, payload.password)
     if not user:
+        attempted_user = db.scalar(select(User).where(func.lower(User.username) == username.casefold()))
         record_failed_login(request, username)
         record_audit(
             db,
@@ -107,12 +119,24 @@ def api_login(payload: LoginRequest, request: Request, response: Response, db: S
             entity_type="auth",
             entity_id=username,
             request=request,
-            detail={"username": username},
+            detail={
+                "username": username,
+                "reason": "inactive_user" if attempted_user and not attempted_user.is_active else "invalid_credentials",
+                "user_exists": attempted_user is not None,
+            },
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
     clear_failed_logins(request, username)
     set_session_cookie(response, user)
-    record_audit(db, action="login_success", entity_type="auth", entity_id=str(user.id), actor=user, request=request)
+    record_audit(
+        db,
+        action="login_success",
+        entity_type="auth",
+        entity_id=str(user.id),
+        actor=user,
+        request=request,
+        detail={"username": user.username, "role": user.role},
+    )
     return auth_user_to_read(user)
 
 
@@ -123,7 +147,15 @@ def api_logout(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
 ) -> Response:
-    record_audit(db, action="logout", entity_type="auth", entity_id=str(current_user.id), actor=current_user, request=request)
+    record_audit(
+        db,
+        action="logout",
+        entity_type="auth",
+        entity_id=str(current_user.id),
+        actor=current_user,
+        request=request,
+        detail={"username": current_user.username},
+    )
     clear_session_cookie(response)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -152,12 +184,21 @@ def api_change_password(
             entity_id=str(current_user.id),
             actor=current_user,
             request=request,
+            detail={"reason": "current_password_incorrect"},
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
     current_user.password_hash = hash_password(payload.new_password)
     db.commit()
     db.refresh(current_user)
-    record_audit(db, action="password_changed", entity_type="user", entity_id=str(current_user.id), actor=current_user, request=request)
+    record_audit(
+        db,
+        action="password_changed",
+        entity_type="user",
+        entity_id=str(current_user.id),
+        actor=current_user,
+        request=request,
+        detail={"username": current_user.username, "method": "self_service"},
+    )
     return auth_user_to_read(current_user, session_expires_at(session_token))
 
 
@@ -185,10 +226,19 @@ def api_create_user(
             entity_id=str(created.id),
             actor=current_user,
             request=request,
-            detail={"role": created.role},
+            detail={"username": created.username, "role": created.role, "is_active": created.is_active},
         )
         return created
     except ValueError as exc:
+        record_audit(
+            db,
+            action="user_create_failed",
+            entity_type="user",
+            entity_id=payload.username.strip(),
+            actor=current_user,
+            request=request,
+            detail={"reason": str(exc), "username": payload.username.strip(), "role": payload.role.value},
+        )
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
@@ -200,12 +250,45 @@ def api_update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin_user),
 ) -> UserRead:
+    target = db.get(User, user_id)
+    old_role = target.role if target else None
+    old_active = target.is_active if target else None
     if user_id == current_user.id and payload.is_active is False:
+        record_audit(
+            db,
+            action="user_update_failed",
+            entity_type="user",
+            entity_id=str(user_id),
+            actor=current_user,
+            request=request,
+            detail={"reason": "cannot_disable_current_user"},
+        )
         raise HTTPException(status_code=400, detail="Cannot disable current user")
     if payload.is_active is False or payload.role is not None:
-        _ensure_admin_change_is_safe(db, user_id, payload)
+        try:
+            _ensure_admin_change_is_safe(db, user_id, payload)
+        except HTTPException as exc:
+            record_audit(
+                db,
+                action="user_update_failed",
+                entity_type="user",
+                entity_id=str(user_id),
+                actor=current_user,
+                request=request,
+                detail={"reason": exc.detail},
+            )
+            raise
     updated = update_user(db, user_id, payload)
     if not updated:
+        record_audit(
+            db,
+            action="user_update_failed",
+            entity_type="user",
+            entity_id=str(user_id),
+            actor=current_user,
+            request=request,
+            detail={"reason": "user_not_found"},
+        )
         raise HTTPException(status_code=404, detail="User not found")
     record_audit(
         db,
@@ -215,8 +298,13 @@ def api_update_user(
         actor=current_user,
         request=request,
         detail={
+            "username": updated.username,
             "role_changed": payload.role is not None,
+            "old_role": old_role,
+            "new_role": updated.role if payload.role is not None else None,
             "active_changed": payload.is_active is not None,
+            "old_active": old_active,
+            "new_active": updated.is_active if payload.is_active is not None else None,
             "password_changed": payload.password is not None,
         },
     )
@@ -233,11 +321,28 @@ def api_reset_user_password(
 ) -> UserRead:
     target = db.get(User, user_id)
     if not target:
+        record_audit(
+            db,
+            action="password_reset_failed",
+            entity_type="user",
+            entity_id=str(user_id),
+            actor=current_user,
+            request=request,
+            detail={"reason": "user_not_found"},
+        )
         raise HTTPException(status_code=404, detail="User not found")
     target.password_hash = hash_password(payload.password)
     db.commit()
     db.refresh(target)
-    record_audit(db, action="password_reset", entity_type="user", entity_id=str(user_id), actor=current_user, request=request)
+    record_audit(
+        db,
+        action="password_reset",
+        entity_type="user",
+        entity_id=str(user_id),
+        actor=current_user,
+        request=request,
+        detail={"target_username": target.username},
+    )
     return UserRead(
         id=target.id,
         username=target.username,
@@ -282,6 +387,15 @@ async def api_create_mod(
         )
         return created
     except Exception as exc:
+        record_audit(
+            db,
+            action="mod_create_failed",
+            entity_type="mod",
+            entity_id=payload.id,
+            actor=current_user,
+            request=request,
+            detail={"reason": str(exc), "current_version_provided": payload.current_version is not None},
+        )
         raise HTTPException(status_code=502, detail=f"Workshop fetch failed: {exc}") from exc
 
 
@@ -328,12 +442,38 @@ async def api_refresh_mod(
     current_user: User = Depends(require_current_user),
 ) -> ModRead:
     if not get_mod_or_none(db, mod_id):
+        record_audit(
+            db,
+            action="mod_refresh_failed",
+            entity_type="mod",
+            entity_id=mod_id,
+            actor=current_user,
+            request=request,
+            detail={"reason": "mod_not_found"},
+        )
         raise HTTPException(status_code=404, detail="Mod not found")
     try:
         refreshed = await refresh_mod(db, mod_id)
-        record_audit(db, action="mod_refreshed", entity_type="mod", entity_id=mod_id, actor=current_user, request=request)
+        record_audit(
+            db,
+            action="mod_refreshed",
+            entity_type="mod",
+            entity_id=mod_id,
+            actor=current_user,
+            request=request,
+            detail={"latest_version": refreshed.latest_version, "status": refreshed.status.value},
+        )
         return refreshed
     except Exception as exc:
+        record_audit(
+            db,
+            action="mod_refresh_failed",
+            entity_type="mod",
+            entity_id=mod_id,
+            actor=current_user,
+            request=request,
+            detail={"reason": str(exc)},
+        )
         raise HTTPException(status_code=502, detail=f"Workshop fetch failed: {exc}") from exc
 
 
@@ -345,8 +485,17 @@ def api_delete_mod(
     current_user: User = Depends(require_current_user),
 ) -> Response:
     if not delete_mod(db, mod_id):
+        record_audit(
+            db,
+            action="mod_delete_failed",
+            entity_type="mod",
+            entity_id=mod_id,
+            actor=current_user,
+            request=request,
+            detail={"reason": "mod_not_found"},
+        )
         raise HTTPException(status_code=404, detail="Mod not found")
-    record_audit(db, action="mod_deleted", entity_type="mod", entity_id=mod_id, actor=current_user, request=request)
+    record_audit(db, action="mod_deleted", entity_type="mod", entity_id=mod_id, actor=current_user, request=request, detail={"mod_id": mod_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -363,7 +512,7 @@ async def api_refresh_all(
         entity_type="mod",
         actor=current_user,
         request=request,
-        detail={"refreshed": result.refreshed, "failed": len(result.failed)},
+        detail={"refreshed": result.refreshed, "failed": len(result.failed), "failed_mods": result.failed},
     )
     return result
 
