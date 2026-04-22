@@ -30,7 +30,7 @@ def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
         pinned=bool(user_mod.pinned) if user_mod else False,
         tracking_reason=tracking_reason,
         status=compare_versions(current_version, mod.latest_version),
-        versions=mod.versions[:10],
+        versions=_sort_versions(mod.versions)[:10],
     )
 
 
@@ -198,6 +198,14 @@ def _normalize_match_value(value: str | None) -> str:
     return " ".join(value.casefold().split())
 
 
+def _sort_versions(versions: list[ModVersion]) -> list[ModVersion]:
+    return sorted(
+        versions,
+        key=lambda version: version.last_modified_at or version.published_at or version.created_at,
+        reverse=True,
+    )
+
+
 async def _track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, scraper: WorkshopScraper) -> None:
     if not mod.user_mod or not mod.user_mod.current_version:
         return
@@ -289,7 +297,30 @@ def _upsert_scraped_mod(db: Session, scraped: ScrapedMod) -> None:
     mod.source_url = scraped.source_url
     mod.last_checked = scraped.last_checked
 
-    if scraped.latest_version:
+    for scraped_version in scraped.versions:
+        existing = db.scalar(
+            select(ModVersion).where(ModVersion.mod_id == scraped.id, ModVersion.version == scraped_version.version)
+        )
+        if not existing:
+            db.add(
+                ModVersion(
+                    mod_id=scraped.id,
+                    version=scraped_version.version,
+                    changelog=scraped_version.changelog,
+                    published_at=scraped_version.published_at,
+                    last_modified_at=scraped_version.last_modified_at,
+                )
+            )
+            continue
+
+        if scraped_version.changelog is not None:
+            existing.changelog = scraped_version.changelog
+        if scraped_version.published_at is not None:
+            existing.published_at = scraped_version.published_at
+        if scraped_version.last_modified_at is not None:
+            existing.last_modified_at = scraped_version.last_modified_at
+
+    if scraped.latest_version and not scraped.versions:
         existing = db.scalar(
             select(ModVersion).where(ModVersion.mod_id == scraped.id, ModVersion.version == scraped.latest_version)
         )

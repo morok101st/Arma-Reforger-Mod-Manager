@@ -38,6 +38,7 @@ class ModVersion(Base):
     version: Mapped[str] = mapped_column(String(80), index=True)
     changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_modified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     mod: Mapped[Mod] = relationship(back_populates="versions")

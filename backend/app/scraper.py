@@ -1,10 +1,19 @@
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
+
+
+@dataclass
+class ScrapedModVersion:
+    version: str
+    changelog: str | None = None
+    published_at: datetime | None = None
+    last_modified_at: datetime | None = None
 
 
 @dataclass
@@ -18,6 +27,7 @@ class ScrapedMod:
     size: str | None = None
     dependencies: list[dict[str, str | None]] = field(default_factory=list)
     changelog: str | None = None
+    versions: list[ScrapedModVersion] = field(default_factory=list)
     source_url: str | None = None
     last_checked: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -41,6 +51,9 @@ class WorkshopScraper:
 
         mod = self._parse_detail(mod_id, detail_url, detail_response.text)
         if changelog_response.status_code < 400:
+            versions = self._parse_changelog_versions(changelog_response.text)
+            if versions:
+                mod.versions = versions
             changelog = self._parse_changelog(changelog_response.text)
             mod.changelog = changelog or mod.changelog
         return mod
@@ -77,6 +90,30 @@ class WorkshopScraper:
 
         main = soup.find("main") or soup.body
         return _clean_changelog_text(main.get_text("\n")) if main else None
+
+    def _parse_changelog_versions(self, html: str) -> list[ScrapedModVersion]:
+        soup = BeautifulSoup(html, "html.parser")
+        versions: list[ScrapedModVersion] = []
+        seen: set[str] = set()
+
+        for heading in soup.find_all(re.compile(r"^h[1-6]$")):
+            version = _clean_text(heading.get_text(" "))
+            if not _looks_like_version(version) or version in seen:
+                continue
+
+            card = _changelog_card(heading)
+            changelog = _changelog_body(heading, card)
+            versions.append(
+                ScrapedModVersion(
+                    version=version,
+                    changelog=changelog,
+                    published_at=_parse_datetime(_metadata_value(card or heading, ["created"])),
+                    last_modified_at=_parse_datetime(_metadata_value(card or heading, ["last modified", "modified"])),
+                )
+            )
+            seen.add(version)
+
+        return versions
 
 
 def _first_text(soup: BeautifulSoup, selectors: list[str]) -> str | None:
@@ -137,6 +174,51 @@ def _metadata_value(soup: BeautifulSoup, labels: list[str]) -> str | None:
             if parts:
                 return parts[0]
     return None
+
+
+def _changelog_card(heading):
+    node = heading
+    for _ in range(5):
+        parent = node.parent
+        if not parent:
+            return node
+        if parent.find("dl") and parent.find(re.compile(r"^h[1-6]$")):
+            return parent
+        node = parent
+    return node
+
+
+def _changelog_body(heading, card) -> str | None:
+    if card:
+        pre = card.find("pre")
+        if pre:
+            return _clean_changelog_text(pre.get_text("\n"))
+
+    chunks: list[str] = []
+    for sibling in heading.find_next_siblings():
+        if sibling.name == "pre":
+            text = _clean_changelog_text(sibling.get_text("\n"))
+            if text:
+                chunks.append(text)
+        if sibling.name == "dl" or (sibling.name and re.match(r"^h[1-6]$", sibling.name)):
+            break
+    return "\n".join(chunks).strip() or None
+
+
+def _parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _section_after_heading(soup: BeautifulSoup, labels: list[str]) -> str | None:

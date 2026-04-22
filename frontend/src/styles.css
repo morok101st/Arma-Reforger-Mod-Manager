@@ -737,6 +737,17 @@ pre {
   overflow-wrap: anywhere;
 }
 
+.changelog-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.changelog-heading small {
+  color: #65716a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .changelog-lines {
   display: grid;
   gap: 6px;

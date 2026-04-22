@@ -62,6 +62,7 @@ type ModVersion = {
   version: string;
   changelog: string | null;
   published_at: string | null;
+  last_modified_at: string | null;
   created_at: string;
 };
 
@@ -97,6 +98,7 @@ type Mod = {
 
 type ChangelogEntry = {
   version: string;
+  lastModifiedAt: string | null;
   lines: string[];
 };
 
@@ -135,7 +137,7 @@ function App() {
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
   const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
-  const changelogEntries = parseChangelog(selected?.versions[0]?.changelog ?? null);
+  const changelogEntries = React.useMemo(() => changelogEntriesFromVersions(selected?.versions ?? []), [selected?.versions]);
   const trackedDependencyMatches = React.useMemo(
     () => new Map((selected?.dependencies ?? []).map((dependency) => [dependencyKey(dependency), findTrackedDependency(dependency, mods)])),
     [mods, selected?.dependencies],
@@ -169,7 +171,7 @@ function App() {
 
   React.useEffect(() => {
     setExpandedChangelogVersions(changelogEntries[0] ? new Set([changelogEntries[0].version]) : new Set());
-  }, [selected?.id, selected?.versions[0]?.changelog]);
+  }, [selected?.id, changelogEntries]);
 
   React.useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
@@ -761,7 +763,10 @@ function App() {
                     <article className="changelog-entry" key={entry.version}>
                       <button className="changelog-toggle" onClick={() => toggleChangelogVersion(entry.version)} type="button">
                         {expandedChangelogVersions.has(entry.version) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                        <span>{entry.version}</span>
+                        <span className="changelog-heading">
+                          <strong>{entry.version}</strong>
+                          <small>Last modified {formatDate(entry.lastModifiedAt) ?? UNKNOWN_VALUE}</small>
+                        </span>
                       </button>
                       {expandedChangelogVersions.has(entry.version) && (
                         entry.lines.length > 0 ? (
@@ -1228,24 +1233,27 @@ function getDashboardStats(mods: Mod[]) {
   };
 }
 
-function parseChangelog(value: string | null): ChangelogEntry[] {
+function changelogEntriesFromVersions(versions: ModVersion[]): ChangelogEntry[] {
+  return versions
+    .map((version) => ({
+      version: version.version,
+      lastModifiedAt: version.last_modified_at,
+      lines: changelogLines(version.changelog, version.version),
+    }))
+    .filter((entry) => entry.version || entry.lines.length > 0);
+}
+
+function changelogLines(value: string | null, version: string): string[] {
   if (!value) return [];
   const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const entries: ChangelogEntry[] = [];
-
-  for (const line of lines) {
-    if (/^v?\d+(?:[._-]\d+)+(?:[A-Za-z0-9._+-]*)?$/.test(line)) {
-      entries.push({ version: line, lines: [] });
-      continue;
-    }
-
-    if (entries.length === 0) {
-      entries.push({ version: "Notes", lines: [] });
-    }
-    entries[entries.length - 1].lines.push(line);
+  if (lines[0] && normalizeVersionLabel(lines[0]) === normalizeVersionLabel(version)) {
+    return lines.slice(1);
   }
+  return lines;
+}
 
-  return entries;
+function normalizeVersionLabel(value: string): string {
+  return value.toLowerCase().trim().replace(/^v/, "");
 }
 
 function statusPriority(status: ModStatus): number {

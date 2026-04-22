@@ -13,3 +13,11 @@ def migrate_schema(engine: Engine) -> None:
             connection.execute(
                 text("ALTER TABLE user_mods ADD COLUMN tracking_reason VARCHAR(24) NOT NULL DEFAULT 'manual'")
             )
+
+    if "mod_versions" not in inspector.get_table_names():
+        return
+
+    mod_version_columns = {column["name"] for column in inspector.get_columns("mod_versions")}
+    if "last_modified_at" not in mod_version_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE mod_versions ADD COLUMN last_modified_at TIMESTAMP WITH TIME ZONE"))

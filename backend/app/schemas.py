@@ -104,6 +104,7 @@ class ModVersionRead(BaseModel):
     version: str
     changelog: str | None
     published_at: datetime | None
+    last_modified_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
