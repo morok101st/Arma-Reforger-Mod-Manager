@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import HTTPException, Request
+from starlette import status
 from sqlalchemy.orm import Session
 
 from app.audit import record_audit
