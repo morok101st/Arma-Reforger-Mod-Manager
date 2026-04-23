@@ -1,15 +1,16 @@
 import React from "react";
-import { Home, LogOut, Pin, Plus, Shield } from "lucide-react";
 
+import { AddModDialog } from "./components/AddModDialog";
 import { AuthFrame } from "./components/AuthFrame";
 import { Dashboard } from "./components/Dashboard";
+import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
-import { Dialog, StatusIcon, UNKNOWN_VALUE } from "./components/common";
+import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAdminData } from "./hooks/useAdminData";
 import { useAuth } from "./hooks/useAuth";
 import { useMods } from "./hooks/useMods";
-import type { SortMode, UserAccount, UserRole } from "./types";
+import type { UserAccount, UserRole } from "./types";
 
 export function App() {
   const detailRef = React.useRef<HTMLElement | null>(null);
@@ -197,125 +198,58 @@ export function App() {
   if (!auth.authUser) {
     return (
       <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
-        <form className="login-form" onSubmit={login}>
-          <label>
-            Username
-            <input value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} autoComplete="username" />
-          </label>
-          <label>
-            Password
-            <input value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} type="password" autoComplete="current-password" />
-          </label>
-          {auth.loginError && <div className="error-box">{auth.loginError}</div>}
-          <button className="primary-button" disabled={loading || !loginUsername.trim() || !loginPassword}>
-            <Shield size={18} />
-            Sign in
-          </button>
-        </form>
+        <LoginForm
+          username={loginUsername}
+          password={loginPassword}
+          loginError={auth.loginError}
+          loading={loading}
+          setUsername={setLoginUsername}
+          setPassword={setLoginPassword}
+          onSubmit={login}
+        />
       </AuthFrame>
     );
   }
 
   return (
     <main className="app-shell">
-      <section className="sidebar" aria-label="Mod management">
-        <div className="brand">
-          <div>
-            <p>Arma Reforger Mod Manager</p>
-          </div>
-          <div className="header-actions">
-            <button
-              className="icon-button"
-              onClick={() => {
-                setShowDashboard(true);
-                setShowUserAdmin(false);
-              }}
-              title="Dashboard"
-            >
-              <Home size={18} />
-            </button>
-            <button
-              className="icon-button"
-              onClick={() => {
-                setShowDashboard(false);
-                setShowUserAdmin((value) => !value);
-              }}
-              title="Security"
-            >
-              <Shield size={18} />
-            </button>
-            <button className="icon-button" onClick={logout} title={`Logout ${auth.authUser.username}`}>
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
+      <Sidebar
+        username={auth.authUser.username}
+        loading={loading}
+        error={error}
+        showDashboard={showDashboard}
+        showUserAdmin={showUserAdmin}
+        searchQuery={mods.searchQuery}
+        sortMode={mods.sortMode}
+        mods={mods.sortedMods}
+        totalModsCount={mods.mods.length}
+        selectedModId={mods.selected?.id ?? null}
+        onShowDashboard={() => {
+          setShowDashboard(true);
+          setShowUserAdmin(false);
+        }}
+        onToggleSecurity={() => {
+          setShowDashboard(false);
+          setShowUserAdmin((value) => !value);
+        }}
+        onLogout={logout}
+        onShowAddMod={() => setShowAddModDialog(true)}
+        onSearchChange={mods.setSearchQuery}
+        onSortChange={mods.setSortMode}
+        onOpenMod={openMod}
+      />
 
-        <button className="primary-button" onClick={() => setShowAddModDialog(true)} type="button">
-          <Plus size={18} />
-          Add mod
-        </button>
-
-        {showAddModDialog && (
-          <Dialog title="Add mod" onClose={() => setShowAddModDialog(false)}>
-            <form className="dialog-form" onSubmit={addMod}>
-              <label>
-                Workshop ID
-                <input value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
-              </label>
-              <label>
-                Installed version
-                <input value={currentVersion} onChange={(event) => setCurrentVersion(event.target.value)} placeholder="optional" />
-              </label>
-              <div className="dialog-actions">
-                <button className="secondary-button compact" onClick={() => setShowAddModDialog(false)} type="button">
-                  Cancel
-                </button>
-                <button className="primary-button compact" disabled={loading || !modId.trim()}>
-                  Add
-                </button>
-              </div>
-            </form>
-          </Dialog>
-        )}
-
-        {error && <div className="error-box">{error}</div>}
-
-        <div className="filter-row">
-          <label>
-            Search
-            <input value={mods.searchQuery} onChange={(event) => mods.setSearchQuery(event.target.value)} placeholder="Mod name or ID" />
-          </label>
-          <label className="sort-control">
-            Sort by
-            <select value={mods.sortMode} onChange={(event) => mods.setSortMode(event.target.value as SortMode)}>
-              <option value="updates">Updates first</option>
-              <option value="name">Name</option>
-              <option value="status">Status</option>
-              <option value="last_checked">Last checked</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="mod-list">
-          {mods.sortedMods.map((mod) => (
-            <button key={mod.id} className={`mod-row ${!showDashboard && !showUserAdmin && mods.selected?.id === mod.id ? "active" : ""}`} onClick={() => openMod(mod.id)}>
-              <StatusIcon status={mod.status} />
-              <span>
-                <strong>{mod.name ?? mod.id}</strong>
-                <small>
-                  {mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}
-                  <span className="relation-count">{mod.dependencies.length} deps</span>
-                  <span className="relation-count">{mod.dependents.length} req</span>
-                  {mod.tracking_reason === "dependency" && <span className="tracking-badge">dep</span>}
-                </small>
-              </span>
-              {mod.pinned && <Pin size={14} />}
-            </button>
-          ))}
-          {mods.mods.length === 0 && <p className="empty">No mods tracked yet.</p>}
-          {mods.mods.length > 0 && mods.sortedMods.length === 0 && <p className="empty">No mods match your search.</p>}
-        </div>
-      </section>
+      {showAddModDialog && (
+        <AddModDialog
+          modId={modId}
+          currentVersion={currentVersion}
+          loading={loading}
+          setModId={setModId}
+          setCurrentVersion={setCurrentVersion}
+          onClose={() => setShowAddModDialog(false)}
+          onSubmit={addMod}
+        />
+      )}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {showDashboard ? (
