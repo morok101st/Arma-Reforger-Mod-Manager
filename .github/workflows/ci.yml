@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
+      DATABASE_URL: sqlite:///./ci.db
+      ARMM_ENV: development
+      ARMM_SECRET_KEY: ci-test-secret
+      ARMM_ADMIN_USERNAME: admin
+      ARMM_ADMIN_PASSWORD: very-secure-admin-pass
+      WORKSHOP_BASE_URL: https://example.invalid/workshop
+      SCRAPE_INTERVAL_MINUTES: 60
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backend tests
+        run: python -m unittest discover -s tests -v
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build frontend
+        env:
+          VITE_API_BASE_URL: /api
+        run: npm run build
