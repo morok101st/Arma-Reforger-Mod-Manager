@@ -6,10 +6,9 @@ import { Dashboard } from "./components/Dashboard";
 import { ModDetail } from "./components/ModDetail";
 import { Dialog, StatusIcon, UNKNOWN_VALUE } from "./components/common";
 import { UserAdmin } from "./components/UserAdmin";
+import { useApiClient } from "./hooks/useApiClient";
 import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "./lib/utils";
 import type { AuditLog, AuthUser, Mod, SchedulerStatus, SortMode, UserAccount, UserRole } from "./types";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export function App() {
   const detailRef = React.useRef<HTMLElement | null>(null);
@@ -44,6 +43,17 @@ export function App() {
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
   const [error, setError] = React.useState<string | null>(null);
 
+  const resetSession = React.useCallback(() => {
+    setAuthUser(null);
+    setMods([]);
+    setUsers([]);
+    setSchedulerStatus(null);
+    setShowDashboard(true);
+    setShowUserAdmin(false);
+  }, []);
+
+  const api = useApiClient(resetSession);
+
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
   const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
@@ -53,24 +63,49 @@ export function App() {
     [mods, selected?.dependencies],
   );
 
+  const loadMods = React.useCallback(async () => {
+    setError(null);
+    const data = await api.listMods();
+    setMods(data);
+    if (!selectedId && data.length > 0) setSelectedId(data[0].id);
+  }, [api, selectedId]);
+
+  const loadUsers = React.useCallback(async () => {
+    setUsers(await api.listUsers());
+  }, [api]);
+
+  const loadAuditLogs = React.useCallback(async () => {
+    setAuditLogs(await api.listAuditLogs());
+  }, [api]);
+
+  const loadSchedulerStatus = React.useCallback(async () => {
+    setSchedulerStatus(await api.getSchedulerStatus());
+  }, [api]);
+
   React.useEffect(() => {
-    checkSession().catch((err: Error) => {
-      setLoginError(err.message);
-      setAuthChecked(true);
-    });
-  }, []);
+    api
+      .checkSession()
+      .then((user) => {
+        setAuthUser(user);
+        setAuthChecked(true);
+      })
+      .catch((err: Error) => {
+        setLoginError(err.message);
+        setAuthChecked(true);
+      });
+  }, [api]);
 
   React.useEffect(() => {
     if (!authUser) return;
     loadMods().catch((err: Error) => setError(err.message));
     loadSchedulerStatus().catch((err: Error) => setError(err.message));
-  }, [authUser?.id]);
+  }, [authUser, loadMods, loadSchedulerStatus]);
 
   React.useEffect(() => {
     if (authUser?.role !== "admin") return;
     loadUsers().catch((err: Error) => setError(err.message));
     loadAuditLogs().catch((err: Error) => setError(err.message));
-  }, [authUser?.id, authUser?.role]);
+  }, [authUser, loadUsers, loadAuditLogs]);
 
   React.useEffect(() => {
     setInstalledVersionEdit(selected?.current_version ?? "");
@@ -88,47 +123,12 @@ export function App() {
     detailRef.current?.scrollTo({ top: 0 });
   }, [selected?.id, showDashboard, showUserAdmin]);
 
-  async function apiFetch(path: string, options: RequestInit = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      credentials: "include",
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        ...options.headers,
-      },
-    });
-
-    if (response.status === 401) {
-      setAuthUser(null);
-      setMods([]);
-      setSchedulerStatus(null);
-      setShowDashboard(true);
-      setShowUserAdmin(false);
-    }
-    return response;
-  }
-
-  async function checkSession() {
-    const response = await fetch(`${API_BASE_URL}/auth/me`, { credentials: "include" });
-    if (response.ok) {
-      setAuthUser((await response.json()) as AuthUser);
-    }
-    setAuthChecked(true);
-  }
-
   async function login(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     setLoginError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginUsername.trim(), password: loginPassword }),
-      });
-      if (!response.ok) throw new Error("Login failed.");
-      const user = (await response.json()) as AuthUser;
+      const user = await api.login(loginUsername.trim(), loginPassword);
       setAuthUser(user);
       setLoginPassword("");
     } catch (err) {
@@ -140,40 +140,8 @@ export function App() {
   }
 
   async function logout() {
-    await apiFetch("/auth/logout", { method: "POST" }).catch(() => null);
-    setAuthUser(null);
-    setMods([]);
-    setUsers([]);
-    setSchedulerStatus(null);
-    setShowDashboard(true);
-    setShowUserAdmin(false);
-  }
-
-  async function loadMods() {
-    setError(null);
-    const response = await apiFetch("/mods");
-    if (!response.ok) throw new Error("Could not load mod list.");
-    const data = (await response.json()) as Mod[];
-    setMods(data);
-    if (!selectedId && data.length > 0) setSelectedId(data[0].id);
-  }
-
-  async function loadUsers() {
-    const response = await apiFetch("/users");
-    if (!response.ok) throw new Error("Could not load users.");
-    setUsers((await response.json()) as UserAccount[]);
-  }
-
-  async function loadAuditLogs() {
-    const response = await apiFetch("/audit?limit=25");
-    if (!response.ok) throw new Error("Could not load audit log.");
-    setAuditLogs((await response.json()) as AuditLog[]);
-  }
-
-  async function loadSchedulerStatus() {
-    const response = await apiFetch("/scheduler/status");
-    if (!response.ok) throw new Error("Could not load scheduler status.");
-    setSchedulerStatus((await response.json()) as SchedulerStatus);
+    await api.logout().catch(() => null);
+    resetSession();
   }
 
   async function changeOwnPassword(event: React.FormEvent) {
@@ -181,15 +149,8 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch("/auth/password", {
-        method: "PATCH",
-        body: JSON.stringify({ current_password: currentPassword, new_password: newOwnPassword }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.detail ?? "Could not change password.");
-      }
-      setAuthUser((await response.json()) as AuthUser);
+      const user = await api.changeOwnPassword(currentPassword, newOwnPassword);
+      setAuthUser(user);
       setCurrentPassword("");
       setNewOwnPassword("");
       await loadAuditLogs();
@@ -207,14 +168,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch("/users", {
-        method: "POST",
-        body: JSON.stringify({ username: newUsername.trim(), password: newPassword, role: newRole }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.detail ?? "Could not create user.");
-      }
+      await api.createUser(newUsername.trim(), newPassword, newRole);
       setNewUsername("");
       setNewPassword("");
       setNewRole("user");
@@ -232,11 +186,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(payload) });
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        throw new Error(errorPayload?.detail ?? "Could not update user.");
-      }
+      await api.updateUserAccount(userId, payload);
       await loadUsers();
       await loadAuditLogs();
     } catch (err) {
@@ -253,11 +203,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch(`/users/${userId}/password`, { method: "PATCH", body: JSON.stringify({ password }) });
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        throw new Error(errorPayload?.detail ?? "Could not reset password.");
-      }
+      await api.resetUserPassword(userId, password);
       setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
       setResetUserId(null);
       await loadUsers();
@@ -276,15 +222,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch("/mods", {
-        method: "POST",
-        body: JSON.stringify({ id: modId.trim(), current_version: currentVersion.trim() || null }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.detail ?? "Could not add mod.");
-      }
-      const created = (await response.json()) as Mod;
+      const created = await api.createMod(modId.trim(), currentVersion.trim() || null);
       await loadMods();
       setSelectedId(created.id);
       setShowDashboard(false);
@@ -303,8 +241,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch(`/mods/${id}/refresh`, { method: "POST" });
-      if (!response.ok) throw new Error("Refresh failed.");
+      await api.refreshMod(id);
       await loadMods();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
@@ -317,8 +254,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch(`/mods/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Could not delete mod.");
+      await api.deleteMod(id);
       setSelectedId(null);
       await loadMods();
     } catch (err) {
@@ -335,12 +271,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiFetch(`/mods/${selected.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ current_version: normalizedVersion || null }),
-      });
-      if (!response.ok) throw new Error("Could not update installed version.");
-      const updated = (await response.json()) as Mod;
+      const updated = await api.updateInstalledVersion(selected.id, normalizedVersion || null);
       await loadMods();
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");
