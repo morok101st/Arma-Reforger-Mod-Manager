@@ -1,65 +1,13 @@
-import re
-
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Mod, ModVersion, UserMod
-from app.schemas import DependencyRead, ModCreate, ModRead, ModReferenceRead, RefreshResult, UserModUpdate
-from app.scraper import ScrapedMod, WorkshopScraper
-from app.versioning import compare_versions
-
-
-def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
-    user_mod = mod.user_mod
-    current_version = user_mod.current_version if user_mod else None
-    tracking_reason = user_mod.tracking_reason if user_mod else "manual"
-    return ModRead(
-        id=mod.id,
-        name=mod.name,
-        summary=mod.summary,
-        description=mod.description,
-        latest_version=mod.latest_version,
-        game_version=mod.game_version,
-        size=mod.size,
-        dependencies=_normalize_dependencies(mod.dependencies or []),
-        dependents=_find_dependents(mod, all_tracked_mods or []),
-        source_url=mod.source_url,
-        last_checked=mod.last_checked,
-        current_version=current_version,
-        pinned=bool(user_mod.pinned) if user_mod else False,
-        tracking_reason=tracking_reason,
-        status=compare_versions(current_version, mod.latest_version),
-        versions=_sort_versions(mod.versions)[:10],
-    )
-
-
-def list_mods(db: Session) -> list[ModRead]:
-    mods = _list_tracked_mods(db)
-    return [mod_to_read(mod, mods) for mod in mods]
-
-
-def get_mod_read(db: Session, mod_id: str) -> ModRead | None:
-    mods = _list_tracked_mods(db)
-    mod = next((candidate for candidate in mods if candidate.id == mod_id), None)
-    if not mod:
-        return None
-    return mod_to_read(mod, mods)
-
-
-def _list_tracked_mods(db: Session) -> list[Mod]:
-    return list(db.scalars(
-        select(Mod)
-        .join(UserMod)
-        .options(selectinload(Mod.user_mod), selectinload(Mod.versions))
-        .order_by(func.lower(Mod.name).nullslast(), Mod.id)
-    ).all())
-
-
-def get_mod_or_none(db: Session, mod_id: str) -> Mod | None:
-    return db.scalar(
-        select(Mod).where(Mod.id == mod_id).options(selectinload(Mod.user_mod), selectinload(Mod.versions))
-    )
+from app.mod_dependencies import track_and_refresh_dependencies_for_installed_mod
+from app.mod_persistence import upsert_scraped_mod
+from app.mod_queries import get_mod_or_none, get_mod_read, list_mods
+from app.models import Mod, UserMod
+from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
+from app.scraper import WorkshopScraper
 
 
 async def create_mod(db: Session, payload: ModCreate) -> ModRead:
@@ -110,17 +58,17 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate) -> M
     refreshed = get_mod_or_none(db, mod_id)
     if refreshed:
         scraper = WorkshopScraper(get_settings().workshop_base_url)
-        await _track_and_refresh_dependencies_for_installed_mod(db, refreshed, scraper)
+        await track_and_refresh_dependencies_for_installed_mod(db, refreshed, scraper)
     return get_mod_read(db, mod_id)
 
 
 async def refresh_mod(db: Session, mod_id: str) -> ModRead:
     scraper = WorkshopScraper(get_settings().workshop_base_url)
     scraped = await scraper.fetch_mod(mod_id)
-    _upsert_scraped_mod(db, scraped)
+    upsert_scraped_mod(db, scraped)
     refreshed = get_mod_or_none(db, mod_id)
     assert refreshed is not None
-    await _track_and_refresh_dependencies_for_installed_mod(db, refreshed, scraper)
+    await track_and_refresh_dependencies_for_installed_mod(db, refreshed, scraper)
     read = get_mod_read(db, mod_id)
     assert read is not None
     return read
@@ -134,7 +82,7 @@ async def refresh_all_mods(db: Session) -> RefreshResult:
         try:
             await refresh_mod(db, mod_id)
             refreshed += 1
-        except Exception as exc:  # scheduler/API should continue with remaining mods
+        except Exception as exc:
             failed[mod_id] = str(exc)
     return RefreshResult(refreshed=refreshed, failed=failed)
 
@@ -146,187 +94,3 @@ def delete_mod(db: Session, mod_id: str) -> bool:
     db.delete(mod)
     db.commit()
     return True
-
-
-def _normalize_dependencies(dependencies: list[object]) -> list[DependencyRead]:
-    normalized: list[DependencyRead] = []
-    for dependency in dependencies:
-        if isinstance(dependency, str):
-            name = dependency.strip()
-            if name:
-                normalized.append(DependencyRead(name=name, url=None))
-            continue
-
-        if isinstance(dependency, dict):
-            name_value = dependency.get("name")
-            name = str(name_value).strip() if name_value is not None else ""
-            if not name:
-                continue
-            url_value = dependency.get("url")
-            url = str(url_value).strip() if url_value else None
-            normalized.append(DependencyRead(name=name, url=url))
-    return normalized
-
-
-def _find_dependents(target: Mod, all_tracked_mods: list[Mod]) -> list[ModReferenceRead]:
-    dependents: list[ModReferenceRead] = []
-    for candidate in all_tracked_mods:
-        if candidate.id == target.id:
-            continue
-        dependencies = _normalize_dependencies(candidate.dependencies or [])
-        if any(_dependency_matches_mod(dependency, target) for dependency in dependencies):
-            dependents.append(ModReferenceRead(id=candidate.id, name=candidate.name, source_url=candidate.source_url))
-    return dependents
-
-
-def _dependency_matches_mod(dependency: DependencyRead, target: Mod) -> bool:
-    target_id = _normalize_match_value(target.id)
-    target_name = _normalize_match_value(target.name)
-    dependency_name = _normalize_match_value(dependency.name)
-    dependency_url = _normalize_match_value(dependency.url)
-
-    return (
-        bool(dependency_url and target_id in dependency_url)
-        or dependency_name == target_id
-        or bool(target_name and dependency_name == target_name)
-    )
-
-
-def _normalize_match_value(value: str | None) -> str:
-    if not value:
-        return ""
-    return " ".join(value.casefold().split())
-
-
-def _sort_versions(versions: list[ModVersion]) -> list[ModVersion]:
-    return sorted(
-        versions,
-        key=lambda version: version.last_modified_at or version.published_at or version.created_at,
-        reverse=True,
-    )
-
-
-async def _track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, scraper: WorkshopScraper) -> None:
-    if not mod.user_mod or not mod.user_mod.current_version:
-        return
-
-    dependency_ids_to_refresh: list[str] = []
-    for dependency in _normalize_dependencies(mod.dependencies or []):
-        dependency_id = _dependency_mod_id(dependency, db)
-        if not dependency_id or dependency_id == mod.id:
-            continue
-
-        dependency_mod = db.get(Mod, dependency_id)
-        if not dependency_mod:
-            dependency_mod = Mod(id=dependency_id, name=dependency.name, source_url=dependency.url)
-            db.add(dependency_mod)
-            db.flush()
-        else:
-            dependency_mod.name = dependency_mod.name or dependency.name
-            dependency_mod.source_url = dependency_mod.source_url or dependency.url
-
-        if not dependency_mod.user_mod:
-            db.add(
-                UserMod(
-                    mod_id=dependency_mod.id,
-                    current_version=None,
-                    pinned=False,
-                    tracking_reason="dependency",
-                )
-            )
-            dependency_ids_to_refresh.append(dependency_mod.id)
-        elif not dependency_mod.latest_version:
-            dependency_ids_to_refresh.append(dependency_mod.id)
-
-    if dependency_ids_to_refresh:
-        db.commit()
-        await _refresh_dependency_mods(db, dependency_ids_to_refresh, scraper)
-
-
-async def _refresh_dependency_mods(db: Session, mod_ids: list[str], scraper: WorkshopScraper) -> None:
-    for mod_id in dict.fromkeys(mod_ids):
-        scraped = await scraper.fetch_mod(mod_id)
-        _upsert_scraped_mod(db, scraped)
-
-
-def _dependency_mod_id(dependency: DependencyRead, db: Session) -> str | None:
-    mod_id = _workshop_mod_id_from_url(dependency.url)
-    if mod_id:
-        return mod_id
-
-    known_mod = db.scalar(select(Mod).where(func.lower(Mod.id) == dependency.name.casefold()))
-    if known_mod:
-        return known_mod.id
-
-    normalized_dependency_name = _normalize_match_value(dependency.name)
-    if not normalized_dependency_name:
-        return None
-
-    known_mods = db.scalars(select(Mod)).all()
-    for known_mod in known_mods:
-        if _normalize_match_value(known_mod.name) == normalized_dependency_name:
-            return known_mod.id
-    return None
-
-
-def _workshop_mod_id_from_url(url: str | None) -> str | None:
-    if not url:
-        return None
-
-    match = re.search(r"/workshop/([^/?#]+)", url)
-    if not match:
-        return None
-
-    candidate = match.group(1).split("-", 1)[0].strip()
-    return candidate or None
-
-
-def _upsert_scraped_mod(db: Session, scraped: ScrapedMod) -> None:
-    mod = db.get(Mod, scraped.id)
-    if not mod:
-        mod = Mod(id=scraped.id)
-        db.add(mod)
-
-    mod.name = scraped.name or mod.name
-    mod.summary = scraped.summary or mod.summary
-    mod.description = scraped.description or mod.description
-    mod.latest_version = scraped.latest_version or mod.latest_version
-    mod.game_version = scraped.game_version or mod.game_version
-    mod.size = scraped.size or mod.size
-    mod.dependencies = scraped.dependencies
-    mod.source_url = scraped.source_url
-    mod.last_checked = scraped.last_checked
-
-    for scraped_version in scraped.versions:
-        existing = db.scalar(
-            select(ModVersion).where(ModVersion.mod_id == scraped.id, ModVersion.version == scraped_version.version)
-        )
-        if not existing:
-            db.add(
-                ModVersion(
-                    mod_id=scraped.id,
-                    version=scraped_version.version,
-                    changelog=scraped_version.changelog,
-                    published_at=scraped_version.published_at,
-                    last_modified_at=scraped_version.last_modified_at,
-                )
-            )
-            continue
-
-        if scraped_version.changelog is not None:
-            existing.changelog = scraped_version.changelog
-        if scraped_version.published_at is not None:
-            existing.published_at = scraped_version.published_at
-        if scraped_version.last_modified_at is not None:
-            existing.last_modified_at = scraped_version.last_modified_at
-
-    if scraped.latest_version and not scraped.versions:
-        existing = db.scalar(
-            select(ModVersion).where(ModVersion.mod_id == scraped.id, ModVersion.version == scraped.latest_version)
-        )
-        if not existing:
-            db.add(ModVersion(mod_id=scraped.id, version=scraped.latest_version, changelog=scraped.changelog))
-        elif scraped.changelog and existing.changelog != scraped.changelog:
-            existing.changelog = scraped.changelog
-
-    db.commit()
