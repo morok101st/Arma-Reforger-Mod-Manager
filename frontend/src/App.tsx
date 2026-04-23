@@ -10,25 +10,13 @@ import { UserAdmin } from "./components/UserAdmin";
 import { useAdminData } from "./hooks/useAdminData";
 import { useAuth } from "./hooks/useAuth";
 import { useMods } from "./hooks/useMods";
-import type { UserAccount, UserRole } from "./types";
+import type { UserAccount } from "./types";
 
 export function App() {
   const detailRef = React.useRef<HTMLElement | null>(null);
   const [showDashboard, setShowDashboard] = React.useState(true);
   const [showUserAdmin, setShowUserAdmin] = React.useState(false);
-  const [newUsername, setNewUsername] = React.useState("");
-  const [newPassword, setNewPassword] = React.useState("");
-  const [newRole, setNewRole] = React.useState<UserRole>("user");
-  const [currentPassword, setCurrentPassword] = React.useState("");
-  const [newOwnPassword, setNewOwnPassword] = React.useState("");
-  const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
-  const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
-  const [resetUserId, setResetUserId] = React.useState<number | null>(null);
-  const [modId, setModId] = React.useState("");
-  const [currentVersion, setCurrentVersion] = React.useState("");
   const [showAddModDialog, setShowAddModDialog] = React.useState(false);
-  const [loginUsername, setLoginUsername] = React.useState("");
-  const [loginPassword, setLoginPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -46,12 +34,10 @@ export function App() {
     detailRef.current?.scrollTo({ top: 0 });
   }, [mods.selected?.id, showDashboard, showUserAdmin]);
 
-  async function login(event: React.FormEvent) {
-    event.preventDefault();
+  async function login(username: string, password: string) {
     setLoading(true);
     try {
-      await auth.login(loginUsername.trim(), loginPassword);
-      setLoginPassword("");
+      await auth.login(username.trim(), password);
     } catch (err) {
       auth.setLoginError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -60,41 +46,29 @@ export function App() {
     }
   }
 
-  async function logout() {
-    await auth.logout();
-  }
-
-  async function changeOwnPassword(event: React.FormEvent) {
-    event.preventDefault();
+  async function changeOwnPassword(currentPassword: string, newOwnPassword: string) {
     setLoading(true);
     setError(null);
     try {
       const user = await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
       auth.setAuthUser(user);
-      setCurrentPassword("");
-      setNewOwnPassword("");
       await admin.loadAuditLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
+      throw err;
     } finally {
       setLoading(false);
     }
   }
 
-  async function addUser(event: React.FormEvent) {
-    event.preventDefault();
-    if (!newUsername.trim() || !newPassword) return;
-
+  async function createUser(username: string, password: string, role: UserAccount["role"]) {
     setLoading(true);
     setError(null);
     try {
-      await admin.createUser(newUsername.trim(), newPassword, newRole);
-      setNewUsername("");
-      setNewPassword("");
-      setNewRole("user");
-      setShowCreateUserDialog(false);
+      await admin.createUser(username, password, role);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -107,43 +81,36 @@ export function App() {
       await admin.updateUserAccount(userId, payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
+      throw err;
     } finally {
       setLoading(false);
     }
   }
 
-  async function resetUserPassword(userId: number) {
-    const password = resetPasswords[userId] ?? "";
-    if (password.length < 12) return;
-
+  async function resetUserPassword(userId: number, password: string) {
     setLoading(true);
     setError(null);
     try {
       await admin.resetUserPassword(userId, password);
-      setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
-      setResetUserId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
+      throw err;
     } finally {
       setLoading(false);
     }
   }
 
-  async function addMod(event: React.FormEvent) {
-    event.preventDefault();
-    if (!modId.trim()) return;
-
+  async function addMod(modId: string, currentVersion: string | null) {
     setLoading(true);
     setError(null);
     try {
-      await mods.addMod(modId.trim(), currentVersion.trim() || null);
+      await mods.addMod(modId.trim(), currentVersion);
       setShowDashboard(false);
       setShowUserAdmin(false);
-      setModId("");
-      setCurrentVersion("");
       setShowAddModDialog(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -198,15 +165,7 @@ export function App() {
   if (!auth.authUser) {
     return (
       <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
-        <LoginForm
-          username={loginUsername}
-          password={loginPassword}
-          loginError={auth.loginError}
-          loading={loading}
-          setUsername={setLoginUsername}
-          setPassword={setLoginPassword}
-          onSubmit={login}
-        />
+        <LoginForm loginError={auth.loginError} loading={loading} onSubmit={login} />
       </AuthFrame>
     );
   }
@@ -232,24 +191,14 @@ export function App() {
           setShowDashboard(false);
           setShowUserAdmin((value) => !value);
         }}
-        onLogout={logout}
+        onLogout={() => auth.logout()}
         onShowAddMod={() => setShowAddModDialog(true)}
         onSearchChange={mods.setSearchQuery}
         onSortChange={mods.setSortMode}
         onOpenMod={openMod}
       />
 
-      {showAddModDialog && (
-        <AddModDialog
-          modId={modId}
-          currentVersion={currentVersion}
-          loading={loading}
-          setModId={setModId}
-          setCurrentVersion={setCurrentVersion}
-          onClose={() => setShowAddModDialog(false)}
-          onSubmit={addMod}
-        />
-      )}
+      {showAddModDialog && <AddModDialog loading={loading} onClose={() => setShowAddModDialog(false)} onSubmit={addMod} />}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {showDashboard ? (
@@ -259,25 +208,9 @@ export function App() {
             users={admin.users}
             currentUser={auth.authUser}
             loading={loading}
-            newUsername={newUsername}
-            newPassword={newPassword}
-            newRole={newRole}
-            currentPassword={currentPassword}
-            newOwnPassword={newOwnPassword}
-            resetPasswords={resetPasswords}
-            showCreateUserDialog={showCreateUserDialog}
-            resetUserId={resetUserId}
             auditLogs={admin.auditLogs}
-            setNewUsername={setNewUsername}
-            setNewPassword={setNewPassword}
-            setNewRole={setNewRole}
-            setCurrentPassword={setCurrentPassword}
-            setNewOwnPassword={setNewOwnPassword}
-            setResetPasswords={setResetPasswords}
-            setShowCreateUserDialog={setShowCreateUserDialog}
-            setResetUserId={setResetUserId}
-            addUser={addUser}
             changeOwnPassword={changeOwnPassword}
+            createUser={createUser}
             updateUserAccount={updateUserAccount}
             resetUserPassword={resetUserPassword}
             loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}

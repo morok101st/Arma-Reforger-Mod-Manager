@@ -3,25 +3,27 @@ import React from "react";
 import { Dialog } from "./common";
 
 export function AddModDialog({
-  modId,
-  currentVersion,
   loading,
-  setModId,
-  setCurrentVersion,
   onClose,
   onSubmit,
 }: {
-  modId: string;
-  currentVersion: string;
   loading: boolean;
-  setModId: (value: string) => void;
-  setCurrentVersion: (value: string) => void;
   onClose: () => void;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (modId: string, currentVersion: string | null) => Promise<void>;
 }) {
+  const [modId, setModId] = React.useState("");
+  const [currentVersion, setCurrentVersion] = React.useState("");
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    await onSubmit(modId, currentVersion.trim() || null);
+    setModId("");
+    setCurrentVersion("");
+  }
+
   return (
     <Dialog title="Add mod" onClose={onClose}>
-      <form className="dialog-form" onSubmit={onSubmit}>
+      <form className="dialog-form" onSubmit={handleSubmit}>
         <label>
           Workshop ID
           <input value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />

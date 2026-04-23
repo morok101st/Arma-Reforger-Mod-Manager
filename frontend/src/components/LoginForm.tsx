@@ -2,24 +2,25 @@ import React from "react";
 import { Shield } from "lucide-react";
 
 export function LoginForm({
-  username,
-  password,
   loginError,
   loading,
-  setUsername,
-  setPassword,
   onSubmit,
 }: {
-  username: string;
-  password: string;
   loginError: string | null;
   loading: boolean;
-  setUsername: (value: string) => void;
-  setPassword: (value: string) => void;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (username: string, password: string) => Promise<void>;
 }) {
+  const [username, setUsername] = React.useState("");
+  const [password, setPassword] = React.useState("");
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    await onSubmit(username, password);
+    setPassword("");
+  }
+
   return (
-    <form className="login-form" onSubmit={onSubmit}>
+    <form className="login-form" onSubmit={handleSubmit}>
       <label>
         Username
         <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />

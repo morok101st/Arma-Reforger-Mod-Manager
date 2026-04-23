@@ -9,25 +9,9 @@ export function UserAdmin({
   users,
   currentUser,
   loading,
-  newUsername,
-  newPassword,
-  newRole,
-  currentPassword,
-  newOwnPassword,
-  resetPasswords,
-  showCreateUserDialog,
-  resetUserId,
   auditLogs,
-  setNewUsername,
-  setNewPassword,
-  setNewRole,
-  setCurrentPassword,
-  setNewOwnPassword,
-  setResetPasswords,
-  setShowCreateUserDialog,
-  setResetUserId,
-  addUser,
   changeOwnPassword,
+  createUser,
   updateUserAccount,
   resetUserPassword,
   loadAuditLogs,
@@ -35,32 +19,50 @@ export function UserAdmin({
   users: UserAccount[];
   currentUser: AuthUser;
   loading: boolean;
-  newUsername: string;
-  newPassword: string;
-  newRole: UserRole;
-  currentPassword: string;
-  newOwnPassword: string;
-  resetPasswords: Record<number, string>;
-  showCreateUserDialog: boolean;
-  resetUserId: number | null;
   auditLogs: AuditLog[];
-  setNewUsername: (value: string) => void;
-  setNewPassword: (value: string) => void;
-  setNewRole: (value: UserRole) => void;
-  setCurrentPassword: (value: string) => void;
-  setNewOwnPassword: (value: string) => void;
-  setResetPasswords: React.Dispatch<React.SetStateAction<Record<number, string>>>;
-  setShowCreateUserDialog: (value: boolean) => void;
-  setResetUserId: (value: number | null) => void;
-  addUser: (event: React.FormEvent) => void;
-  changeOwnPassword: (event: React.FormEvent) => void;
-  updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => void;
-  resetUserPassword: (userId: number) => void;
+  changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  createUser: (username: string, password: string, role: UserRole) => Promise<void>;
+  updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<void>;
+  resetUserPassword: (userId: number, password: string) => Promise<void>;
   loadAuditLogs: () => Promise<void>;
 }) {
-  const resetUser = users.find((user) => user.id === resetUserId) ?? null;
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newOwnPassword, setNewOwnPassword] = React.useState("");
+  const [newUsername, setNewUsername] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [newRole, setNewRole] = React.useState<UserRole>("user");
+  const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
+  const [resetUserId, setResetUserId] = React.useState<number | null>(null);
+  const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
   const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
+
+  const resetUser = users.find((user) => user.id === resetUserId) ?? null;
   const filteredAuditLogs = React.useMemo(() => filterAuditLogs(auditLogs, auditFilter), [auditLogs, auditFilter]);
+
+  async function handleOwnPasswordChange(event: React.FormEvent) {
+    event.preventDefault();
+    await changeOwnPassword(currentPassword, newOwnPassword);
+    setCurrentPassword("");
+    setNewOwnPassword("");
+  }
+
+  async function handleCreateUser(event: React.FormEvent) {
+    event.preventDefault();
+    if (!newUsername.trim() || !newPassword) return;
+    await createUser(newUsername.trim(), newPassword, newRole);
+    setNewUsername("");
+    setNewPassword("");
+    setNewRole("user");
+    setShowCreateUserDialog(false);
+  }
+
+  async function handleResetUserPassword(userId: number) {
+    const password = resetPasswords[userId] ?? "";
+    if (password.length < 12) return;
+    await resetUserPassword(userId, password);
+    setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
+    setResetUserId(null);
+  }
 
   return (
     <>
@@ -81,7 +83,7 @@ export function UserAdmin({
         </div>
       </section>
 
-      <form className="user-form" onSubmit={changeOwnPassword}>
+      <form className="user-form" onSubmit={handleOwnPasswordChange}>
         <label>
           Current password
           <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
@@ -121,14 +123,14 @@ export function UserAdmin({
                     {user.role} · {user.is_active ? "active" : "disabled"} · Last login {formatDate(user.last_login_at) ?? "never"}
                   </small>
                 </div>
-                <select value={user.role} disabled={loading} onChange={(event) => updateUserAccount(user.id, { role: event.target.value as UserRole })}>
+                <select value={user.role} disabled={loading} onChange={(event) => updateUserAccount(user.id, { role: event.target.value as UserRole }).catch(() => null)}>
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
                 <button
                   className="secondary-button compact"
                   disabled={loading || user.id === currentUser.id}
-                  onClick={() => updateUserAccount(user.id, { is_active: !user.is_active })}
+                  onClick={() => updateUserAccount(user.id, { is_active: !user.is_active }).catch(() => null)}
                   type="button"
                 >
                   {user.is_active ? "Disable" : "Enable"}
@@ -142,7 +144,7 @@ export function UserAdmin({
 
           {showCreateUserDialog && (
             <Dialog title="Create user" onClose={() => setShowCreateUserDialog(false)}>
-              <form className="dialog-form" onSubmit={addUser}>
+              <form className="dialog-form" onSubmit={handleCreateUser}>
                 <label>
                   Username
                   <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
@@ -189,7 +191,7 @@ export function UserAdmin({
                   <button
                     className="primary-button compact"
                     disabled={loading || (resetPasswords[resetUser.id] ?? "").length < 12}
-                    onClick={() => resetUserPassword(resetUser.id)}
+                    onClick={() => handleResetUserPassword(resetUser.id).catch(() => null)}
                     type="button"
                   >
                     Reset
