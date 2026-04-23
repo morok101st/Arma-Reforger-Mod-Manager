@@ -17,7 +17,6 @@ import {
   Shield,
   Trash2,
   TriangleAlert,
-  Users,
 } from "lucide-react";
 import "./styles.css";
 
@@ -519,7 +518,7 @@ function App() {
               }}
               title="Security"
             >
-              {authUser.role === "admin" ? <Users size={18} /> : <Shield size={18} />}
+              <Shield size={18} />
             </button>
             <button className="icon-button" onClick={logout} title={`Logout ${authUser.username}`}>
               <LogOut size={18} />
