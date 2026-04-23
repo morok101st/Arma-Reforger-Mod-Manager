@@ -7,7 +7,8 @@ from app.audit import list_audit_logs
 from app.router_helpers import audit_event, fail_with_audit
 from app.auth import hash_password, require_admin_user
 from app.models import User
-from app.schemas import AuditLogRead, PasswordReset, UserCreate, UserRead, UserUpdate
+from app.schemas_audit import AuditLogRead
+from app.schemas_users import PasswordReset, UserCreate, UserRead, UserUpdate
 from app.user_service import create_user, list_users, update_user
 
 router = APIRouter(tags=["admin"])

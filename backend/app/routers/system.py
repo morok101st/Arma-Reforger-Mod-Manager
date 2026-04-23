@@ -3,7 +3,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.auth import require_current_user
 from app.models import User
-from app.schemas import SchedulerStatusRead
+from app.schemas_scheduler import SchedulerStatusRead
 from app.scheduler import get_scheduler_status
 
 router = APIRouter()

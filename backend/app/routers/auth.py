@@ -20,7 +20,7 @@ from app.auth import (
     verify_password,
 )
 from app.models import User
-from app.schemas import AuthUserRead, LoginRequest, PasswordChange
+from app.schemas_auth import AuthUserRead, LoginRequest, PasswordChange
 from app.user_service import auth_user_to_read
 
 router = APIRouter(prefix="/auth", tags=["auth"])

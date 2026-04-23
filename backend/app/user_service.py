@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 from app.auth import SESSION_TTL_SECONDS, hash_password
 from app.models import User
-from app.schemas import UserCreate, UserRead, UserUpdate
+from app.schemas_auth import AuthUserRead
+from app.schemas_users import UserCreate, UserRead, UserUpdate
 
 
 def user_to_read(user: User) -> UserRead:
@@ -20,8 +21,6 @@ def user_to_read(user: User) -> UserRead:
 
 
 def auth_user_to_read(user: User, session_expires_at=None):
-    from app.schemas import AuthUserRead
-
     expires_at = session_expires_at
     if expires_at is None:
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=SESSION_TTL_SECONDS)

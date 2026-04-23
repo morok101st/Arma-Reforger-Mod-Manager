@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +17,7 @@ from app.scheduler import start_scheduler
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(bind=engine)
     migrate_schema(engine)
     with SessionLocal() as db:
@@ -28,26 +29,6 @@ async def lifespan(app: FastAPI):
         scheduler.shutdown(wait=False)
 
 
-settings = get_settings()
-app = FastAPI(
-    title="Arma Reforger Mod Manager API",
-    version="0.1.0",
-    root_path="/api",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
-    lifespan=lifespan,
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.middleware("http")
 async def security_middleware(request: Request, call_next):
     try:
         enforce_origin_for_unsafe_methods(request)
@@ -56,7 +37,30 @@ async def security_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-app.include_router(system_router)
-app.include_router(auth_router)
-app.include_router(admin_router)
-app.include_router(mods_router)
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(
+        title="Arma Reforger Mod Manager API",
+        version="0.1.0",
+        root_path="/api",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origin_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.middleware("http")(security_middleware)
+    app.include_router(system_router)
+    app.include_router(auth_router)
+    app.include_router(admin_router)
+    app.include_router(mods_router)
+    return app
+
+
+app = create_app()

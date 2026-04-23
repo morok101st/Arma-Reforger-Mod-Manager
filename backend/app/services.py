@@ -6,7 +6,7 @@ from app.mod_dependencies import track_and_refresh_dependencies_for_installed_mo
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import get_mod_or_none, get_mod_read, list_mods
 from app.models import Mod, UserMod
-from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
+from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.scraper import WorkshopScraper
 
 

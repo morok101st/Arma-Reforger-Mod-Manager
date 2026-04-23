@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Mod, User
 from app.router_helpers import audit_event, fail_with_audit
-from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
+from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
 
 
 def raise_mod_not_found(

@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import AuditLog, User
-from app.schemas import AuditLogRead
+from app.schemas_audit import AuditLogRead
 
 
 def record_audit(

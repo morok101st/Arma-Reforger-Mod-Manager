@@ -15,7 +15,7 @@ from app.mod_router_helpers import (
     raise_workshop_fetch_failed,
 )
 from app.models import User
-from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
+from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.services import create_mod, delete_mod, get_mod_or_none, get_mod_read, list_mods, refresh_all_mods, refresh_mod, update_user_mod
 
 router = APIRouter(tags=["mods"])

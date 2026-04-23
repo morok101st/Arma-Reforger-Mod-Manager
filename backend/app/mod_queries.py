@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Mod, ModVersion, UserMod
-from app.schemas import DependencyRead, ModRead, ModReferenceRead
+from app.schemas_mods import DependencyRead, ModRead, ModReferenceRead
 from app.versioning import compare_versions
 
 

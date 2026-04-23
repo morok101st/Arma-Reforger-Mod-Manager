@@ -2,7 +2,7 @@ import re
 
 from packaging.version import InvalidVersion, Version
 
-from app.schemas import ModStatus
+from app.schema_enums import ModStatus
 
 
 def normalize_version(value: str | None) -> str | None:
@@ -39,4 +39,3 @@ def _natural_parts(value: str) -> list[int | str]:
             continue
         parts.append(int(part) if part.isdigit() else part)
     return parts
-

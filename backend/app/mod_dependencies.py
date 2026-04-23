@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import Mod, UserMod
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import normalize_dependencies, normalize_match_value
-from app.schemas import DependencyRead
+from app.schemas_mods import DependencyRead
 from app.scraper import WorkshopScraper
 
 
