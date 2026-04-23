@@ -12,8 +12,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app import main as app_main
-from app.auth import get_settings as auth_get_settings, hash_password
+from app.auth import hash_password
 from app.database import Base, get_db
+from app.login_protection import _failed_logins
 from app.models import AuditLog, User
 from app.schemas import ModRead, ModStatus, RefreshResult, TrackingReason, UserModUpdate, UserRole
 
@@ -39,14 +40,35 @@ class ApiTestCase(unittest.TestCase):
                 workshop_base_url="https://example.invalid/workshop",
             ),
         )
+        self.session_settings_patcher = patch(
+            "app.session_auth.get_settings",
+            return_value=SimpleNamespace(
+                armm_secret_key="test-secret",
+                is_production=False,
+                workshop_base_url="https://example.invalid/workshop",
+            ),
+        )
+        self.bootstrap_settings_patcher = patch(
+            "app.admin_bootstrap.get_settings",
+            return_value=SimpleNamespace(
+                armm_secret_key="test-secret",
+                is_production=False,
+                armm_admin_username="admin",
+                armm_admin_password="very-secure-admin-pass",
+                workshop_base_url="https://example.invalid/workshop",
+            ),
+        )
         self.main_engine_patcher = patch.object(app_main, "engine", self.engine)
         self.main_session_patcher = patch.object(app_main, "SessionLocal", self.SessionLocal)
         self.main_scheduler_patcher = patch.object(app_main, "start_scheduler", return_value=DummyScheduler())
 
         self.settings_patcher.start()
+        self.session_settings_patcher.start()
+        self.bootstrap_settings_patcher.start()
         self.main_engine_patcher.start()
         self.main_session_patcher.start()
         self.main_scheduler_patcher.start()
+        _failed_logins.clear()
 
         def override_get_db():
             db = self.SessionLocal()
@@ -63,6 +85,8 @@ class ApiTestCase(unittest.TestCase):
         self.main_scheduler_patcher.stop()
         self.main_session_patcher.stop()
         self.main_engine_patcher.stop()
+        self.bootstrap_settings_patcher.stop()
+        self.session_settings_patcher.stop()
         self.settings_patcher.stop()
         Base.metadata.drop_all(self.engine)
         self.engine.dispose()
