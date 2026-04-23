@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -66,9 +67,9 @@ app = FastAPI(
     title="Arma Reforger Mod Manager API",
     version="0.1.0",
     root_path="/api",
-    docs_url=None if settings.is_production else "/docs",
-    redoc_url=None if settings.is_production else "/redoc",
-    openapi_url=None if settings.is_production else "/openapi.json",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -92,6 +93,16 @@ async def security_middleware(request: Request, call_next):
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/openapi.json", include_in_schema=False)
+def api_openapi(_: User = Depends(require_current_user)) -> dict[str, object]:
+    return app.openapi()
+
+
+@app.get("/docs", include_in_schema=False)
+def api_docs(_: User = Depends(require_current_user)):
+    return get_swagger_ui_html(openapi_url="/api/openapi.json", title=f"{app.title} - Swagger UI")
 
 
 @app.post("/auth/login", response_model=AuthUserRead)
