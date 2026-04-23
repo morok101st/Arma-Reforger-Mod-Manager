@@ -7,39 +7,10 @@ import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
-import { useAdminData } from "./hooks/useAdminData";
-import { useAppActions } from "./hooks/useAppActions";
-import { useAuth } from "./hooks/useAuth";
-import { useMods } from "./hooks/useMods";
-import { useWorkspaceView } from "./hooks/useWorkspaceView";
+import { useAppController } from "./hooks/useAppController";
 
 export function App() {
-  const detailRef = React.useRef<HTMLElement | null>(null);
-  const view = useWorkspaceView();
-
-  const auth = useAuth(view.showDashboardView);
-  const mods = useMods({ api: auth.api, authUser: auth.authUser });
-  const admin = useAdminData({ api: auth.api, authUser: auth.authUser });
-  const actions = useAppActions({
-    auth,
-    admin,
-    mods,
-    closeAddModDialog: view.closeAddModDialog,
-    openModView: view.openModView,
-    showDashboardView: view.showDashboardView,
-  });
-
-  React.useEffect(() => {
-    detailRef.current?.scrollTo({ top: 0 });
-  }, [mods.selected?.id, view.showDashboard, view.showUserAdmin]);
-
-  const openMod = React.useCallback(
-    (id: string) => {
-      mods.openMod(id);
-      view.openModView();
-    },
-    [mods, view],
-  );
+  const { detailRef, view, auth, mods, admin, actions, openMod } = useAppController();
 
   if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
