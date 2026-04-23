@@ -8,6 +8,7 @@ import { ModDetail } from "./components/ModDetail";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAdminData } from "./hooks/useAdminData";
+import { useAsyncAction } from "./hooks/useAsyncAction";
 import { useAuth } from "./hooks/useAuth";
 import { useMods } from "./hooks/useMods";
 import type { UserAccount } from "./types";
@@ -17,8 +18,6 @@ export function App() {
   const [showDashboard, setShowDashboard] = React.useState(true);
   const [showUserAdmin, setShowUserAdmin] = React.useState(false);
   const [showAddModDialog, setShowAddModDialog] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
   const auth = useAuth(
     React.useCallback(() => {
@@ -26,6 +25,7 @@ export function App() {
       setShowUserAdmin(false);
     }, []),
   );
+  const action = useAsyncAction();
 
   const mods = useMods({ api: auth.api, authUser: auth.authUser });
   const admin = useAdminData({ api: auth.api, authUser: auth.authUser });
@@ -35,121 +35,62 @@ export function App() {
   }, [mods.selected?.id, showDashboard, showUserAdmin]);
 
   async function login(username: string, password: string) {
-    setLoading(true);
-    try {
-      await auth.login(username.trim(), password);
-    } catch (err) {
+    await action.run(
+      async () => {
+        await auth.login(username.trim(), password);
+      },
+      { clearError: false, rethrow: true },
+    ).catch((err) => {
       auth.setLoginError(err instanceof Error ? err.message : "Unknown error.");
-    } finally {
-      setLoading(false);
-      auth.setAuthChecked(true);
-    }
+    });
+    auth.setAuthChecked(true);
   }
 
   async function changeOwnPassword(currentPassword: string, newOwnPassword: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      const user = await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
-      auth.setAuthUser(user);
-      await admin.loadAuditLogs();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await action.run(
+      async () => {
+        const user = await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
+        auth.setAuthUser(user);
+        await admin.loadAuditLogs();
+      },
+      { rethrow: true },
+    );
   }
 
   async function createUser(username: string, password: string, role: UserAccount["role"]) {
-    setLoading(true);
-    setError(null);
-    try {
-      await admin.createUser(username, password, role);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await action.run(() => admin.createUser(username, password, role), { rethrow: true });
   }
 
   async function updateUserAccount(userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) {
-    setLoading(true);
-    setError(null);
-    try {
-      await admin.updateUserAccount(userId, payload);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await action.run(() => admin.updateUserAccount(userId, payload), { rethrow: true });
   }
 
   async function resetUserPassword(userId: number, password: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      await admin.resetUserPassword(userId, password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await action.run(() => admin.resetUserPassword(userId, password), { rethrow: true });
   }
 
   async function addMod(modId: string, currentVersion: string | null) {
-    setLoading(true);
-    setError(null);
-    try {
-      await mods.addMod(modId.trim(), currentVersion);
-      setShowDashboard(false);
-      setShowUserAdmin(false);
-      setShowAddModDialog(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await action.run(
+      async () => {
+        await mods.addMod(modId.trim(), currentVersion);
+        setShowDashboard(false);
+        setShowUserAdmin(false);
+        setShowAddModDialog(false);
+      },
+      { rethrow: true },
+    );
   }
 
   async function refreshMod(id: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      await mods.refreshMod(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-    } finally {
-      setLoading(false);
-    }
+    await action.run(() => mods.refreshMod(id));
   }
 
   async function removeMod(id: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      await mods.removeMod(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-    } finally {
-      setLoading(false);
-    }
+    await action.run(() => mods.removeMod(id));
   }
 
   async function updateInstalledVersion(nextVersion = mods.installedVersionEdit) {
-    setLoading(true);
-    setError(null);
-    try {
-      await mods.updateInstalledVersion(nextVersion);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-    } finally {
-      setLoading(false);
-    }
+    await action.run(() => mods.updateInstalledVersion(nextVersion));
   }
 
   function openMod(id: string) {
@@ -165,7 +106,7 @@ export function App() {
   if (!auth.authUser) {
     return (
       <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
-        <LoginForm loginError={auth.loginError} loading={loading} onSubmit={login} />
+        <LoginForm loginError={auth.loginError} loading={action.loading} onSubmit={login} />
       </AuthFrame>
     );
   }
@@ -174,8 +115,8 @@ export function App() {
     <main className="app-shell">
       <Sidebar
         username={auth.authUser.username}
-        loading={loading}
-        error={error}
+        loading={action.loading}
+        error={action.error}
         showDashboard={showDashboard}
         showUserAdmin={showUserAdmin}
         searchQuery={mods.searchQuery}
@@ -198,7 +139,7 @@ export function App() {
         onOpenMod={openMod}
       />
 
-      {showAddModDialog && <AddModDialog loading={loading} onClose={() => setShowAddModDialog(false)} onSubmit={addMod} />}
+      {showAddModDialog && <AddModDialog loading={action.loading} onClose={() => setShowAddModDialog(false)} onSubmit={addMod} />}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {showDashboard ? (
@@ -207,7 +148,7 @@ export function App() {
           <UserAdmin
             users={admin.users}
             currentUser={auth.authUser}
-            loading={loading}
+            loading={action.loading}
             auditLogs={admin.auditLogs}
             changeOwnPassword={changeOwnPassword}
             createUser={createUser}
@@ -218,7 +159,7 @@ export function App() {
         ) : mods.selected ? (
           <ModDetail
             selected={mods.selected}
-            loading={loading}
+            loading={action.loading}
             saveState={mods.saveState}
             installedVersionEdit={mods.installedVersionEdit}
             setInstalledVersionEdit={mods.setInstalledVersionEdit}
