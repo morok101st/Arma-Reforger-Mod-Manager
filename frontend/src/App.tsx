@@ -6,18 +6,13 @@ import { Dashboard } from "./components/Dashboard";
 import { ModDetail } from "./components/ModDetail";
 import { Dialog, StatusIcon, UNKNOWN_VALUE } from "./components/common";
 import { UserAdmin } from "./components/UserAdmin";
-import { useApiClient } from "./hooks/useApiClient";
-import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "./lib/utils";
-import type { AuditLog, AuthUser, Mod, SchedulerStatus, SortMode, UserAccount, UserRole } from "./types";
+import { useAdminData } from "./hooks/useAdminData";
+import { useAuth } from "./hooks/useAuth";
+import { useMods } from "./hooks/useMods";
+import type { SortMode, UserAccount, UserRole } from "./types";
 
 export function App() {
   const detailRef = React.useRef<HTMLElement | null>(null);
-  const [authChecked, setAuthChecked] = React.useState(false);
-  const [authUser, setAuthUser] = React.useState<AuthUser | null>(null);
-  const [loginUsername, setLoginUsername] = React.useState("");
-  const [loginPassword, setLoginPassword] = React.useState("");
-  const [loginError, setLoginError] = React.useState<string | null>(null);
-  const [users, setUsers] = React.useState<UserAccount[]>([]);
   const [showDashboard, setShowDashboard] = React.useState(true);
   const [showUserAdmin, setShowUserAdmin] = React.useState(false);
   const [newUsername, setNewUsername] = React.useState("");
@@ -28,120 +23,44 @@ export function App() {
   const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
   const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
   const [resetUserId, setResetUserId] = React.useState<number | null>(null);
-  const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
-  const [schedulerStatus, setSchedulerStatus] = React.useState<SchedulerStatus | null>(null);
-  const [mods, setMods] = React.useState<Mod[]>([]);
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [modId, setModId] = React.useState("");
   const [currentVersion, setCurrentVersion] = React.useState("");
   const [showAddModDialog, setShowAddModDialog] = React.useState(false);
-  const [installedVersionEdit, setInstalledVersionEdit] = React.useState("");
-  const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
-  const [sortMode, setSortMode] = React.useState<SortMode>("updates");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [loginUsername, setLoginUsername] = React.useState("");
+  const [loginPassword, setLoginPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
   const [error, setError] = React.useState<string | null>(null);
 
-  const resetSession = React.useCallback(() => {
-    setAuthUser(null);
-    setMods([]);
-    setUsers([]);
-    setSchedulerStatus(null);
-    setShowDashboard(true);
-    setShowUserAdmin(false);
-  }, []);
-
-  const api = useApiClient(resetSession);
-
-  const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
-  const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
-  const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
-  const changelogEntries = React.useMemo(() => changelogEntriesFromVersions(selected?.versions ?? []), [selected?.versions]);
-  const trackedDependencyMatches = React.useMemo(
-    () => new Map((selected?.dependencies ?? []).map((dependency) => [dependencyKey(dependency), findTrackedDependency(dependency, mods)])),
-    [mods, selected?.dependencies],
+  const auth = useAuth(
+    React.useCallback(() => {
+      setShowDashboard(true);
+      setShowUserAdmin(false);
+    }, []),
   );
 
-  const loadMods = React.useCallback(async () => {
-    setError(null);
-    const data = await api.listMods();
-    setMods(data);
-    if (!selectedId && data.length > 0) setSelectedId(data[0].id);
-  }, [api, selectedId]);
-
-  const loadUsers = React.useCallback(async () => {
-    setUsers(await api.listUsers());
-  }, [api]);
-
-  const loadAuditLogs = React.useCallback(async () => {
-    setAuditLogs(await api.listAuditLogs());
-  }, [api]);
-
-  const loadSchedulerStatus = React.useCallback(async () => {
-    setSchedulerStatus(await api.getSchedulerStatus());
-  }, [api]);
-
-  React.useEffect(() => {
-    api
-      .checkSession()
-      .then((user) => {
-        setAuthUser(user);
-        setAuthChecked(true);
-      })
-      .catch((err: Error) => {
-        setLoginError(err.message);
-        setAuthChecked(true);
-      });
-  }, [api]);
-
-  React.useEffect(() => {
-    if (!authUser) return;
-    loadMods().catch((err: Error) => setError(err.message));
-    loadSchedulerStatus().catch((err: Error) => setError(err.message));
-  }, [authUser, loadMods, loadSchedulerStatus]);
-
-  React.useEffect(() => {
-    if (authUser?.role !== "admin") return;
-    loadUsers().catch((err: Error) => setError(err.message));
-    loadAuditLogs().catch((err: Error) => setError(err.message));
-  }, [authUser, loadUsers, loadAuditLogs]);
-
-  React.useEffect(() => {
-    setInstalledVersionEdit(selected?.current_version ?? "");
-  }, [selected?.id, selected?.current_version]);
-
-  React.useEffect(() => {
-    setSaveState("idle");
-  }, [selected?.id]);
-
-  React.useEffect(() => {
-    setExpandedChangelogVersions(changelogEntries[0] ? new Set([changelogEntries[0].version]) : new Set());
-  }, [selected?.id, changelogEntries]);
+  const mods = useMods({ api: auth.api, authUser: auth.authUser });
+  const admin = useAdminData({ api: auth.api, authUser: auth.authUser });
 
   React.useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
-  }, [selected?.id, showDashboard, showUserAdmin]);
+  }, [mods.selected?.id, showDashboard, showUserAdmin]);
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
-    setLoginError(null);
     try {
-      const user = await api.login(loginUsername.trim(), loginPassword);
-      setAuthUser(user);
+      await auth.login(loginUsername.trim(), loginPassword);
       setLoginPassword("");
     } catch (err) {
-      setLoginError(err instanceof Error ? err.message : "Unknown error.");
+      auth.setLoginError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
       setLoading(false);
-      setAuthChecked(true);
+      auth.setAuthChecked(true);
     }
   }
 
   async function logout() {
-    await api.logout().catch(() => null);
-    resetSession();
+    await auth.logout();
   }
 
   async function changeOwnPassword(event: React.FormEvent) {
@@ -149,11 +68,11 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const user = await api.changeOwnPassword(currentPassword, newOwnPassword);
-      setAuthUser(user);
+      const user = await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
+      auth.setAuthUser(user);
       setCurrentPassword("");
       setNewOwnPassword("");
-      await loadAuditLogs();
+      await admin.loadAuditLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -168,13 +87,11 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.createUser(newUsername.trim(), newPassword, newRole);
+      await admin.createUser(newUsername.trim(), newPassword, newRole);
       setNewUsername("");
       setNewPassword("");
       setNewRole("user");
       setShowCreateUserDialog(false);
-      await loadUsers();
-      await loadAuditLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -186,9 +103,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.updateUserAccount(userId, payload);
-      await loadUsers();
-      await loadAuditLogs();
+      await admin.updateUserAccount(userId, payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -203,11 +118,9 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.resetUserPassword(userId, password);
+      await admin.resetUserPassword(userId, password);
       setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
       setResetUserId(null);
-      await loadUsers();
-      await loadAuditLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -222,9 +135,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      const created = await api.createMod(modId.trim(), currentVersion.trim() || null);
-      await loadMods();
-      setSelectedId(created.id);
+      await mods.addMod(modId.trim(), currentVersion.trim() || null);
       setShowDashboard(false);
       setShowUserAdmin(false);
       setModId("");
@@ -241,8 +152,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.refreshMod(id);
-      await loadMods();
+      await mods.refreshMod(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -254,9 +164,7 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      await api.deleteMod(id);
-      setSelectedId(null);
-      await loadMods();
+      await mods.removeMod(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -264,19 +172,11 @@ export function App() {
     }
   }
 
-  async function updateInstalledVersion(nextVersion = installedVersionEdit) {
-    if (!selected) return;
-
-    const normalizedVersion = nextVersion.trim();
+  async function updateInstalledVersion(nextVersion = mods.installedVersionEdit) {
     setLoading(true);
     setError(null);
     try {
-      const updated = await api.updateInstalledVersion(selected.id, normalizedVersion || null);
-      await loadMods();
-      setSelectedId(updated.id);
-      setInstalledVersionEdit(updated.current_version ?? "");
-      setSaveState("saved");
-      window.setTimeout(() => setSaveState("idle"), 3000);
+      await mods.updateInstalledVersion(nextVersion);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -284,29 +184,17 @@ export function App() {
     }
   }
 
-  function toggleChangelogVersion(version: string) {
-    setExpandedChangelogVersions((previous) => {
-      const next = new Set(previous);
-      if (next.has(version)) {
-        next.delete(version);
-      } else {
-        next.add(version);
-      }
-      return next;
-    });
-  }
-
   function openMod(id: string) {
-    setSelectedId(id);
+    mods.openMod(id);
     setShowDashboard(false);
     setShowUserAdmin(false);
   }
 
-  if (!authChecked) {
+  if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
   }
 
-  if (!authUser) {
+  if (!auth.authUser) {
     return (
       <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
         <form className="login-form" onSubmit={login}>
@@ -318,7 +206,7 @@ export function App() {
             Password
             <input value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} type="password" autoComplete="current-password" />
           </label>
-          {loginError && <div className="error-box">{loginError}</div>}
+          {auth.loginError && <div className="error-box">{auth.loginError}</div>}
           <button className="primary-button" disabled={loading || !loginUsername.trim() || !loginPassword}>
             <Shield size={18} />
             Sign in
@@ -356,7 +244,7 @@ export function App() {
             >
               <Shield size={18} />
             </button>
-            <button className="icon-button" onClick={logout} title={`Logout ${authUser.username}`}>
+            <button className="icon-button" onClick={logout} title={`Logout ${auth.authUser.username}`}>
               <LogOut size={18} />
             </button>
           </div>
@@ -395,11 +283,11 @@ export function App() {
         <div className="filter-row">
           <label>
             Search
-            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Mod name or ID" />
+            <input value={mods.searchQuery} onChange={(event) => mods.setSearchQuery(event.target.value)} placeholder="Mod name or ID" />
           </label>
           <label className="sort-control">
             Sort by
-            <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+            <select value={mods.sortMode} onChange={(event) => mods.setSortMode(event.target.value as SortMode)}>
               <option value="updates">Updates first</option>
               <option value="name">Name</option>
               <option value="status">Status</option>
@@ -409,8 +297,8 @@ export function App() {
         </div>
 
         <div className="mod-list">
-          {sortedMods.map((mod) => (
-            <button key={mod.id} className={`mod-row ${!showDashboard && !showUserAdmin && selected?.id === mod.id ? "active" : ""}`} onClick={() => openMod(mod.id)}>
+          {mods.sortedMods.map((mod) => (
+            <button key={mod.id} className={`mod-row ${!showDashboard && !showUserAdmin && mods.selected?.id === mod.id ? "active" : ""}`} onClick={() => openMod(mod.id)}>
               <StatusIcon status={mod.status} />
               <span>
                 <strong>{mod.name ?? mod.id}</strong>
@@ -424,18 +312,18 @@ export function App() {
               {mod.pinned && <Pin size={14} />}
             </button>
           ))}
-          {mods.length === 0 && <p className="empty">No mods tracked yet.</p>}
-          {mods.length > 0 && sortedMods.length === 0 && <p className="empty">No mods match your search.</p>}
+          {mods.mods.length === 0 && <p className="empty">No mods tracked yet.</p>}
+          {mods.mods.length > 0 && mods.sortedMods.length === 0 && <p className="empty">No mods match your search.</p>}
         </div>
       </section>
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {showDashboard ? (
-          <Dashboard mods={mods} schedulerStatus={schedulerStatus} openMod={openMod} />
+          <Dashboard mods={mods.mods} schedulerStatus={mods.schedulerStatus} openMod={openMod} />
         ) : showUserAdmin ? (
           <UserAdmin
-            users={users}
-            currentUser={authUser}
+            users={admin.users}
+            currentUser={auth.authUser}
             loading={loading}
             newUsername={newUsername}
             newPassword={newPassword}
@@ -445,7 +333,7 @@ export function App() {
             resetPasswords={resetPasswords}
             showCreateUserDialog={showCreateUserDialog}
             resetUserId={resetUserId}
-            auditLogs={auditLogs}
+            auditLogs={admin.auditLogs}
             setNewUsername={setNewUsername}
             setNewPassword={setNewPassword}
             setNewRole={setNewRole}
@@ -458,22 +346,22 @@ export function App() {
             changeOwnPassword={changeOwnPassword}
             updateUserAccount={updateUserAccount}
             resetUserPassword={resetUserPassword}
-            loadAuditLogs={loadAuditLogs}
+            loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}
           />
-        ) : selected ? (
+        ) : mods.selected ? (
           <ModDetail
-            selected={selected}
+            selected={mods.selected}
             loading={loading}
-            saveState={saveState}
-            installedVersionEdit={installedVersionEdit}
-            setInstalledVersionEdit={setInstalledVersionEdit}
+            saveState={mods.saveState}
+            installedVersionEdit={mods.installedVersionEdit}
+            setInstalledVersionEdit={mods.setInstalledVersionEdit}
             refreshMod={refreshMod}
             removeMod={removeMod}
             updateInstalledVersion={updateInstalledVersion}
-            changelogEntries={changelogEntries}
-            expandedChangelogVersions={expandedChangelogVersions}
-            toggleChangelogVersion={toggleChangelogVersion}
-            trackedDependencyMatches={trackedDependencyMatches}
+            changelogEntries={mods.changelogEntries}
+            expandedChangelogVersions={mods.expandedChangelogVersions}
+            toggleChangelogVersion={mods.toggleChangelogVersion}
+            trackedDependencyMatches={mods.trackedDependencyMatches}
             openMod={openMod}
           />
         ) : (
