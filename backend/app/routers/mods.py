@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.audit import record_audit
+from app.router_helpers import audit_event, fail_with_audit
 from app.auth import require_current_user
 from app.models import User
 from app.schemas import ModCreate, ModRead, RefreshResult, UserModUpdate
@@ -25,7 +25,7 @@ async def api_create_mod(
 ) -> ModRead:
     try:
         created = await create_mod(db, payload)
-        record_audit(
+        audit_event(
             db,
             action="mod_created",
             entity_type="mod",
@@ -41,7 +41,7 @@ async def api_create_mod(
         )
         return created
     except Exception as exc:
-        record_audit(
+        audit_event(
             db,
             action="mod_create_failed",
             entity_type="mod",
@@ -76,7 +76,7 @@ async def api_update_user_mod(
     mod = await update_user_mod(db, mod_id, payload)
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
-    record_audit(
+    audit_event(
         db,
         action="mod_updated",
         entity_type="mod",
@@ -103,19 +103,20 @@ async def api_refresh_mod(
 ) -> ModRead:
     existing_mod = get_mod_or_none(db, mod_id)
     if not existing_mod:
-        record_audit(
+        fail_with_audit(
             db,
             action="mod_refresh_failed",
             entity_type="mod",
             entity_id=mod_id,
             actor=current_user,
             request=request,
-            detail={"reason": "mod_not_found", "mod_name": None},
+            status_code=404,
+            detail_message="Mod not found",
+            audit_detail={"reason": "mod_not_found", "mod_name": None},
         )
-        raise HTTPException(status_code=404, detail="Mod not found")
     try:
         refreshed = await refresh_mod(db, mod_id)
-        record_audit(
+        audit_event(
             db,
             action="mod_refreshed",
             entity_type="mod",
@@ -126,7 +127,7 @@ async def api_refresh_mod(
         )
         return refreshed
     except Exception as exc:
-        record_audit(
+        audit_event(
             db,
             action="mod_refresh_failed",
             entity_type="mod",
@@ -147,19 +148,20 @@ def api_delete_mod(
 ) -> Response:
     existing_mod = get_mod_or_none(db, mod_id)
     if not existing_mod:
-        record_audit(
+        fail_with_audit(
             db,
             action="mod_delete_failed",
             entity_type="mod",
             entity_id=mod_id,
             actor=current_user,
             request=request,
-            detail={"reason": "mod_not_found", "mod_name": None},
+            status_code=404,
+            detail_message="Mod not found",
+            audit_detail={"reason": "mod_not_found", "mod_name": None},
         )
-        raise HTTPException(status_code=404, detail="Mod not found")
     mod_name = existing_mod.name
     delete_mod(db, mod_id)
-    record_audit(
+    audit_event(
         db,
         action="mod_deleted",
         entity_type="mod",
@@ -178,7 +180,7 @@ async def api_refresh_all(
     current_user: User = Depends(require_current_user),
 ) -> RefreshResult:
     result = await refresh_all_mods(db)
-    record_audit(
+    audit_event(
         db,
         action="mods_refreshed",
         entity_type="mod",

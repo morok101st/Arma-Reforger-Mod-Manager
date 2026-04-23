@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.audit import record_audit
+from app.router_helpers import audit_event
 from app.auth import (
     SESSION_COOKIE_NAME,
     authenticate_user,
@@ -32,7 +32,7 @@ def api_login(payload: LoginRequest, request: Request, response: Response, db: S
     try:
         check_login_rate_limit(request, username)
     except HTTPException:
-        record_audit(
+        audit_event(
             db,
             action="login_rate_limited",
             entity_type="auth",
@@ -45,7 +45,7 @@ def api_login(payload: LoginRequest, request: Request, response: Response, db: S
     if not user:
         attempted_user = db.scalar(select(User).where(func.lower(User.username) == username.casefold()))
         record_failed_login(request, username)
-        record_audit(
+        audit_event(
             db,
             action="login_failed",
             entity_type="auth",
@@ -60,7 +60,7 @@ def api_login(payload: LoginRequest, request: Request, response: Response, db: S
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
     clear_failed_logins(request, username)
     set_session_cookie(response, user)
-    record_audit(
+    audit_event(
         db,
         action="login_success",
         entity_type="auth",
@@ -79,7 +79,7 @@ def api_logout(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
 ) -> Response:
-    record_audit(
+    audit_event(
         db,
         action="logout",
         entity_type="auth",
@@ -110,7 +110,7 @@ def api_change_password(
     session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
 ) -> AuthUserRead:
     if not verify_password(payload.current_password, current_user.password_hash):
-        record_audit(
+        audit_event(
             db,
             action="password_change_failed",
             entity_type="user",
@@ -123,7 +123,7 @@ def api_change_password(
     current_user.password_hash = hash_password(payload.new_password)
     db.commit()
     db.refresh(current_user)
-    record_audit(
+    audit_event(
         db,
         action="password_changed",
         entity_type="user",

@@ -3,7 +3,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.audit import list_audit_logs, record_audit
+from app.audit import list_audit_logs
+from app.router_helpers import audit_event, fail_with_audit
 from app.auth import hash_password, require_admin_user
 from app.models import User
 from app.schemas import AuditLogRead, PasswordReset, UserCreate, UserRead, UserUpdate
@@ -29,7 +30,7 @@ def api_create_user(
 ) -> UserRead:
     try:
         created = create_user(db, payload)
-        record_audit(
+        audit_event(
             db,
             action="user_created",
             entity_type="user",
@@ -40,7 +41,7 @@ def api_create_user(
         )
         return created
     except ValueError as exc:
-        record_audit(
+        audit_event(
             db,
             action="user_create_failed",
             entity_type="user",
@@ -64,21 +65,22 @@ def api_update_user(
     old_role = target.role if target else None
     old_active = target.is_active if target else None
     if user_id == current_user.id and payload.is_active is False:
-        record_audit(
+        fail_with_audit(
             db,
             action="user_update_failed",
             entity_type="user",
             entity_id=str(user_id),
             actor=current_user,
             request=request,
-            detail={"reason": "cannot_disable_current_user"},
+            status_code=400,
+            detail_message="Cannot disable current user",
+            audit_detail={"reason": "cannot_disable_current_user"},
         )
-        raise HTTPException(status_code=400, detail="Cannot disable current user")
     if payload.is_active is False or payload.role is not None:
         try:
             _ensure_admin_change_is_safe(db, user_id, payload)
         except HTTPException as exc:
-            record_audit(
+            audit_event(
                 db,
                 action="user_update_failed",
                 entity_type="user",
@@ -90,17 +92,18 @@ def api_update_user(
             raise
     updated = update_user(db, user_id, payload)
     if not updated:
-        record_audit(
+        fail_with_audit(
             db,
             action="user_update_failed",
             entity_type="user",
             entity_id=str(user_id),
             actor=current_user,
             request=request,
-            detail={"reason": "user_not_found"},
+            status_code=404,
+            detail_message="User not found",
+            audit_detail={"reason": "user_not_found"},
         )
-        raise HTTPException(status_code=404, detail="User not found")
-    record_audit(
+    audit_event(
         db,
         action="user_updated",
         entity_type="user",
@@ -131,20 +134,21 @@ def api_reset_user_password(
 ) -> UserRead:
     target = db.get(User, user_id)
     if not target:
-        record_audit(
+        fail_with_audit(
             db,
             action="password_reset_failed",
             entity_type="user",
             entity_id=str(user_id),
             actor=current_user,
             request=request,
-            detail={"reason": "user_not_found"},
+            status_code=404,
+            detail_message="User not found",
+            audit_detail={"reason": "user_not_found"},
         )
-        raise HTTPException(status_code=404, detail="User not found")
     target.password_hash = hash_password(payload.password)
     db.commit()
     db.refresh(target)
-    record_audit(
+    audit_event(
         db,
         action="password_reset",
         entity_type="user",
