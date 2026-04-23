@@ -112,7 +112,14 @@ def set_session_cookie(response: Response, user: User) -> None:
 
 
 def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    settings = get_settings()
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=settings.is_production,
+        samesite="lax",
+        httponly=True,
+    )
 
 
 def bootstrap_admin(db: Session) -> None:

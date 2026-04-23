@@ -168,7 +168,8 @@ def api_logout(
         detail={"username": current_user.username},
     )
     clear_session_cookie(response)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @app.get("/auth/me", response_model=AuthUserRead)
