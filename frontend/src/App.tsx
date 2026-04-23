@@ -8,96 +8,38 @@ import { ModDetail } from "./components/ModDetail";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAdminData } from "./hooks/useAdminData";
-import { useAsyncAction } from "./hooks/useAsyncAction";
+import { useAppActions } from "./hooks/useAppActions";
 import { useAuth } from "./hooks/useAuth";
 import { useMods } from "./hooks/useMods";
-import type { UserAccount } from "./types";
+import { useWorkspaceView } from "./hooks/useWorkspaceView";
 
 export function App() {
   const detailRef = React.useRef<HTMLElement | null>(null);
-  const [showDashboard, setShowDashboard] = React.useState(true);
-  const [showUserAdmin, setShowUserAdmin] = React.useState(false);
-  const [showAddModDialog, setShowAddModDialog] = React.useState(false);
+  const view = useWorkspaceView();
 
-  const auth = useAuth(
-    React.useCallback(() => {
-      setShowDashboard(true);
-      setShowUserAdmin(false);
-    }, []),
-  );
-  const action = useAsyncAction();
-
+  const auth = useAuth(view.showDashboardView);
   const mods = useMods({ api: auth.api, authUser: auth.authUser });
   const admin = useAdminData({ api: auth.api, authUser: auth.authUser });
+  const actions = useAppActions({
+    auth,
+    admin,
+    mods,
+    closeAddModDialog: view.closeAddModDialog,
+    openModView: view.openModView,
+    showDashboardView: view.showDashboardView,
+  });
 
   React.useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
-  }, [mods.selected?.id, showDashboard, showUserAdmin]);
+  }, [mods.selected?.id, view.showDashboard, view.showUserAdmin]);
 
-  async function login(username: string, password: string) {
-    await action.run(
-      async () => {
-        await auth.login(username.trim(), password);
-      },
-      { clearError: false, rethrow: true },
-    ).catch((err) => {
-      auth.setLoginError(err instanceof Error ? err.message : "Unknown error.");
-    });
-    auth.setAuthChecked(true);
-  }
-
-  async function changeOwnPassword(currentPassword: string, newOwnPassword: string) {
-    await action.run(
-      async () => {
-        const user = await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
-        auth.setAuthUser(user);
-        await admin.loadAuditLogs();
-      },
-      { rethrow: true },
-    );
-  }
-
-  async function createUser(username: string, password: string, role: UserAccount["role"]) {
-    await action.run(() => admin.createUser(username, password, role), { rethrow: true });
-  }
-
-  async function updateUserAccount(userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) {
-    await action.run(() => admin.updateUserAccount(userId, payload), { rethrow: true });
-  }
-
-  async function resetUserPassword(userId: number, password: string) {
-    await action.run(() => admin.resetUserPassword(userId, password), { rethrow: true });
-  }
-
-  async function addMod(modId: string, currentVersion: string | null) {
-    await action.run(
-      async () => {
-        await mods.addMod(modId.trim(), currentVersion);
-        setShowDashboard(false);
-        setShowUserAdmin(false);
-        setShowAddModDialog(false);
-      },
-      { rethrow: true },
-    );
-  }
-
-  async function refreshMod(id: string) {
-    await action.run(() => mods.refreshMod(id));
-  }
-
-  async function removeMod(id: string) {
-    await action.run(() => mods.removeMod(id));
-  }
-
-  async function updateInstalledVersion(nextVersion = mods.installedVersionEdit) {
-    await action.run(() => mods.updateInstalledVersion(nextVersion));
-  }
-
-  function openMod(id: string) {
-    mods.openMod(id);
-    setShowDashboard(false);
-    setShowUserAdmin(false);
-  }
+  const openMod = React.useCallback(
+    (id: string) => {
+      mods.openMod(id);
+      view.openModView();
+    },
+    [mods, view],
+  );
 
   if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
@@ -106,7 +48,7 @@ export function App() {
   if (!auth.authUser) {
     return (
       <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
-        <LoginForm loginError={auth.loginError} loading={action.loading} onSubmit={login} />
+        <LoginForm loginError={auth.loginError} loading={actions.loading} onSubmit={actions.login} />
       </AuthFrame>
     );
   }
@@ -115,57 +57,51 @@ export function App() {
     <main className="app-shell">
       <Sidebar
         username={auth.authUser.username}
-        loading={action.loading}
-        error={action.error}
-        showDashboard={showDashboard}
-        showUserAdmin={showUserAdmin}
+        loading={actions.loading}
+        error={actions.error}
+        showDashboard={view.showDashboard}
+        showUserAdmin={view.showUserAdmin}
         searchQuery={mods.searchQuery}
         sortMode={mods.sortMode}
         mods={mods.sortedMods}
         totalModsCount={mods.mods.length}
         selectedModId={mods.selected?.id ?? null}
-        onShowDashboard={() => {
-          setShowDashboard(true);
-          setShowUserAdmin(false);
-        }}
-        onToggleSecurity={() => {
-          setShowDashboard(false);
-          setShowUserAdmin((value) => !value);
-        }}
-        onLogout={() => auth.logout()}
-        onShowAddMod={() => setShowAddModDialog(true)}
+        onShowDashboard={view.showDashboardView}
+        onToggleSecurity={view.toggleSecurityView}
+        onLogout={actions.logout}
+        onShowAddMod={view.openAddModDialog}
         onSearchChange={mods.setSearchQuery}
         onSortChange={mods.setSortMode}
         onOpenMod={openMod}
       />
 
-      {showAddModDialog && <AddModDialog loading={action.loading} onClose={() => setShowAddModDialog(false)} onSubmit={addMod} />}
+      {view.showAddModDialog && <AddModDialog loading={actions.loading} onClose={view.closeAddModDialog} onSubmit={actions.addMod} />}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
-        {showDashboard ? (
+        {view.showDashboard ? (
           <Dashboard mods={mods.mods} schedulerStatus={mods.schedulerStatus} openMod={openMod} />
-        ) : showUserAdmin ? (
+        ) : view.showUserAdmin ? (
           <UserAdmin
             users={admin.users}
             currentUser={auth.authUser}
-            loading={action.loading}
+            loading={actions.loading}
             auditLogs={admin.auditLogs}
-            changeOwnPassword={changeOwnPassword}
-            createUser={createUser}
-            updateUserAccount={updateUserAccount}
-            resetUserPassword={resetUserPassword}
+            changeOwnPassword={actions.changeOwnPassword}
+            createUser={actions.createUser}
+            updateUserAccount={actions.updateUserAccount}
+            resetUserPassword={actions.resetUserPassword}
             loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}
           />
         ) : mods.selected ? (
           <ModDetail
             selected={mods.selected}
-            loading={action.loading}
+            loading={actions.loading}
             saveState={mods.saveState}
             installedVersionEdit={mods.installedVersionEdit}
             setInstalledVersionEdit={mods.setInstalledVersionEdit}
-            refreshMod={refreshMod}
-            removeMod={removeMod}
-            updateInstalledVersion={updateInstalledVersion}
+            refreshMod={actions.refreshMod}
+            removeMod={actions.removeMod}
+            updateInstalledVersion={actions.updateInstalledVersion}
             changelogEntries={mods.changelogEntries}
             expandedChangelogVersions={mods.expandedChangelogVersions}
             toggleChangelogVersion={mods.toggleChangelogVersion}
