@@ -6,18 +6,22 @@ import { Dialog } from "./common";
 
 export function ModsetManagement({
   modsets,
+  activeModsetId,
   loading,
   error,
   createModset,
   updateModset,
   deleteModset,
+  activateAndOpenModset,
 }: {
   modsets: Modset[];
+  activeModsetId: number | null;
   loading: boolean;
   error: string | null;
   createModset: (name: string) => Promise<void>;
   updateModset: (modsetId: number, name: string) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
+  activateAndOpenModset: (modsetId: number) => Promise<void>;
 }) {
   const [newName, setNewName] = React.useState("");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -75,21 +79,44 @@ export function ModsetManagement({
       <div className="user-list">
         {modsets.map((modset) => {
           return (
-            <article className="user-row modset-edit-row" key={modset.id}>
+            <article
+              className={`user-row modset-edit-row ${modset.id === activeModsetId ? "active" : ""}`}
+              key={modset.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => activateAndOpenModset(modset.id).catch(() => null)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  activateAndOpenModset(modset.id).catch(() => null);
+                }
+              }}
+            >
               <div>
                 <strong>{modset.name}</strong>
                 <small>
                   {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"}
                 </small>
               </div>
-              <button className="secondary-button compact" disabled={loading} onClick={() => openEditDialog(modset)} type="button">
+              <button
+                className="secondary-button compact"
+                disabled={loading}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openEditDialog(modset);
+                }}
+                type="button"
+              >
                 <Pencil size={16} />
                 Edit
               </button>
               <button
                 className="secondary-button compact"
                 disabled={loading || modsets.length <= 1}
-                onClick={() => deleteModset(modset.id).catch(() => null)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  deleteModset(modset.id).catch(() => null);
+                }}
                 type="button"
               >
                 Delete

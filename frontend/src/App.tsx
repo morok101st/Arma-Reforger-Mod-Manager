@@ -59,11 +59,16 @@ export function App() {
         ) : view.showModsetAdmin ? (
           <ModsetManagement
             modsets={modsets.modsets}
+            activeModsetId={modsets.activeModsetId}
             loading={actions.loading}
             error={actions.error}
             createModset={actions.createModset}
             updateModset={actions.updateModset}
             deleteModset={actions.deleteModset}
+            activateAndOpenModset={async (modsetId) => {
+              await actions.activateModset(modsetId);
+              view.openModView();
+            }}
           />
         ) : view.showUserAdmin ? (
           <UserAdmin

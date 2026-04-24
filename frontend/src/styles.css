@@ -535,7 +535,14 @@ button:disabled {
 }
 
 .modset-edit-row {
+  cursor: pointer;
   grid-template-columns: minmax(200px, 1fr) auto auto;
+}
+
+.modset-edit-row.active {
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: inset 3px 0 0 var(--md-sys-color-primary);
 }
 
 .status-band.update_available {
