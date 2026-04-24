@@ -1,9 +1,9 @@
 import React from "react";
-import { TriangleAlert } from "lucide-react";
+import { Pencil, Plus, TriangleAlert } from "lucide-react";
 
 import { getDashboardStats } from "../lib/utils";
 import type { Mod, Modset } from "../types";
-import { Info } from "./common";
+import { Dialog, Info } from "./common";
 
 export function ModsetManagement({
   modsets,
@@ -27,11 +27,11 @@ export function ModsetManagement({
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
   const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? null;
   const [newName, setNewName] = React.useState("");
-  const [renameValues, setRenameValues] = React.useState<Record<number, string>>({});
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+  const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
+  const [editName, setEditName] = React.useState("");
 
-  React.useEffect(() => {
-    setRenameValues(Object.fromEntries(modsets.map((modset) => [modset.id, modset.name])));
-  }, [modsets]);
+  const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -39,6 +39,22 @@ export function ModsetManagement({
     if (!name) return;
     await createModset(name);
     setNewName("");
+    setShowCreateDialog(false);
+  }
+
+  async function handleEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editModset) return;
+    const name = editName.trim();
+    if (!name || name === editModset.name) return;
+    await updateModset(editModset.id, name);
+    setEditModsetId(null);
+    setEditName("");
+  }
+
+  function openEditDialog(modset: Modset) {
+    setEditModsetId(modset.id);
+    setEditName(modset.name);
   }
 
   return (
@@ -68,18 +84,11 @@ export function ModsetManagement({
       <section className="dashboard-card content-section">
         <div className="section-title-row">
           <h3>Create modset</h3>
+          <button className="primary-button compact" onClick={() => setShowCreateDialog(true)} type="button">
+            <Plus size={18} />
+            Create modset
+          </button>
         </div>
-        <form className="dialog-form" onSubmit={handleCreate}>
-          <label>
-            Name
-            <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
-          </label>
-          <div className="dialog-actions">
-            <button className="primary-button compact" disabled={loading || !newName.trim()}>
-              Create
-            </button>
-          </div>
-        </form>
       </section>
 
       <section className="dashboard-card content-section">
@@ -88,21 +97,21 @@ export function ModsetManagement({
         </div>
         <div className="modset-list">
           {modsets.map((modset) => {
-            const value = renameValues[modset.id] ?? "";
             return (
               <article className="modset-row" key={modset.id}>
-                <label>
-                  Name
-                  <input value={value} onChange={(event) => setRenameValues((previous) => ({ ...previous, [modset.id]: event.target.value }))} />
-                </label>
+                <div>
+                  <strong>{modset.name}</strong>
+                  <small>{modset.id === activeModsetId ? "active" : "inactive"}</small>
+                </div>
                 <div className="modset-row-actions">
                   <button
                     className="secondary-button compact"
-                    disabled={loading || !value.trim() || value.trim() === modset.name}
-                    onClick={() => updateModset(modset.id, value.trim()).catch(() => null)}
+                    disabled={loading}
+                    onClick={() => openEditDialog(modset)}
                     type="button"
                   >
-                    Rename
+                    <Pencil size={16} />
+                    Edit
                   </button>
                   <button
                     className="secondary-button compact"
@@ -118,6 +127,44 @@ export function ModsetManagement({
           })}
         </div>
       </section>
+
+      {showCreateDialog && (
+        <Dialog title="Create modset" onClose={() => setShowCreateDialog(false)}>
+          <form className="dialog-form" onSubmit={handleCreate}>
+            <label>
+              Name
+              <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
+            </label>
+            <div className="dialog-actions">
+              <button className="secondary-button compact" onClick={() => setShowCreateDialog(false)} type="button">
+                Cancel
+              </button>
+              <button className="primary-button compact" disabled={loading || !newName.trim()}>
+                Create
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+
+      {editModset && (
+        <Dialog title={`Edit modset ${editModset.name}`} onClose={() => setEditModsetId(null)}>
+          <form className="dialog-form" onSubmit={handleEdit}>
+            <label>
+              Name
+              <input value={editName} onChange={(event) => setEditName(event.target.value)} />
+            </label>
+            <div className="dialog-actions">
+              <button className="secondary-button compact" onClick={() => setEditModsetId(null)} type="button">
+                Cancel
+              </button>
+              <button className="primary-button compact" disabled={loading || !editName.trim() || editName.trim() === editModset.name}>
+                Save
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </>
   );
 }
