@@ -148,6 +148,19 @@ h3 {
   color: #a63333;
 }
 
+.icon-button.subtle-danger {
+  background: transparent;
+  border-color: transparent;
+  color: #a63333;
+}
+
+.icon-button.subtle-danger:hover {
+  background: #fff3f1;
+  border-color: #efc3bc;
+  color: #8f2a2a;
+  box-shadow: none;
+}
+
 .icon-button.logout-button {
   background: #fff3f1;
   border-color: #efc3bc;
@@ -534,6 +547,13 @@ button:disabled {
   gap: 12px;
   grid-template-columns: minmax(160px, 1fr) minmax(120px, 160px) auto auto;
   padding: 14px;
+}
+
+.row-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-self: end;
 }
 
 .user-row strong,

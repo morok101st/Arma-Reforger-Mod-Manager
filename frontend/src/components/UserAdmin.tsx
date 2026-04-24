@@ -145,18 +145,21 @@ export function UserAdmin({
                 >
                   {user.is_active ? "Disable" : "Enable"}
                 </button>
-                <button className="secondary-button compact" disabled={loading} onClick={() => setResetUserId(user.id)} type="button">
-                  Reset Password
-                </button>
-                <button
-                  className="secondary-button compact danger-button"
-                  disabled={loading || user.id === currentUser.id}
-                  onClick={() => setDeleteUserId(user.id)}
-                  type="button"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
+                <div className="row-actions">
+                  <button className="secondary-button compact" disabled={loading} onClick={() => setResetUserId(user.id)} type="button">
+                    Reset Password
+                  </button>
+                  <button
+                    className="icon-button subtle-danger"
+                    disabled={loading || user.id === currentUser.id}
+                    onClick={() => setDeleteUserId(user.id)}
+                    type="button"
+                    title={`Delete ${user.username}`}
+                    aria-label={`Delete ${user.username}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </article>
             ))}
           </div>
