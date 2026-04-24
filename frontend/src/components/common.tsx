@@ -1,5 +1,5 @@
 import React from "react";
-import { BadgeInfo, Check, CheckCircle2, ChevronDown, RefreshCw, TriangleAlert } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, Info as InfoIcon, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { UNKNOWN_VALUE, statusLabel } from "../lib/utils";
 import type { ModStatus } from "../types";
@@ -21,7 +21,7 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
 }
 
 export function StatusIcon({ status, noInstalledVersion = false }: { status: ModStatus; noInstalledVersion?: boolean }) {
-  if (noInstalledVersion) return <BadgeInfo className="status-icon no-installed" size={20} />;
+  if (noInstalledVersion) return <InfoIcon className="status-icon no-installed" size={20} />;
   if (status === "UPDATE_AVAILABLE") return <TriangleAlert className="status-icon warn" size={20} />;
   if (status === "UP_TO_DATE") return <CheckCircle2 className="status-icon ok" size={20} />;
   return <RefreshCw className="status-icon unknown" size={20} />;
