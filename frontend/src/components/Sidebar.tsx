@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, LogOut, Pin, Plus, Shield } from "lucide-react";
+import { Home, Layers3, LogOut, Pin, Plus, Shield } from "lucide-react";
 
 import { StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, Modset, SortMode } from "../types";
@@ -9,6 +9,7 @@ export function Sidebar({
   loading,
   error,
   showDashboard,
+  showModsetAdmin,
   showUserAdmin,
   modsets,
   activeModsetId,
@@ -18,10 +19,10 @@ export function Sidebar({
   totalModsCount,
   selectedModId,
   onShowDashboard,
+  onShowModsetAdmin,
   onToggleSecurity,
   onLogout,
   onShowAddMod,
-  onOpenModsetDialog,
   onActivateModset,
   onSearchChange,
   onSortChange,
@@ -31,6 +32,7 @@ export function Sidebar({
   loading: boolean;
   error: string | null;
   showDashboard: boolean;
+  showModsetAdmin: boolean;
   showUserAdmin: boolean;
   modsets: Modset[];
   activeModsetId: number | null;
@@ -40,10 +42,10 @@ export function Sidebar({
   totalModsCount: number;
   selectedModId: string | null;
   onShowDashboard: () => void;
+  onShowModsetAdmin: () => void;
   onToggleSecurity: () => void;
   onLogout: () => void;
   onShowAddMod: () => void;
-  onOpenModsetDialog: () => void;
   onActivateModset: (modsetId: number) => void;
   onSearchChange: (value: string) => void;
   onSortChange: (value: SortMode) => void;
@@ -65,6 +67,14 @@ export function Sidebar({
             <Home size={18} />
           </button>
           <button
+            className={`icon-button ${showModsetAdmin ? "active" : ""}`}
+            onClick={onShowModsetAdmin}
+            title="Modsets"
+            aria-pressed={showModsetAdmin}
+          >
+            <Layers3 size={18} />
+          </button>
+          <button
             className={`icon-button ${showUserAdmin ? "active" : ""}`}
             onClick={onToggleSecurity}
             title="Security"
@@ -83,7 +93,7 @@ export function Sidebar({
         Add mod
       </button>
 
-      <div className="filter-row">
+      <div className="content-section">
         <label className="sort-control">
           Modset
           <select value={activeModsetId ?? ""} onChange={(event) => onActivateModset(Number(event.target.value))} disabled={loading || modsets.length === 0}>
@@ -94,9 +104,6 @@ export function Sidebar({
             ))}
           </select>
         </label>
-        <button className="secondary-button compact" onClick={onOpenModsetDialog} type="button" disabled={loading}>
-          Manage
-        </button>
       </div>
 
       {error && <div className="error-box">{error}</div>}
@@ -119,7 +126,11 @@ export function Sidebar({
 
       <div className="mod-list">
         {mods.map((mod) => (
-          <button key={mod.id} className={`mod-row ${!showDashboard && !showUserAdmin && selectedModId === mod.id ? "active" : ""}`} onClick={() => onOpenMod(mod.id)}>
+          <button
+            key={mod.id}
+            className={`mod-row ${!showDashboard && !showModsetAdmin && !showUserAdmin && selectedModId === mod.id ? "active" : ""}`}
+            onClick={() => onOpenMod(mod.id)}
+          >
             <StatusIcon status={mod.status} />
             <span>
               <strong>{mod.name ?? mod.id}</strong>

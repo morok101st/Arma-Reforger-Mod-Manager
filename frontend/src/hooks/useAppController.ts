@@ -26,7 +26,7 @@ export function useAppController() {
 
   React.useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
-  }, [mods.selected?.id, view.showDashboard, view.showUserAdmin]);
+  }, [mods.selected?.id, view.showDashboard, view.showModsetAdmin, view.showUserAdmin]);
 
   const openMod = React.useCallback(
     (id: string) => {
