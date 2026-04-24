@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app import main as app_main
+from app.models import Mod, UserMod
 from tests.support import ApiTestCase
 
 
@@ -36,3 +37,23 @@ class ModsetsApiTestCase(ApiTestCase):
             after_ids = [entry["id"] for entry in after.json()]
             self.assertIn(default_id, after_ids)
             self.assertNotIn(modset_id, after_ids)
+
+    def test_delete_non_empty_modset_is_blocked(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            created = client.post("/modsets", json={"name": "Server C"})
+            self.assertEqual(created.status_code, 201)
+            modset_id = created.json()["id"]
+
+            activated = client.post(f"/modsets/{modset_id}/activate")
+            self.assertEqual(activated.status_code, 200)
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="MOD123", name="Test Mod"))
+                db.add(UserMod(modset_id=modset_id, mod_id="MOD123", current_version=None, pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            delete_response = client.delete(f"/modsets/{modset_id}")
+            self.assertEqual(delete_response.status_code, 400)
+            self.assertIn("Cannot delete modset with tracked mods", delete_response.json().get("detail", ""))
