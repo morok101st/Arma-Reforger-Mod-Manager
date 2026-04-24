@@ -78,7 +78,9 @@ export function ModsetManagement({
             <article className="user-row modset-edit-row" key={modset.id}>
               <div>
                 <strong>{modset.name}</strong>
-                <small>ID {modset.id}</small>
+                <small>
+                  {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"}
+                </small>
               </div>
               <button className="secondary-button compact" disabled={loading} onClick={() => openEditDialog(modset)} type="button">
                 <Pencil size={16} />

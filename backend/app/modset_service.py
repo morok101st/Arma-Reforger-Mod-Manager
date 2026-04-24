@@ -28,8 +28,28 @@ class ModSetNotEmptyError(ModSetError):
 
 
 def list_modsets(db: Session) -> list[ModSetRead]:
-    modsets = db.scalars(select(ModSet).order_by(func.lower(ModSet.name), ModSet.id)).all()
-    return [ModSetRead.model_validate(modset) for modset in modsets]
+    rows = db.execute(
+        select(
+            ModSet.id,
+            ModSet.name,
+            ModSet.created_at,
+            ModSet.updated_at,
+            func.count(UserMod.mod_id).label("tracked_mods_count"),
+        )
+        .outerjoin(UserMod, UserMod.modset_id == ModSet.id)
+        .group_by(ModSet.id, ModSet.name, ModSet.created_at, ModSet.updated_at)
+        .order_by(func.lower(ModSet.name), ModSet.id)
+    ).all()
+    return [
+        ModSetRead(
+            id=row.id,
+            name=row.name,
+            tracked_mods_count=int(row.tracked_mods_count or 0),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
 
 
 def ensure_default_modset(db: Session) -> ModSet:
@@ -73,7 +93,7 @@ def create_modset(db: Session, payload: ModSetCreate) -> ModSetRead:
     db.add(modset)
     db.commit()
     db.refresh(modset)
-    return ModSetRead.model_validate(modset)
+    return _modset_to_read(db, modset)
 
 
 def update_modset(db: Session, modset_id: int, payload: ModSetUpdate) -> ModSetRead:
@@ -89,7 +109,7 @@ def update_modset(db: Session, modset_id: int, payload: ModSetUpdate) -> ModSetR
     modset.name = name
     db.commit()
     db.refresh(modset)
-    return ModSetRead.model_validate(modset)
+    return _modset_to_read(db, modset)
 
 
 def delete_modset(db: Session, modset_id: int) -> None:
@@ -125,3 +145,14 @@ def activate_modset(db: Session, user: User, modset_id: int) -> ModSet:
     db.commit()
     db.refresh(user)
     return modset
+
+
+def _modset_to_read(db: Session, modset: ModSet) -> ModSetRead:
+    tracked_mods_count = db.scalar(select(func.count()).select_from(UserMod).where(UserMod.modset_id == modset.id)) or 0
+    return ModSetRead(
+        id=modset.id,
+        name=modset.name,
+        tracked_mods_count=int(tracked_mods_count),
+        created_at=modset.created_at,
+        updated_at=modset.updated_at,
+    )

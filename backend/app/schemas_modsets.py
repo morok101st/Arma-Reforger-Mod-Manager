@@ -14,6 +14,7 @@ class ModSetUpdate(BaseModel):
 class ModSetRead(BaseModel):
     id: int
     name: str
+    tracked_mods_count: int
     created_at: datetime
     updated_at: datetime
 

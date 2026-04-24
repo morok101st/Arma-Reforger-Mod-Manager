@@ -92,6 +92,7 @@ export type SchedulerStatus = {
 export type Modset = {
   id: number;
   name: string;
+  tracked_mods_count: number;
   created_at: string;
   updated_at: string;
 };
