@@ -613,7 +613,7 @@ button:disabled {
 }
 
 .status-icon.unknown {
-  color: var(--md-sys-color-on-surface-variant);
+  color: #4f83c2;
 }
 
 .metrics {
