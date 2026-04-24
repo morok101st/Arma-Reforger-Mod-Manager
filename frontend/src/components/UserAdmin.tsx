@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Save } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, UserAccount, UserRole } from "../types";
@@ -34,13 +34,14 @@ export function UserAdmin({
   const [newPassword, setNewPassword] = React.useState("");
   const [newRole, setNewRole] = React.useState<UserRole>("user");
   const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
-  const [resetUserId, setResetUserId] = React.useState<number | null>(null);
-  const [deleteUserId, setDeleteUserId] = React.useState<number | null>(null);
-  const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
+  const [editUserId, setEditUserId] = React.useState<number | null>(null);
+  const [editRole, setEditRole] = React.useState<UserRole>("user");
+  const [editIsActive, setEditIsActive] = React.useState(true);
+  const [resetPassword, setResetPassword] = React.useState("");
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
 
-  const resetUser = users.find((user) => user.id === resetUserId) ?? null;
-  const deleteTarget = users.find((user) => user.id === deleteUserId) ?? null;
+  const editUser = users.find((user) => user.id === editUserId) ?? null;
   const filteredAuditLogs = React.useMemo(() => filterAuditLogs(auditLogs, auditFilter), [auditLogs, auditFilter]);
 
   async function handleOwnPasswordChange(event: React.FormEvent) {
@@ -60,12 +61,31 @@ export function UserAdmin({
     setShowCreateUserDialog(false);
   }
 
-  async function handleResetUserPassword(userId: number) {
-    const password = resetPasswords[userId] ?? "";
-    if (password.length < 12) return;
-    await resetUserPassword(userId, password);
-    setResetPasswords((previous) => ({ ...previous, [userId]: "" }));
-    setResetUserId(null);
+  React.useEffect(() => {
+    if (!editUser) {
+      setEditRole("user");
+      setEditIsActive(true);
+      setResetPassword("");
+      setConfirmDelete(false);
+      return;
+    }
+    setEditRole(editUser.role);
+    setEditIsActive(editUser.is_active);
+    setResetPassword("");
+    setConfirmDelete(false);
+  }, [editUser]);
+
+  async function handleEditUser(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editUser) return;
+    if (editRole !== editUser.role || editIsActive !== editUser.is_active) {
+      await updateUserAccount(editUser.id, { role: editRole, is_active: editIsActive });
+    }
+    if (resetPassword.length >= 12) {
+      await resetUserPassword(editUser.id, resetPassword);
+      setResetPassword("");
+    }
+    setEditUserId(null);
   }
 
   return (
@@ -127,39 +147,10 @@ export function UserAdmin({
                     {user.role} · {user.is_active ? "active" : "disabled"} · Last login {formatDate(user.last_login_at) ?? "never"}
                   </small>
                 </div>
-                <CustomSelect<UserRole>
-                  value={user.role}
-                  options={[
-                    { value: "user", label: "User" },
-                    { value: "admin", label: "Admin" },
-                  ]}
-                  disabled={loading}
-                  onChange={(value) => updateUserAccount(user.id, { role: value }).catch(() => null)}
-                  ariaLabel={`Role for ${user.username}`}
-                />
-                <button
-                  className={`secondary-button compact ${user.is_active ? "danger-button" : ""}`}
-                  disabled={loading || user.id === currentUser.id}
-                  onClick={() => updateUserAccount(user.id, { is_active: !user.is_active }).catch(() => null)}
-                  type="button"
-                >
-                  {user.is_active ? "Disable" : "Enable"}
+                <button className="secondary-button compact" disabled={loading} onClick={() => setEditUserId(user.id)} type="button">
+                  <Pencil size={16} />
+                  Edit
                 </button>
-                <div className="row-actions">
-                  <button className="secondary-button compact" disabled={loading} onClick={() => setResetUserId(user.id)} type="button">
-                    Reset Password
-                  </button>
-                  <button
-                    className="icon-button subtle-danger"
-                    disabled={loading || user.id === currentUser.id}
-                    onClick={() => setDeleteUserId(user.id)}
-                    type="button"
-                    title={`Delete ${user.username}`}
-                    aria-label={`Delete ${user.username}`}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
               </article>
             ))}
           </div>
@@ -199,59 +190,90 @@ export function UserAdmin({
             </Dialog>
           )}
 
-          {resetUser && (
-            <Dialog title={`Reset password for ${resetUser.username}`} onClose={() => setResetUserId(null)}>
-              <div className="dialog-form">
+          {editUser && (
+            <Dialog title={`Edit user ${editUser.username}`} onClose={() => setEditUserId(null)}>
+              <form className="dialog-form" onSubmit={handleEditUser}>
                 <label>
-                  New password
+                  Role
+                  <CustomSelect<UserRole>
+                    value={editRole}
+                    options={[
+                      { value: "user", label: "User" },
+                      { value: "admin", label: "Admin" },
+                    ]}
+                    onChange={setEditRole}
+                    disabled={loading}
+                    ariaLabel={`Role for ${editUser.username}`}
+                  />
+                </label>
+                <label>
+                  Status
+                  <CustomSelect<"active" | "disabled">
+                    value={editIsActive ? "active" : "disabled"}
+                    options={[
+                      { value: "active", label: "Active" },
+                      { value: "disabled", label: "Disabled" },
+                    ]}
+                    onChange={(value) => setEditIsActive(value === "active")}
+                    disabled={loading || editUser.id === currentUser.id}
+                    ariaLabel={`Status for ${editUser.username}`}
+                  />
+                </label>
+                <label>
+                  Reset password
                   <input
-                    value={resetPasswords[resetUser.id] ?? ""}
-                    onChange={(event) => setResetPasswords((previous) => ({ ...previous, [resetUser.id]: event.target.value }))}
+                    autoFocus
+                    value={resetPassword}
+                    onChange={(event) => setResetPassword(event.target.value)}
                     type="password"
-                    placeholder="at least 12 characters"
+                    placeholder="leave empty to keep unchanged"
                   />
                 </label>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setResetUserId(null)} type="button">
-                    Cancel
-                  </button>
-                  <button
-                    className="primary-button compact"
-                    disabled={loading || (resetPasswords[resetUser.id] ?? "").length < 12}
-                    onClick={() => handleResetUserPassword(resetUser.id).catch(() => null)}
-                    type="button"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            </Dialog>
-          )}
-
-          {deleteTarget && (
-            <Dialog title={`Delete user ${deleteTarget.username}`} onClose={() => setDeleteUserId(null)}>
-              <div className="dialog-form">
-                <p className="muted">
-                  Delete <strong>{deleteTarget.username}</strong> permanently?
-                </p>
-                <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setDeleteUserId(null)} type="button">
+                  <button className="secondary-button compact" onClick={() => setEditUserId(null)} type="button">
                     Cancel
                   </button>
                   <button
                     className="secondary-button compact danger-button"
-                    disabled={loading || deleteTarget.id === currentUser.id}
-                    onClick={() => {
-                      deleteUser(deleteTarget.id)
-                        .then(() => setDeleteUserId(null))
-                        .catch(() => null);
-                    }}
+                    disabled={loading || editUser.id === currentUser.id}
+                    onClick={() => setConfirmDelete(true)}
                     type="button"
                   >
                     Delete
                   </button>
+                  <button
+                    className="primary-button compact"
+                    disabled={loading || (resetPassword.length > 0 && resetPassword.length < 12)}
+                    type="submit"
+                  >
+                    Save
+                  </button>
                 </div>
-              </div>
+                {confirmDelete && (
+                  <div className="inline-danger-confirmation">
+                    <p className="muted">
+                      Delete <strong>{editUser.username}</strong> permanently?
+                    </p>
+                    <div className="dialog-actions">
+                      <button className="secondary-button compact" onClick={() => setConfirmDelete(false)} type="button">
+                        Cancel
+                      </button>
+                      <button
+                        className="secondary-button compact danger-button"
+                        disabled={loading || editUser.id === currentUser.id}
+                        onClick={() => {
+                          deleteUser(editUser.id)
+                            .then(() => setEditUserId(null))
+                            .catch(() => null);
+                        }}
+                        type="button"
+                      >
+                        Confirm delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </form>
             </Dialog>
           )}
 
