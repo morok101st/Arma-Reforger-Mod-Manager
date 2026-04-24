@@ -49,6 +49,7 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate, mods
     if not user_mod:
         user_mod = UserMod(modset_id=modset_id, mod_id=mod_id, tracking_reason="manual")
         db.add(user_mod)
+    previous_current_version = (user_mod.current_version or "").strip()
 
     if payload.current_version is not None:
         user_mod.current_version = payload.current_version
@@ -57,6 +58,12 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate, mods
     user_mod.tracking_reason = "manual"
 
     db.commit()
+    current_version = (user_mod.current_version or "").strip()
+    # If a mod transitions from "no installed version" to a defined version,
+    # force a full refresh first so dependency tracking is based on fresh workshop data.
+    if not previous_current_version and current_version:
+        return await refresh_mod(db, mod_id, modset_id)
+
     refreshed = get_mod_or_none(db, mod_id, modset_id)
     if refreshed:
         scraper = WorkshopScraper(get_settings().workshop_base_url)
