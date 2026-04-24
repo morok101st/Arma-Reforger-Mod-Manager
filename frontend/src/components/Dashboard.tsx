@@ -34,6 +34,18 @@ export function Dashboard({
         <Info label="Next auto crawl" value={formatDate(schedulerStatus?.next_automatic_run_at ?? null)} />
       </div>
 
+      <section className="dashboard-card version-health-card">
+        <div className="section-title-row">
+          <h3>Version health</h3>
+          <BarChart3 size={20} />
+        </div>
+        <div className="health-bars responsive">
+          <HealthBar label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
+          <HealthBar label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
+          <HealthBar label="Unknown" value={stats.unknown} total={stats.total} tone="neutral" />
+        </div>
+      </section>
+
       <div className="dashboard-grid">
         <section className={`dashboard-card priority-card ${stats.attentionMods.length === 0 ? "ok" : "warn"}`}>
           <div className="section-title-row">
@@ -55,18 +67,6 @@ export function Dashboard({
           ) : (
             <p className="muted">No update or unknown version state detected.</p>
           )}
-        </section>
-
-        <section className="dashboard-card">
-          <div className="section-title-row">
-            <h3>Version health</h3>
-            <BarChart3 size={20} />
-          </div>
-          <div className="health-bars">
-            <HealthBar label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
-            <HealthBar label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
-            <HealthBar label="Unknown" value={stats.unknown} total={stats.total} tone="neutral" />
-          </div>
         </section>
 
         <section className="dashboard-card">

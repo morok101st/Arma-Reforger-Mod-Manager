@@ -722,9 +722,24 @@ button:disabled {
   gap: 14px;
 }
 
+.health-bars.responsive {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .health-bar {
   display: grid;
   gap: 8px;
+}
+
+.version-health-card {
+  gap: 18px;
+}
+
+.version-health-card .health-bar {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  padding: 14px;
 }
 
 .health-bar > div:first-child {
@@ -1109,6 +1124,10 @@ button:focus-visible,
 
   .dashboard-stats,
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-bars.responsive {
     grid-template-columns: 1fr;
   }
 
