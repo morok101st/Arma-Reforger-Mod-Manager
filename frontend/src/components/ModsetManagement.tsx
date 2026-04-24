@@ -1,4 +1,5 @@
 import React from "react";
+import { TriangleAlert } from "lucide-react";
 
 import { getDashboardStats } from "../lib/utils";
 import type { Mod, Modset } from "../types";
@@ -9,6 +10,7 @@ export function ModsetManagement({
   activeModsetId,
   mods,
   loading,
+  error,
   activateModset,
   createModset,
   updateModset,
@@ -18,6 +20,7 @@ export function ModsetManagement({
   activeModsetId: number | null;
   mods: Mod[];
   loading: boolean;
+  error: string | null;
   activateModset: (modsetId: number) => Promise<void>;
   createModset: (name: string) => Promise<void>;
   updateModset: (modsetId: number, name: string) => Promise<void>;
@@ -55,6 +58,14 @@ export function ModsetManagement({
         <Info label="Updates" value={String(stats.updateAvailable)} />
         <Info label="Defined modsets" value={String(modsets.length)} />
       </div>
+
+      {error && (
+        <div className="status-band update_available">
+          <TriangleAlert className="status-icon warn" size={20} />
+          <strong>Action failed</strong>
+          <span>{error}</span>
+        </div>
+      )}
 
       <section className="dashboard-card content-section">
         <div className="section-title-row">

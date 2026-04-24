@@ -7,7 +7,6 @@ import type { Mod, Modset, SortMode } from "../types";
 export function Sidebar({
   username,
   loading,
-  error,
   showDashboard,
   showModsetAdmin,
   showUserAdmin,
@@ -30,7 +29,6 @@ export function Sidebar({
 }: {
   username: string;
   loading: boolean;
-  error: string | null;
   showDashboard: boolean;
   showModsetAdmin: boolean;
   showUserAdmin: boolean;
@@ -105,8 +103,6 @@ export function Sidebar({
           </select>
         </label>
       </div>
-
-      {error && <div className="error-box">{error}</div>}
 
       <div className="filter-row">
         <label>

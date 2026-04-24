@@ -30,7 +30,6 @@ export function App() {
       <Sidebar
         username={auth.authUser.username}
         loading={actions.loading}
-        error={actions.error}
         showDashboard={view.showDashboard}
         showModsetAdmin={view.showModsetAdmin}
         showUserAdmin={view.showUserAdmin}
@@ -63,6 +62,7 @@ export function App() {
             activeModsetId={modsets.activeModsetId}
             mods={mods.mods}
             loading={actions.loading}
+            error={actions.error}
             activateModset={actions.activateModset}
             createModset={actions.createModset}
             updateModset={actions.updateModset}
