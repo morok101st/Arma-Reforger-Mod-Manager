@@ -1,5 +1,5 @@
 import React from "react";
-import { Pencil, Plus, TriangleAlert } from "lucide-react";
+import { Download, Pencil, Plus, TriangleAlert } from "lucide-react";
 
 import type { Modset } from "../types";
 import { Dialog } from "./common";
@@ -13,6 +13,7 @@ export function ModsetManagement({
   updateModset,
   deleteModset,
   activateModset,
+  exportModset,
 }: {
   modsets: Modset[];
   activeModsetId: number | null;
@@ -22,6 +23,7 @@ export function ModsetManagement({
   updateModset: (modsetId: number, name: string) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
   activateModset: (modsetId: number) => Promise<void>;
+  exportModset: (modsetId: number, modsetName: string) => Promise<void>;
 }) {
   const [newName, setNewName] = React.useState("");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -120,6 +122,18 @@ export function ModsetManagement({
                 type="button"
               >
                 Delete
+              </button>
+              <button
+                className="secondary-button compact"
+                disabled={loading}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  exportModset(modset.id, modset.name).catch(() => null);
+                }}
+                type="button"
+              >
+                <Download size={16} />
+                Export
               </button>
             </article>
           );

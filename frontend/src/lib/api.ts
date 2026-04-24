@@ -1,4 +1,4 @@
-import type { AuditLog, AuthUser, Mod, Modset, SchedulerStatus, UserAccount, UserRole } from "../types";
+import type { AuditLog, AuthUser, Mod, Modset, ModsetExport, SchedulerStatus, UserAccount, UserRole } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -99,6 +99,10 @@ export function createApiClient(onUnauthorized?: () => void) {
     async activateModset(modsetId: number) {
       const response = await request(`/modsets/${modsetId}/activate`, { method: "POST" });
       return readJsonOrThrow<AuthUser>(response, "Could not activate modset.");
+    },
+    async exportModset(modsetId: number) {
+      const response = await request(`/modsets/${modsetId}/export`);
+      return readJsonOrThrow<ModsetExport>(response, "Could not export modset.");
     },
     async listUsers() {
       const response = await request("/users");

@@ -96,3 +96,10 @@ export type Modset = {
   created_at: string;
   updated_at: string;
 };
+
+export type ModsetExport = {
+  mods: Array<{
+    modId: string;
+    name: string;
+  }>;
+};

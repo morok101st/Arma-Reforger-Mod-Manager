@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { AuthUser, Modset } from "../types";
+import type { AuthUser, Modset, ModsetExport } from "../types";
 
 export function useModsets({
   api,
@@ -13,6 +13,7 @@ export function useModsets({
     updateModset: (modsetId: number, name: string) => Promise<Modset>;
     deleteModset: (modsetId: number) => Promise<AuthUser>;
     activateModset: (modsetId: number) => Promise<AuthUser>;
+    exportModset: (modsetId: number) => Promise<ModsetExport>;
   };
   authUser: AuthUser | null;
   setAuthUser: (value: AuthUser | null) => void;
@@ -95,5 +96,6 @@ export function useModsets({
     createModset,
     updateModset,
     deleteModset,
+    exportModset: api.exportModset,
   };
 }

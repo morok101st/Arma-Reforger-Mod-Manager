@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { UserAccount } from "../types";
+import type { ModsetExport, UserAccount } from "../types";
 import { useAsyncAction } from "./useAsyncAction";
 
 export function useAppActions({
@@ -37,6 +37,7 @@ export function useAppActions({
     createModset: (name: string) => Promise<unknown>;
     updateModset: (modsetId: number, name: string) => Promise<unknown>;
     deleteModset: (modsetId: number) => Promise<unknown>;
+    exportModset: (modsetId: number) => Promise<ModsetExport>;
   };
   closeAddModDialog: () => void;
   openModView: () => void;
@@ -143,6 +144,32 @@ export function useAppActions({
     await action.run(() => modsets.deleteModset(modsetId), { rethrow: true });
   }, [action, modsets]);
 
+  const exportModset = React.useCallback(
+    async (modsetId: number, modsetName: string) => {
+      await action.run(
+        async () => {
+          const payload = await modsets.exportModset(modsetId);
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement("a");
+          const safeName = modsetName
+            .trim()
+            .replace(/[^a-zA-Z0-9._-]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .toLowerCase();
+          anchor.href = url;
+          anchor.download = `${safeName || `modset-${modsetId}`}-mods.json`;
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+          URL.revokeObjectURL(url);
+        },
+        { rethrow: true },
+      );
+    },
+    [action, modsets],
+  );
+
   return {
     loading: action.loading,
     error: action.error,
@@ -161,5 +188,6 @@ export function useAppActions({
     createModset,
     updateModset,
     deleteModset,
+    exportModset,
   };
 }

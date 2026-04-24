@@ -548,7 +548,7 @@ button:disabled {
 
 .modset-edit-row {
   cursor: pointer;
-  grid-template-columns: minmax(200px, 1fr) auto auto;
+  grid-template-columns: minmax(200px, 1fr) auto auto auto;
 }
 
 .modset-edit-row.active {

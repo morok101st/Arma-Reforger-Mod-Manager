@@ -19,3 +19,12 @@ class ModSetRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ModSetExportEntry(BaseModel):
+    modId: str
+    name: str
+
+
+class ModSetExportRead(BaseModel):
+    mods: list[ModSetExportEntry]

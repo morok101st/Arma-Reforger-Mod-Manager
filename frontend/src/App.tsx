@@ -74,6 +74,7 @@ export function App() {
             updateModset={actions.updateModset}
             deleteModset={actions.deleteModset}
             activateModset={actions.activateModset}
+            exportModset={actions.exportModset}
           />
         ) : view.showUserAdmin ? (
           <UserAdmin
