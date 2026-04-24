@@ -22,7 +22,6 @@ export function Dashboard({
         <div>
           <p>Overview</p>
           <h2>Dashboard</h2>
-          <span>{stats.summaryText}</span>
         </div>
       </header>
 
