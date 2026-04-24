@@ -72,35 +72,30 @@ export function ModsetManagement({
         Create modset
       </button>
 
-      <section className="dashboard-card content-section">
-        <div className="section-title-row">
-          <h3>Edit modsets</h3>
-        </div>
-        <div className="user-list">
-          {modsets.map((modset) => {
-            return (
-              <article className="user-row modset-edit-row" key={modset.id}>
-                <div>
-                  <strong>{modset.name}</strong>
-                  <small>ID {modset.id}</small>
-                </div>
-                <button className="secondary-button compact" disabled={loading} onClick={() => openEditDialog(modset)} type="button">
-                  <Pencil size={16} />
-                  Edit
-                </button>
-                <button
-                  className="secondary-button compact"
-                  disabled={loading || modsets.length <= 1}
-                  onClick={() => deleteModset(modset.id).catch(() => null)}
-                  type="button"
-                >
-                  Delete
-                </button>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+      <div className="user-list">
+        {modsets.map((modset) => {
+          return (
+            <article className="user-row modset-edit-row" key={modset.id}>
+              <div>
+                <strong>{modset.name}</strong>
+                <small>ID {modset.id}</small>
+              </div>
+              <button className="secondary-button compact" disabled={loading} onClick={() => openEditDialog(modset)} type="button">
+                <Pencil size={16} />
+                Edit
+              </button>
+              <button
+                className="secondary-button compact"
+                disabled={loading || modsets.length <= 1}
+                onClick={() => deleteModset(modset.id).catch(() => null)}
+                type="button"
+              >
+                Delete
+              </button>
+            </article>
+          );
+        })}
+      </div>
 
       {showCreateDialog && (
         <Dialog title="Create modset" onClose={() => setShowCreateDialog(false)}>
