@@ -127,3 +127,45 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertIsNotNone(dependency_mapping)
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
                 self.assertIsNone(dependency_mapping.current_version)
+
+    def test_setting_installed_version_still_tracks_dependencies_when_parent_refresh_fails(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Beta"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            activate_response = client.post(f"/modsets/{modset_id}/activate")
+            self.assertEqual(activate_response.status_code, 200)
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="PARENTMOD002",
+                        name="Parent Mod 2",
+                        latest_version="1.0.0",
+                        dependencies=[
+                            {
+                                "name": "Dependency Mod 2",
+                                "url": "https://reforger.armaplatform.com/workshop/DEPMOD002-Dependency-Mod-2",
+                            }
+                        ],
+                        source_url="https://reforger.armaplatform.com/workshop/PARENTMOD002-Parent-Mod-2",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMOD002", current_version=None, pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            with patch(
+                "app.services.WorkshopScraper.fetch_mod",
+                autospec=True,
+                side_effect=RuntimeError("workshop temporarily unavailable"),
+            ):
+                update_response = client.patch(f"/mods/PARENTMOD002?modset_id={modset_id}", json={"current_version": "1.0.0"})
+
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+            with self.SessionLocal() as db:
+                dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMOD002").one_or_none()
+                self.assertIsNotNone(dependency_mapping)
+                self.assertEqual(dependency_mapping.tracking_reason, "dependency")

@@ -52,8 +52,12 @@ async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod
 
 async def refresh_dependency_mods(db: Session, mod_ids: list[str], scraper: WorkshopScraper) -> None:
     for mod_id in dict.fromkeys(mod_ids):
-        scraped = await scraper.fetch_mod(mod_id)
-        upsert_scraped_mod(db, scraped)
+        try:
+            scraped = await scraper.fetch_mod(mod_id)
+            upsert_scraped_mod(db, scraped)
+        except Exception:
+            # Dependency mappings are already persisted; metadata refresh is best-effort.
+            continue
 
 
 def dependency_mod_id(dependency: DependencyRead, db: Session) -> str | None:

@@ -59,14 +59,21 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate, mods
 
     db.commit()
     current_version = (user_mod.current_version or "").strip()
-    # If a mod transitions from "no installed version" to a defined version,
-    # force a full refresh first so dependency tracking is based on fresh workshop data.
+    scraper = WorkshopScraper(get_settings().workshop_base_url)
+    # If a mod transitions from "no installed version" to a defined version, try a full refresh first.
+    # If that fails (network/workshop issue), fall back to the stored dependency list so dependency
+    # tracking is still applied for the active modset.
     if not previous_current_version and current_version:
-        return await refresh_mod(db, mod_id, modset_id)
+        try:
+            return await refresh_mod(db, mod_id, modset_id)
+        except Exception:
+            refreshed = get_mod_or_none(db, mod_id, modset_id)
+            if refreshed:
+                await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
+            return get_mod_read(db, mod_id, modset_id)
 
     refreshed = get_mod_or_none(db, mod_id, modset_id)
     if refreshed:
-        scraper = WorkshopScraper(get_settings().workshop_base_url)
         await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
     return get_mod_read(db, mod_id, modset_id)
 
