@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.admin_bootstrap import bootstrap_admin
@@ -25,7 +25,7 @@ from app.session_auth import (
 
 
 def authenticate_user(db: Session, username: str, password: str) -> User | None:
-    user = db.scalar(select(User).where(User.username == username))
+    user = db.scalar(select(User).where(func.lower(User.username) == username.casefold()))
     if not user or not user.is_active:
         return None
     if not verify_password(password, user.password_hash):

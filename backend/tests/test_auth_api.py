@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app import main as app_main
+from app.auth import authenticate_user
 from tests.support import ApiTestCase
 
 
@@ -21,3 +22,14 @@ class AuthApiTestCase(ApiTestCase):
 
             session_after_logout = client.get("/auth/me")
             self.assertEqual(session_after_logout.status_code, 401)
+
+    def test_auth_login_username_is_case_insensitive(self) -> None:
+        with TestClient(app_main.app) as client:
+            login_response = client.post("/auth/login", json={"username": "ADMIN", "password": "very-secure-admin-pass"})
+            self.assertEqual(login_response.status_code, 200, login_response.text)
+            self.assertEqual(login_response.json()["username"], "admin")
+
+    def test_authenticate_user_helper_username_is_case_insensitive(self) -> None:
+        with self.SessionLocal() as db:
+            user = authenticate_user(db, "ADMIN", "very-secure-admin-pass")
+            self.assertIsNotNone(user)
