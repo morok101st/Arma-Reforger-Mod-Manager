@@ -1,26 +1,24 @@
 import React from "react";
 
-type WorkspaceView = "dashboard" | "mods" | "security";
-
 export function useWorkspaceView() {
-  const [view, setView] = React.useState<WorkspaceView>("dashboard");
+  const [showDashboard, setShowDashboard] = React.useState(true);
+  const [showUserAdmin, setShowUserAdmin] = React.useState(false);
   const [showAddModDialog, setShowAddModDialog] = React.useState(false);
   const [showModsetDialog, setShowModsetDialog] = React.useState(false);
 
   const showDashboardView = React.useCallback(() => {
-    setView("dashboard");
-  }, []);
-
-  const showModManagementView = React.useCallback(() => {
-    setView("mods");
+    setShowDashboard(true);
+    setShowUserAdmin(false);
   }, []);
 
   const toggleSecurityView = React.useCallback(() => {
-    setView((current) => (current === "security" ? "mods" : "security"));
+    setShowDashboard(false);
+    setShowUserAdmin((value) => !value);
   }, []);
 
   const openModView = React.useCallback(() => {
-    setView("mods");
+    setShowDashboard(false);
+    setShowUserAdmin(false);
   }, []);
 
   const openAddModDialog = React.useCallback(() => setShowAddModDialog(true), []);
@@ -29,13 +27,11 @@ export function useWorkspaceView() {
   const closeModsetDialog = React.useCallback(() => setShowModsetDialog(false), []);
 
   return {
-    showDashboard: view === "dashboard",
-    showModManagement: view === "mods",
-    showUserAdmin: view === "security",
+    showDashboard,
+    showUserAdmin,
     showAddModDialog,
     showModsetDialog,
     showDashboardView,
-    showModManagementView,
     toggleSecurityView,
     openModView,
     openAddModDialog,
