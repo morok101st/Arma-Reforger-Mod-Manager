@@ -1,68 +1,68 @@
 # Arma Reforger Mod Manager (ARMM)
 
-ARMM ist eine Webanwendung zur Verwaltung und Überwachung von Arma Reforger Workshop-Mods.
-Sie speichert Mod-Daten pro Modset, crawlt regelmäßig Workshop-Infos, vergleicht installierte mit verfügbaren Versionen und zeigt Updates, Abhängigkeiten und Audit-Events zentral im UI.
+ARMM is a web application for managing and monitoring Arma Reforger Workshop mods.
+It stores mod data per modset, regularly crawls Workshop data, compares installed and latest versions, and centralizes updates, dependency relations, and audit events in one UI.
 
-## Was die Anwendung macht
+## What the application does
 
-- Tracking von Workshop-Mods über Mod-ID.
-- Verwaltung mehrerer Modsets (z. B. pro Server).
-- Vergleich `Installed Version` vs. `Latest Version`.
-- Automatischer Crawl beim Start und anschließend im definierten Intervall.
-- Anzeige von Dependencies und `Required by`-Beziehungen zwischen überwachten Mods.
-- Automatisches Hinzufügen von Dependencies zur Überwachung, sobald eine installierte Version gesetzt ist.
-- Changelog-Historie pro Version inkl. `Last modified`.
-- Export eines Modsets als JSON-Liste (`modId`, `name`, `version`) nur für Mods mit gesetzter Version.
+- Tracks Workshop mods by mod ID.
+- Supports multiple modsets (for example, one per server).
+- Compares `Installed Version` vs. `Latest Version`.
+- Runs an automatic crawl on startup and then at a configured interval.
+- Shows dependency and `Required by` relations between tracked mods.
+- Automatically adds dependencies to tracking when an installed version is set.
+- Stores changelog history per version including `Last modified`.
+- Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
 
-## Funktionsumfang (UI)
+## Functional scope (UI)
 
 ### Dashboard
 
-- Kennzahlen: Anzahl Mods, Updates, fehlende installierte Versionen, Dependency-Links.
-- Statuskachel „Needs attention“ inkl. sauberem OK/Warning-Status.
-- Letzter automatischer Crawl und nächster geplanter Crawl.
+- Metrics: tracked mods, updates, missing installed versions, dependency links.
+- “Needs attention” card with clear OK/Warning state.
+- Last automatic crawl and next scheduled crawl.
 
-### Mod-Management
+### Mod management
 
-- Mod hinzufügen (Dialog), optional direkt in ein anderes Modset.
-- Mod-Detail mit Status, Metadaten, Version setzen/speichern, „Set to latest“, Refresh, Delete mit Sicherheitsabfrage.
-- In der Modliste: kompakte Hinweise zu `deps` und `req`.
-- Suche nach Mod-Name und Mod-ID.
+- Add mod (dialog), optionally directly into another modset.
+- Mod detail view with status, metadata, set/save installed version, “Set to latest”, refresh, and delete confirmation.
+- Compact `deps` and `req` indicators in the mod list.
+- Search by mod name and mod ID.
 
 ### Modsets
 
-- Modsets erstellen, umbenennen, aktivieren, löschen (nur wenn leer und nicht letztes Modset).
-- Export pro Modset als JSON-Datei.
+- Create, rename, activate, and delete modsets (delete allowed only when empty and not the last modset).
+- Export each modset as a JSON file.
 
-### Security-Bereich
+### Security area
 
-- Eigenes Passwort ändern.
-- Admin: Benutzer anlegen, Rolle ändern, aktivieren/deaktivieren, Passwort zurücksetzen.
-- Audit-Log mit Filtern (Auth, User, Mod, Failures).
+- Change your own password.
+- Admin features: create users, change roles, enable/disable users, reset passwords.
+- Audit log with filters (Auth, User, Mod, Failures).
 
-## Security-Features
+## Security features
 
-- Login-Pflicht für alle Management-Endpunkte.
-- Öffentlicher Endpunkt nur `GET /api/health`.
-- Rollenmodell: `admin` und `user`.
-- Initialer Admin-User wird beim Start aus `.env` gebootstrapped.
-- Passwort-Hashing mit `PBKDF2-SHA256` (`210000` Iterationen).
-- Mindestlänge Passwörter: 12 Zeichen (User-Create, Reset, Own Password Change).
-- Benutzername-Login ist case-insensitive.
-- Login-Rate-Limit: 8 Fehlversuche pro 60 Sekunden (pro IP + Username).
-- Session per signiertem HttpOnly-Cookie (`armm_session`, 7 Tage TTL).
-- Cookie-Flags: `HttpOnly`, `SameSite=Lax`, in Produktion zusätzlich `Secure`.
-- Logout invalidiert den Session-Cookie.
-- Origin-Prüfung für unsafe HTTP-Methoden (zusätzlicher CSRF-Schutz über Origin-Allowlist).
-- Audit-Trail für Login/Logout, Passwortaktionen, User-Änderungen, Mod- und Modset-Aktionen.
-- Frontend-Nginx setzt Sicherheitsheader (u. a. CSP, X-Frame-Options, Referrer-Policy, nosniff).
-- API-Dokumentation ist geschützt und nur für eingeloggte Nutzer erreichbar (`/api/docs`, `/api/openapi.json`).
+- Login required for all management endpoints.
+- Only `GET /api/health` is public.
+- Role model: `admin` and `user`.
+- Initial admin user is bootstrapped from `.env` at startup.
+- Password hashing with `PBKDF2-SHA256` (`210000` iterations).
+- Minimum password length: 12 characters (user creation, reset, own password change).
+- Username login is case-insensitive.
+- Login rate limit: 8 failed attempts per 60 seconds (per IP + username).
+- Session stored in a signed HttpOnly cookie (`armm_session`, 7-day TTL).
+- Cookie flags: `HttpOnly`, `SameSite=Lax`, and `Secure` in production.
+- Logout clears the session cookie.
+- Origin validation for unsafe HTTP methods (additional CSRF protection via origin allowlist).
+- Audit trail for login/logout, password actions, user changes, mod changes, and modset changes.
+- Frontend Nginx adds security headers (including CSP, X-Frame-Options, Referrer-Policy, nosniff).
+- API documentation is protected and available only for authenticated users (`/api/docs`, `/api/openapi.json`).
 
-## API-Übersicht
+## API overview
 
-Basis-Pfad hinter dem Frontend-Proxy: `/api`
+Base path behind the frontend proxy: `/api`
 
-- `GET /api/health` (öffentlich)
+- `GET /api/health` (public)
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
@@ -74,61 +74,61 @@ Basis-Pfad hinter dem Frontend-Proxy: `/api`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET /api/audit` (admin)
 - `GET /api/scheduler/status`
-- `GET /api/docs` (eingeloggt)
+- `GET /api/docs` (authenticated)
 
 ## Installation (Docker Compose)
 
-### Voraussetzungen
+### Prerequisites
 
-- Docker + Docker Compose Plugin
-- Reverse Proxy/Traefik Netzwerk `traefik_default` (wie in der Example-Compose referenziert)
+- Docker + Docker Compose plugin
+- Reverse proxy/Traefik network `traefik_default` (as referenced in the example compose file)
 
-### 1. Konfiguration vorbereiten
+### 1. Prepare configuration
 
 ```bash
 cp .env.example .env
 cp docker-compose.example.yml docker-compose.yml
 ```
 
-### 2. Pflichtwerte in `.env` setzen
+### 2. Set required values in `.env`
 
-Mindestens diese Werte ändern:
+At minimum, change these values:
 
 - `ARMM_SECRET_KEY`
 - `ARMM_ADMIN_PASSWORD`
 - `POSTGRES_PASSWORD`
-- `DATABASE_URL` (inkl. korrektem DB-Passwort)
-- `CORS_ORIGINS` passend zu deiner Domain
+- `DATABASE_URL` (including the correct DB password)
+- `CORS_ORIGINS` for your domain
 
-Zusätzlich in `docker-compose.yml` die Traefik-Host/Domain-Labels an deine Umgebung anpassen.
+Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
-### 3. Starten
+### 3. Start the stack
 
 ```bash
 docker compose up --build -d
 ```
 
-### 4. Prüfen
+### 4. Verify
 
-- Health: `https://<deine-domain>/api/health`
-- Login im Frontend: `https://<deine-domain>/`
-- API-Doku (nach Login): `https://<deine-domain>/api/docs`
+- Health: `https://<your-domain>/api/health`
+- Frontend login: `https://<your-domain>/`
+- API docs (after login): `https://<your-domain>/api/docs`
 
-Hinweis: Beim Start wird ein automatischer Initial-Crawl geplant/ausgeführt, danach im Intervall über `SCRAPE_INTERVAL_MINUTES`.
+Note: On startup, an initial automatic crawl is scheduled/executed, then runs according to `SCRAPE_INTERVAL_MINUTES`.
 
-## Betrieb
+## Operations
 
-- Scheduler-Intervall über `SCRAPE_INTERVAL_MINUTES` in `.env`.
-- Aktiven Admin-Zugang über `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD` verwalten.
-- Lokale produktive Dateien bleiben bewusst unversioniert: `.env`, `docker-compose.yml`.
+- Configure scheduler interval with `SCRAPE_INTERVAL_MINUTES` in `.env`.
+- Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
+- Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
 
-Für Git sind ausschließlich die anonymisierten Beispiel-Dateien vorgesehen:
+Only anonymized example files are meant for Git:
 
 - `.env.example`
 - `docker-compose.example.yml`
 
-## Entwicklung und CI
+## Development and CI
 
-- Backend-Tests: `python -m unittest discover -s tests -v` (im `backend`-Ordner)
-- Frontend-Build: `npm run build` (im `frontend`-Ordner)
-- CI führt beides auf Push/PR gegen `main` aus.
+- Backend tests: `python -m unittest discover -s tests -v` (inside `backend`)
+- Frontend build: `npm run build` (inside `frontend`)
+- CI runs both on push/PR to `main`.
