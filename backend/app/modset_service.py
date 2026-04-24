@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Mod, ModSet, User, UserMod
-from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetExportRead, ModSetRead, ModSetUpdate
+from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetRead, ModSetUpdate
 
 
 class ModSetError(ValueError):
@@ -147,7 +147,7 @@ def activate_modset(db: Session, user: User, modset_id: int) -> ModSet:
     return modset
 
 
-def export_modset(db: Session, modset_id: int) -> ModSetExportRead:
+def export_modset(db: Session, modset_id: int) -> list[ModSetExportEntry]:
     modset = db.get(ModSet, modset_id)
     if not modset:
         raise ModSetNotFoundError("Modset not found")
@@ -155,19 +155,21 @@ def export_modset(db: Session, modset_id: int) -> ModSetExportRead:
     rows = db.execute(
         select(UserMod.mod_id, Mod.name)
         .join(Mod, Mod.id == UserMod.mod_id)
-        .where(UserMod.modset_id == modset_id)
+        .where(
+            UserMod.modset_id == modset_id,
+            UserMod.current_version.is_not(None),
+            UserMod.current_version != "",
+        )
         .order_by(func.lower(func.coalesce(Mod.name, UserMod.mod_id)), UserMod.mod_id)
     ).all()
 
-    return ModSetExportRead(
-        mods=[
-            ModSetExportEntry(
-                modId=row.mod_id,
-                name=row.name or row.mod_id,
-            )
-            for row in rows
-        ]
-    )
+    return [
+        ModSetExportEntry(
+            modId=row.mod_id,
+            name=row.name or row.mod_id,
+        )
+        for row in rows
+    ]
 
 
 def _modset_to_read(db: Session, modset: ModSet) -> ModSetRead:

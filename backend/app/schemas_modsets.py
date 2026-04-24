@@ -24,7 +24,3 @@ class ModSetRead(BaseModel):
 class ModSetExportEntry(BaseModel):
     modId: str
     name: str
-
-
-class ModSetExportRead(BaseModel):
-    mods: list[ModSetExportEntry]

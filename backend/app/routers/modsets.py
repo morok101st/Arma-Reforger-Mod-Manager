@@ -19,7 +19,7 @@ from app.modset_service import (
 from app.models import User
 from app.router_helpers import audit_event
 from app.schemas_auth import AuthUserRead
-from app.schemas_modsets import ModSetCreate, ModSetExportRead, ModSetRead, ModSetUpdate
+from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetRead, ModSetUpdate
 from app.user_service import auth_user_to_read
 
 router = APIRouter(tags=["modsets"])
@@ -132,12 +132,12 @@ def api_activate_modset(
     return auth_user_to_read(current_user)
 
 
-@router.get("/modsets/{modset_id}/export", response_model=ModSetExportRead)
+@router.get("/modsets/{modset_id}/export", response_model=list[ModSetExportEntry])
 def api_export_modset(
     modset_id: int,
     db: Session = Depends(get_db),
     _: User = Depends(require_current_user),
-) -> ModSetExportRead:
+) -> list[ModSetExportEntry]:
     try:
         return export_modset(db, modset_id)
     except ModSetNotFoundError as exc:

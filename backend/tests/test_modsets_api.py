@@ -69,18 +69,16 @@ class ModsetsApiTestCase(ApiTestCase):
             with self.SessionLocal() as db:
                 db.add(Mod(id="664AFDC993C9CE1A", name="ACE Cook-Off Dev"))
                 db.add(Mod(id="65EB440190E0B2DF", name="COE2 Ruha"))
-                db.add(UserMod(modset_id=modset_id, mod_id="664AFDC993C9CE1A", current_version=None, pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="664AFDC993C9CE1A", current_version="1.2.3", pinned=False, tracking_reason="manual"))
                 db.add(UserMod(modset_id=modset_id, mod_id="65EB440190E0B2DF", current_version=None, pinned=False, tracking_reason="manual"))
                 db.commit()
 
             response = client.get(f"/modsets/{modset_id}/export")
             self.assertEqual(response.status_code, 200)
             payload = response.json()
-            self.assertIn("mods", payload)
             self.assertEqual(
-                payload["mods"],
+                payload,
                 [
                     {"modId": "664AFDC993C9CE1A", "name": "ACE Cook-Off Dev"},
-                    {"modId": "65EB440190E0B2DF", "name": "COE2 Ruha"},
                 ],
             )

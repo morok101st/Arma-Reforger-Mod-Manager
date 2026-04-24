@@ -97,9 +97,7 @@ export type Modset = {
   updated_at: string;
 };
 
-export type ModsetExport = {
-  mods: Array<{
-    modId: string;
-    name: string;
-  }>;
-};
+export type ModsetExport = Array<{
+  modId: string;
+  name: string;
+}>;
