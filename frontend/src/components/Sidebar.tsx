@@ -50,6 +50,13 @@ export function Sidebar({
   onOpenMod: (id: string) => void;
 }) {
   const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? modsets[0] ?? null;
+  const handleModsetChange = React.useCallback(
+    (modsetId: number) => {
+      onActivateModset(modsetId);
+      onShowDashboard();
+    },
+    [onActivateModset, onShowDashboard],
+  );
 
   return (
     <section className="sidebar" aria-label="Mod management">
@@ -102,7 +109,7 @@ export function Sidebar({
               ? modsets.map((modset) => ({ value: modset.id, label: modset.name }))
               : [{ value: 0, label: "No modset" }]
           }
-          onChange={onActivateModset}
+          onChange={handleModsetChange}
           disabled={loading || modsets.length === 0}
           ariaLabel="Modset"
         />

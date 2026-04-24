@@ -153,7 +153,7 @@ def export_modset(db: Session, modset_id: int) -> list[ModSetExportEntry]:
         raise ModSetNotFoundError("Modset not found")
 
     rows = db.execute(
-        select(UserMod.mod_id, Mod.name)
+        select(UserMod.mod_id, Mod.name, UserMod.current_version)
         .join(Mod, Mod.id == UserMod.mod_id)
         .where(
             UserMod.modset_id == modset_id,
@@ -167,6 +167,7 @@ def export_modset(db: Session, modset_id: int) -> list[ModSetExportEntry]:
         ModSetExportEntry(
             modId=row.mod_id,
             name=row.name or row.mod_id,
+            version=row.current_version or "",
         )
         for row in rows
     ]

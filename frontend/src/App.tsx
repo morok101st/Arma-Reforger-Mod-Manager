@@ -45,10 +45,7 @@ export function App() {
         onToggleSecurity={view.toggleSecurityView}
         onLogout={actions.logout}
         onShowAddMod={view.openAddModDialog}
-        onActivateModset={async (modsetId) => {
-          await actions.activateModset(modsetId);
-          view.showDashboardView();
-        }}
+        onActivateModset={actions.activateModset}
         onSearchChange={mods.setSearchQuery}
         onSortChange={mods.setSortMode}
         onOpenMod={openMod}

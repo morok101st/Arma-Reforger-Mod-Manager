@@ -24,3 +24,4 @@ class ModSetRead(BaseModel):
 class ModSetExportEntry(BaseModel):
     modId: str
     name: str
+    version: str

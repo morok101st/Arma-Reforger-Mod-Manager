@@ -79,6 +79,6 @@ class ModsetsApiTestCase(ApiTestCase):
             self.assertEqual(
                 payload,
                 [
-                    {"modId": "664AFDC993C9CE1A", "name": "ACE Cook-Off Dev"},
+                    {"modId": "664AFDC993C9CE1A", "name": "ACE Cook-Off Dev", "version": "1.2.3"},
                 ],
             )

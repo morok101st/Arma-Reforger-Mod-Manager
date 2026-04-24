@@ -100,4 +100,5 @@ export type Modset = {
 export type ModsetExport = Array<{
   modId: string;
   name: string;
+  version: string;
 }>;
