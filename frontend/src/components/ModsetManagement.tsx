@@ -12,7 +12,7 @@ export function ModsetManagement({
   createModset,
   updateModset,
   deleteModset,
-  activateAndOpenModset,
+  activateModset,
 }: {
   modsets: Modset[];
   activeModsetId: number | null;
@@ -21,7 +21,7 @@ export function ModsetManagement({
   createModset: (name: string) => Promise<void>;
   updateModset: (modsetId: number, name: string) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
-  activateAndOpenModset: (modsetId: number) => Promise<void>;
+  activateModset: (modsetId: number) => Promise<void>;
 }) {
   const [newName, setNewName] = React.useState("");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -84,11 +84,11 @@ export function ModsetManagement({
               key={modset.id}
               role="button"
               tabIndex={0}
-              onClick={() => activateAndOpenModset(modset.id).catch(() => null)}
+              onClick={() => activateModset(modset.id).catch(() => null)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  activateAndOpenModset(modset.id).catch(() => null);
+                  activateModset(modset.id).catch(() => null);
                 }
               }}
             >

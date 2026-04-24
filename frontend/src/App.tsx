@@ -65,10 +65,7 @@ export function App() {
             createModset={actions.createModset}
             updateModset={actions.updateModset}
             deleteModset={actions.deleteModset}
-            activateAndOpenModset={async (modsetId) => {
-              await actions.activateModset(modsetId);
-              view.openModView();
-            }}
+            activateModset={actions.activateModset}
           />
         ) : view.showUserAdmin ? (
           <UserAdmin
