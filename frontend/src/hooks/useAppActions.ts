@@ -27,7 +27,7 @@ export function useAppActions({
     loadAuditLogs: () => Promise<unknown>;
   };
   mods: {
-    addMod: (modId: string, currentVersion: string | null) => Promise<unknown>;
+    addMod: (modId: string, currentVersion: string | null, modsetId?: number) => Promise<unknown>;
     refreshMod: (id: string) => Promise<unknown>;
     removeMod: (id: string) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string) => Promise<unknown>;
@@ -102,10 +102,10 @@ export function useAppActions({
   );
 
   const addMod = React.useCallback(
-    async (modId: string, currentVersion: string | null) => {
+    async (modId: string, currentVersion: string | null, modsetId: number) => {
       await action.run(
         async () => {
-          await mods.addMod(modId.trim(), currentVersion);
+          await mods.addMod(modId.trim(), currentVersion, modsetId);
           openModView();
           closeAddModDialog();
         },

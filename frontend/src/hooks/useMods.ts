@@ -83,11 +83,14 @@ export function useMods({
   }, []);
 
   const addMod = React.useCallback(
-    async (id: string, currentVersion: string | null) => {
-      if (!activeModsetId) throw new Error("No active modset selected.");
-      const created = await api.createMod(id, currentVersion, activeModsetId);
-      await loadMods();
-      setSelectedId(created.id);
+    async (id: string, currentVersion: string | null, targetModsetId?: number) => {
+      const modsetId = targetModsetId ?? activeModsetId;
+      if (!modsetId) throw new Error("No active modset selected.");
+      const created = await api.createMod(id, currentVersion, modsetId);
+      if (modsetId === activeModsetId) {
+        await loadMods();
+        setSelectedId(created.id);
+      }
       return created;
     },
     [activeModsetId, api, loadMods],

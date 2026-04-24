@@ -51,7 +51,15 @@ export function App() {
         onOpenMod={openMod}
       />
 
-      {view.showAddModDialog && <AddModDialog loading={actions.loading} onClose={view.closeAddModDialog} onSubmit={actions.addMod} />}
+      {view.showAddModDialog && (
+        <AddModDialog
+          loading={actions.loading}
+          modsets={modsets.modsets}
+          activeModsetId={modsets.activeModsetId}
+          onClose={view.closeAddModDialog}
+          onSubmit={actions.addMod}
+        />
+      )}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {view.showDashboard ? (
