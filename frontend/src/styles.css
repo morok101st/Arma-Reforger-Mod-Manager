@@ -1,4 +1,5 @@
 :root {
+  --font-family-base: "Roboto", "Noto Sans", "Segoe UI", sans-serif;
   --md-sys-color-primary: #2f6f5f;
   --md-sys-color-primary-hover: #285f51;
   --md-sys-color-primary-pressed: #214f43;
@@ -29,7 +30,7 @@
 
   color: var(--md-sys-color-on-surface);
   background: var(--md-sys-color-background);
-  font-family: "Roboto", "Noto Sans", "Segoe UI", sans-serif;
+  font-family: var(--font-family-base);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -48,8 +49,10 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+  font-family: var(--font-family-base);
 }
 
 .app-shell {
@@ -256,6 +259,7 @@ input {
   color: var(--md-sys-color-on-surface);
   cursor: pointer;
   display: flex;
+  font-family: var(--font-family-base);
   justify-content: space-between;
   min-height: 42px;
   padding: 0 12px;
@@ -296,6 +300,7 @@ input {
   color: var(--md-sys-color-on-surface);
   cursor: pointer;
   display: flex;
+  font-family: var(--font-family-base);
   justify-content: space-between;
   min-height: 36px;
   padding: 0 10px;
