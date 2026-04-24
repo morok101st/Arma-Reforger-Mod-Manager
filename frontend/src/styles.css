@@ -260,6 +260,70 @@ select {
   position: relative;
 }
 
+.custom-select {
+  position: relative;
+}
+
+.custom-select-trigger {
+  align-items: center;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.custom-select-trigger:hover {
+  border-color: var(--md-sys-color-outline);
+}
+
+.custom-select-menu {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  box-shadow: var(--elevation-2);
+  display: grid;
+  gap: 4px;
+  left: 0;
+  margin-top: 6px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+}
+
+.custom-select-item {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.custom-select-item:hover {
+  background: var(--md-sys-color-surface-container);
+}
+
+.custom-select-item.active {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 700;
+}
+
 .filter-row {
   align-items: end;
   display: grid;

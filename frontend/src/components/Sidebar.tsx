@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Layers3, LogOut, Pin, Plus, Shield } from "lucide-react";
+import { Check, ChevronDown, Home, Layers3, LogOut, Pin, Plus, Shield } from "lucide-react";
 
 import { StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, Modset, SortMode } from "../types";
@@ -49,6 +49,25 @@ export function Sidebar({
   onSortChange: (value: SortMode) => void;
   onOpenMod: (id: string) => void;
 }) {
+  const [showModsetMenu, setShowModsetMenu] = React.useState(false);
+  const modsetMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? modsets[0] ?? null;
+
+  React.useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      if (!modsetMenuRef.current?.contains(event.target as Node)) {
+        setShowModsetMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  function activateAndClose(modsetId: number) {
+    onActivateModset(modsetId);
+    setShowModsetMenu(false);
+  }
+
   return (
     <section className="sidebar" aria-label="Mod management">
       <div className="brand">
@@ -92,16 +111,37 @@ export function Sidebar({
       </button>
 
       <div className="content-section">
-        <label className="sort-control">
-          Modset
-          <select value={activeModsetId ?? ""} onChange={(event) => onActivateModset(Number(event.target.value))} disabled={loading || modsets.length === 0}>
-            {modsets.map((modset) => (
-              <option key={modset.id} value={modset.id}>
-                {modset.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <label>Modset</label>
+        <div className="custom-select" ref={modsetMenuRef}>
+          <button
+            className="custom-select-trigger"
+            type="button"
+            onClick={() => setShowModsetMenu((current) => !current)}
+            disabled={loading || modsets.length === 0}
+            aria-haspopup="listbox"
+            aria-expanded={showModsetMenu}
+          >
+            <span>{activeModset?.name ?? "No modset"}</span>
+            <ChevronDown size={16} />
+          </button>
+          {showModsetMenu && (
+            <div className="custom-select-menu" role="listbox" aria-label="Modset">
+              {modsets.map((modset) => (
+                <button
+                  key={modset.id}
+                  className={`custom-select-item ${activeModsetId === modset.id ? "active" : ""}`}
+                  type="button"
+                  role="option"
+                  aria-selected={activeModsetId === modset.id}
+                  onClick={() => activateAndClose(modset.id)}
+                >
+                  <span>{modset.name}</span>
+                  {activeModsetId === modset.id && <Check size={16} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="filter-row">
