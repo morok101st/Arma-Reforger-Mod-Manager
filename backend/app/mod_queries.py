@@ -6,10 +6,9 @@ from app.schemas_mods import DependencyRead, ModRead, ModReferenceRead
 from app.versioning import compare_versions
 
 
-def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
-    user_mod = mod.user_mod
-    current_version = user_mod.current_version if user_mod else None
-    tracking_reason = user_mod.tracking_reason if user_mod else "manual"
+def mod_to_read(mod: Mod, user_mod: UserMod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
+    current_version = user_mod.current_version
+    tracking_reason = user_mod.tracking_reason
     return ModRead(
         id=mod.id,
         name=mod.name,
@@ -23,39 +22,50 @@ def mod_to_read(mod: Mod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
         source_url=mod.source_url,
         last_checked=mod.last_checked,
         current_version=current_version,
-        pinned=bool(user_mod.pinned) if user_mod else False,
+        pinned=bool(user_mod.pinned),
         tracking_reason=tracking_reason,
         status=compare_versions(current_version, mod.latest_version),
         versions=sort_versions(mod.versions)[:10],
     )
 
 
-def list_mods(db: Session) -> list[ModRead]:
-    mods = list_tracked_mods(db)
-    return [mod_to_read(mod, mods) for mod in mods]
+def list_mods(db: Session, modset_id: int) -> list[ModRead]:
+    mappings = list_tracked_user_mods(db, modset_id)
+    tracked_mods = [mapping.mod for mapping in mappings]
+    return [mod_to_read(mapping.mod, mapping, tracked_mods) for mapping in mappings]
 
 
-def get_mod_read(db: Session, mod_id: str) -> ModRead | None:
-    mods = list_tracked_mods(db)
-    mod = next((candidate for candidate in mods if candidate.id == mod_id), None)
-    if not mod:
+def get_mod_read(db: Session, mod_id: str, modset_id: int) -> ModRead | None:
+    mappings = list_tracked_user_mods(db, modset_id)
+    target = next((mapping for mapping in mappings if mapping.mod_id == mod_id), None)
+    if not target:
         return None
-    return mod_to_read(mod, mods)
+    return mod_to_read(target.mod, target, [mapping.mod for mapping in mappings])
 
 
-def list_tracked_mods(db: Session) -> list[Mod]:
+def list_tracked_user_mods(db: Session, modset_id: int) -> list[UserMod]:
     return list(
         db.scalars(
-            select(Mod)
-            .join(UserMod)
-            .options(selectinload(Mod.user_mod), selectinload(Mod.versions))
+            select(UserMod)
+            .where(UserMod.modset_id == modset_id)
+            .join(UserMod.mod)
+            .options(selectinload(UserMod.mod).selectinload(Mod.versions))
             .order_by(func.lower(Mod.name).nullslast(), Mod.id)
         ).all()
     )
 
 
-def get_mod_or_none(db: Session, mod_id: str) -> Mod | None:
-    return db.scalar(select(Mod).where(Mod.id == mod_id).options(selectinload(Mod.user_mod), selectinload(Mod.versions)))
+def get_user_mod_or_none(db: Session, mod_id: str, modset_id: int) -> UserMod | None:
+    return db.scalar(
+        select(UserMod)
+        .where(UserMod.modset_id == modset_id, UserMod.mod_id == mod_id)
+        .options(selectinload(UserMod.mod).selectinload(Mod.versions))
+    )
+
+
+def get_mod_or_none(db: Session, mod_id: str, modset_id: int) -> Mod | None:
+    mapping = get_user_mod_or_none(db, mod_id, modset_id)
+    return mapping.mod if mapping else None
 
 
 def normalize_dependencies(dependencies: list[object]) -> list[DependencyRead]:

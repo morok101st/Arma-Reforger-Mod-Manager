@@ -10,8 +10,9 @@ from app.schemas_mods import DependencyRead
 from app.scraper import WorkshopScraper
 
 
-async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, scraper: WorkshopScraper) -> None:
-    if not mod.user_mod or not mod.user_mod.current_version:
+async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, modset_id: int, scraper: WorkshopScraper) -> None:
+    user_mod = db.scalar(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id == mod.id))
+    if not user_mod or not user_mod.current_version:
         return
 
     dependency_ids_to_refresh: list[str] = []
@@ -29,9 +30,11 @@ async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod
             dependency_mod.name = dependency_mod.name or dependency.name
             dependency_mod.source_url = dependency_mod.source_url or dependency.url
 
-        if not dependency_mod.user_mod:
+        dependency_mapping = db.scalar(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id == dependency_mod.id))
+        if not dependency_mapping:
             db.add(
                 UserMod(
+                    modset_id=modset_id,
                     mod_id=dependency_mod.id,
                     current_version=None,
                     pinned=False,

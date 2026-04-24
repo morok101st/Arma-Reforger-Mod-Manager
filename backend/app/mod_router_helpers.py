@@ -11,6 +11,7 @@ def raise_mod_not_found(
     *,
     action: str,
     mod_id: str,
+    modset_id: int,
     request: Request,
     actor: User,
 ) -> None:
@@ -23,7 +24,7 @@ def raise_mod_not_found(
         request=request,
         status_code=404,
         detail_message="Mod not found",
-        audit_detail={"reason": "mod_not_found", "mod_name": None},
+        audit_detail={"reason": "mod_not_found", "mod_name": None, "modset_id": modset_id},
     )
 
 
@@ -31,7 +32,7 @@ def raise_workshop_fetch_failed(exc: Exception) -> None:
     raise HTTPException(status_code=502, detail=f"Workshop fetch failed: {exc}") from exc
 
 
-def audit_mod_created(db: Session, *, mod: ModRead, request: Request, actor: User) -> None:
+def audit_mod_created(db: Session, *, mod: ModRead, modset_id: int, request: Request, actor: User) -> None:
     audit_event(
         db,
         action="mod_created",
@@ -44,11 +45,20 @@ def audit_mod_created(db: Session, *, mod: ModRead, request: Request, actor: Use
             "current_version": mod.current_version,
             "latest_version": mod.latest_version,
             "pinned": mod.pinned,
+            "modset_id": modset_id,
         },
     )
 
 
-def audit_mod_create_failed(db: Session, *, payload: ModCreate, request: Request, actor: User, exc: Exception) -> None:
+def audit_mod_create_failed(
+    db: Session,
+    *,
+    payload: ModCreate,
+    modset_id: int,
+    request: Request,
+    actor: User,
+    exc: Exception,
+) -> None:
     audit_event(
         db,
         action="mod_create_failed",
@@ -56,11 +66,25 @@ def audit_mod_create_failed(db: Session, *, payload: ModCreate, request: Request
         entity_id=payload.id,
         actor=actor,
         request=request,
-        detail={"reason": str(exc), "mod_name": None, "current_version_provided": payload.current_version is not None},
+        detail={
+            "reason": str(exc),
+            "mod_name": None,
+            "current_version_provided": payload.current_version is not None,
+            "modset_id": modset_id,
+        },
     )
 
 
-def audit_mod_updated(db: Session, *, mod_id: str, mod: ModRead, payload: UserModUpdate, request: Request, actor: User) -> None:
+def audit_mod_updated(
+    db: Session,
+    *,
+    mod_id: str,
+    modset_id: int,
+    mod: ModRead,
+    payload: UserModUpdate,
+    request: Request,
+    actor: User,
+) -> None:
     audit_event(
         db,
         action="mod_updated",
@@ -74,11 +98,12 @@ def audit_mod_updated(db: Session, *, mod_id: str, mod: ModRead, payload: UserMo
             "current_version": mod.current_version,
             "pinned_changed": payload.pinned is not None,
             "pinned": mod.pinned,
+            "modset_id": modset_id,
         },
     )
 
 
-def audit_mod_refreshed(db: Session, *, mod_id: str, mod: ModRead, request: Request, actor: User) -> None:
+def audit_mod_refreshed(db: Session, *, mod_id: str, modset_id: int, mod: ModRead, request: Request, actor: User) -> None:
     audit_event(
         db,
         action="mod_refreshed",
@@ -86,11 +111,20 @@ def audit_mod_refreshed(db: Session, *, mod_id: str, mod: ModRead, request: Requ
         entity_id=mod_id,
         actor=actor,
         request=request,
-        detail={"mod_name": mod.name, "latest_version": mod.latest_version, "status": mod.status.value},
+        detail={"mod_name": mod.name, "latest_version": mod.latest_version, "status": mod.status.value, "modset_id": modset_id},
     )
 
 
-def audit_mod_refresh_failed(db: Session, *, mod_id: str, request: Request, actor: User, reason: str, mod_name: str | None) -> None:
+def audit_mod_refresh_failed(
+    db: Session,
+    *,
+    mod_id: str,
+    modset_id: int,
+    request: Request,
+    actor: User,
+    reason: str,
+    mod_name: str | None,
+) -> None:
     audit_event(
         db,
         action="mod_refresh_failed",
@@ -98,11 +132,11 @@ def audit_mod_refresh_failed(db: Session, *, mod_id: str, request: Request, acto
         entity_id=mod_id,
         actor=actor,
         request=request,
-        detail={"reason": reason, "mod_name": mod_name},
+        detail={"reason": reason, "mod_name": mod_name, "modset_id": modset_id},
     )
 
 
-def audit_mod_deleted(db: Session, *, mod_id: str, mod_name: str | None, request: Request, actor: User) -> None:
+def audit_mod_deleted(db: Session, *, mod_id: str, modset_id: int, mod_name: str | None, request: Request, actor: User) -> None:
     audit_event(
         db,
         action="mod_deleted",
@@ -110,16 +144,16 @@ def audit_mod_deleted(db: Session, *, mod_id: str, mod_name: str | None, request
         entity_id=mod_id,
         actor=actor,
         request=request,
-        detail={"mod_id": mod_id, "mod_name": mod_name},
+        detail={"mod_id": mod_id, "mod_name": mod_name, "modset_id": modset_id},
     )
 
 
-def audit_refresh_all(db: Session, *, result: RefreshResult, request: Request, actor: User) -> None:
+def audit_refresh_all(db: Session, *, result: RefreshResult, modset_id: int | None, request: Request, actor: User) -> None:
     audit_event(
         db,
         action="mods_refreshed",
         entity_type="mod",
         actor=actor,
         request=request,
-        detail={"refreshed": result.refreshed, "failed": len(result.failed), "failed_mods": result.failed},
+        detail={"refreshed": result.refreshed, "failed": len(result.failed), "failed_mods": result.failed, "modset_id": modset_id},
     )

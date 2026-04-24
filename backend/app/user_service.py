@@ -24,7 +24,14 @@ def auth_user_to_read(user: User, session_expires_at=None):
     expires_at = session_expires_at
     if expires_at is None:
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=SESSION_TTL_SECONDS)
-    return AuthUserRead(id=user.id, username=user.username, role=user.role, session_expires_at=expires_at)
+    return AuthUserRead(
+        id=user.id,
+        username=user.username,
+        role=user.role,
+        active_modset_id=user.active_modset_id,
+        active_modset_name=user.active_modset.name if user.active_modset else None,
+        session_expires_at=expires_at,
+    )
 
 
 def list_users(db: Session) -> list[UserRead]:

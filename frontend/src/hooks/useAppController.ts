@@ -3,6 +3,7 @@ import React from "react";
 import { useAdminData } from "./useAdminData";
 import { useAppActions } from "./useAppActions";
 import { useAuth } from "./useAuth";
+import { useModsets } from "./useModsets";
 import { useMods } from "./useMods";
 import { useWorkspaceView } from "./useWorkspaceView";
 
@@ -10,12 +11,14 @@ export function useAppController() {
   const detailRef = React.useRef<HTMLElement | null>(null);
   const view = useWorkspaceView();
   const auth = useAuth(view.showDashboardView);
-  const mods = useMods({ api: auth.api, authUser: auth.authUser });
+  const modsets = useModsets({ api: auth.api, authUser: auth.authUser, setAuthUser: auth.setAuthUser });
+  const mods = useMods({ api: auth.api, authUser: auth.authUser, activeModsetId: modsets.activeModsetId });
   const admin = useAdminData({ api: auth.api, authUser: auth.authUser });
   const actions = useAppActions({
     auth,
     admin,
     mods,
+    modsets,
     closeAddModDialog: view.closeAddModDialog,
     openModView: view.openModView,
     showDashboardView: view.showDashboardView,
@@ -37,6 +40,7 @@ export function useAppController() {
     detailRef,
     view,
     auth,
+    modsets,
     mods,
     admin,
     actions,

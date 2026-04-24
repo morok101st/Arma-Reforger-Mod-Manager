@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_current_user
 from app.database import get_db
+from app.modset_service import ModSetNotFoundError, resolve_modset_id
 from app.mod_router_helpers import (
     audit_mod_create_failed,
     audit_mod_created,
@@ -22,8 +23,16 @@ router = APIRouter(tags=["mods"])
 
 
 @router.get("/mods", response_model=list[ModRead])
-def api_list_mods(db: Session = Depends(get_db), _: User = Depends(require_current_user)) -> list[ModRead]:
-    return list_mods(db)
+def api_list_mods(
+    modset_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_current_user),
+) -> list[ModRead]:
+    try:
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return list_mods(db, effective_modset_id)
 
 
 @router.post("/mods", response_model=ModRead, status_code=status.HTTP_201_CREATED)
@@ -32,13 +41,18 @@ async def api_create_mod(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
+    modset_id: int | None = None,
 ) -> ModRead:
     try:
-        created = await create_mod(db, payload)
-        audit_mod_created(db, mod=created, request=request, actor=current_user)
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        created = await create_mod(db, payload, effective_modset_id)
+        audit_mod_created(db, mod=created, modset_id=effective_modset_id, request=request, actor=current_user)
         return created
     except Exception as exc:
-        audit_mod_create_failed(db, payload=payload, request=request, actor=current_user, exc=exc)
+        audit_mod_create_failed(db, payload=payload, modset_id=effective_modset_id, request=request, actor=current_user, exc=exc)
         raise_workshop_fetch_failed(exc)
 
 
@@ -46,9 +60,14 @@ async def api_create_mod(
 def api_get_mod(
     mod_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_current_user),
+    current_user: User = Depends(require_current_user),
+    modset_id: int | None = None,
 ) -> ModRead:
-    mod = get_mod_read(db, mod_id)
+    try:
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    mod = get_mod_read(db, mod_id, effective_modset_id)
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
     return mod
@@ -61,11 +80,24 @@ async def api_update_user_mod(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
+    modset_id: int | None = None,
 ) -> ModRead:
-    mod = await update_user_mod(db, mod_id, payload)
+    try:
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    mod = await update_user_mod(db, mod_id, payload, effective_modset_id)
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
-    audit_mod_updated(db, mod_id=mod_id, mod=mod, payload=payload, request=request, actor=current_user)
+    audit_mod_updated(
+        db,
+        mod_id=mod_id,
+        modset_id=effective_modset_id,
+        mod=mod,
+        payload=payload,
+        request=request,
+        actor=current_user,
+    )
     return mod
 
 
@@ -75,16 +107,36 @@ async def api_refresh_mod(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
+    modset_id: int | None = None,
 ) -> ModRead:
-    existing_mod = get_mod_or_none(db, mod_id)
-    if not existing_mod:
-        raise_mod_not_found(db, action="mod_refresh_failed", mod_id=mod_id, request=request, actor=current_user)
     try:
-        refreshed = await refresh_mod(db, mod_id)
-        audit_mod_refreshed(db, mod_id=mod_id, mod=refreshed, request=request, actor=current_user)
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    existing_mod = get_mod_or_none(db, mod_id, effective_modset_id)
+    if not existing_mod:
+        raise_mod_not_found(
+            db,
+            action="mod_refresh_failed",
+            mod_id=mod_id,
+            modset_id=effective_modset_id,
+            request=request,
+            actor=current_user,
+        )
+    try:
+        refreshed = await refresh_mod(db, mod_id, effective_modset_id)
+        audit_mod_refreshed(db, mod_id=mod_id, modset_id=effective_modset_id, mod=refreshed, request=request, actor=current_user)
         return refreshed
     except Exception as exc:
-        audit_mod_refresh_failed(db, mod_id=mod_id, request=request, actor=current_user, reason=str(exc), mod_name=existing_mod.name)
+        audit_mod_refresh_failed(
+            db,
+            mod_id=mod_id,
+            modset_id=effective_modset_id,
+            request=request,
+            actor=current_user,
+            reason=str(exc),
+            mod_name=existing_mod.name,
+        )
         raise_workshop_fetch_failed(exc)
 
 
@@ -94,13 +146,25 @@ def api_delete_mod(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
+    modset_id: int | None = None,
 ) -> Response:
-    existing_mod = get_mod_or_none(db, mod_id)
+    try:
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    existing_mod = get_mod_or_none(db, mod_id, effective_modset_id)
     if not existing_mod:
-        raise_mod_not_found(db, action="mod_delete_failed", mod_id=mod_id, request=request, actor=current_user)
+        raise_mod_not_found(
+            db,
+            action="mod_delete_failed",
+            mod_id=mod_id,
+            modset_id=effective_modset_id,
+            request=request,
+            actor=current_user,
+        )
     mod_name = existing_mod.name
-    delete_mod(db, mod_id)
-    audit_mod_deleted(db, mod_id=mod_id, mod_name=mod_name, request=request, actor=current_user)
+    delete_mod(db, mod_id, effective_modset_id)
+    audit_mod_deleted(db, mod_id=mod_id, modset_id=effective_modset_id, mod_name=mod_name, request=request, actor=current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -109,7 +173,8 @@ async def api_refresh_all(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
+    modset_id: int | None = None,
 ) -> RefreshResult:
     result = await refresh_all_mods(db)
-    audit_refresh_all(db, result=result, request=request, actor=current_user)
+    audit_refresh_all(db, result=result, modset_id=modset_id, request=request, actor=current_user)
     return result

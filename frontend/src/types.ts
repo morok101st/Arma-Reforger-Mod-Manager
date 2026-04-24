@@ -8,6 +8,8 @@ export type AuthUser = {
   id: number;
   username: string;
   role: UserRole;
+  active_modset_id: number | null;
+  active_modset_name: string | null;
   session_expires_at: string | null;
 };
 
@@ -85,4 +87,11 @@ export type SchedulerStatus = {
   last_refreshed: number | null;
   last_failed: Record<string, string> | null;
   last_error: string | null;
+};
+
+export type Modset = {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
 };

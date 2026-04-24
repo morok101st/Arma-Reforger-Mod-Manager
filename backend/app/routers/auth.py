@@ -20,6 +20,7 @@ from app.auth import (
     verify_password,
 )
 from app.models import User
+from app.modset_service import ensure_user_active_modset
 from app.schemas_auth import AuthUserRead, LoginRequest, PasswordChange
 from app.user_service import auth_user_to_read
 
@@ -59,6 +60,7 @@ def api_login(payload: LoginRequest, request: Request, response: Response, db: S
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
     clear_failed_logins(request, username)
+    ensure_user_active_modset(db, user)
     set_session_cookie(response, user)
     audit_event(
         db,
@@ -96,8 +98,10 @@ def api_logout(
 @router.get("/me", response_model=AuthUserRead)
 def api_me(
     current_user: User = Depends(require_current_user),
+    db: Session = Depends(get_db),
     session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
 ) -> AuthUserRead:
+    ensure_user_active_modset(db, current_user)
     return auth_user_to_read(current_user, session_expires_at(session_token))
 
 
@@ -109,6 +113,7 @@ def api_change_password(
     current_user: User = Depends(require_current_user),
     session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
 ) -> AuthUserRead:
+    ensure_user_active_modset(db, current_user)
     if not verify_password(payload.current_password, current_user.password_hash):
         audit_event(
             db,

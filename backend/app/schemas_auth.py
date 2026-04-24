@@ -14,6 +14,8 @@ class AuthUserRead(BaseModel):
     id: int
     username: str
     role: UserRole
+    active_modset_id: int | None = None
+    active_modset_name: str | None = None
     session_expires_at: datetime | None = None
 
 

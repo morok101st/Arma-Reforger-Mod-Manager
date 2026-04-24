@@ -7,6 +7,7 @@ export function useAppActions({
   auth,
   admin,
   mods,
+  modsets,
   closeAddModDialog,
   openModView,
   showDashboardView,
@@ -30,6 +31,12 @@ export function useAppActions({
     refreshMod: (id: string) => Promise<unknown>;
     removeMod: (id: string) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string) => Promise<unknown>;
+  };
+  modsets: {
+    activateModset: (modsetId: number) => Promise<unknown>;
+    createModset: (name: string) => Promise<unknown>;
+    updateModset: (modsetId: number, name: string) => Promise<unknown>;
+    deleteModset: (modsetId: number) => Promise<unknown>;
   };
   closeAddModDialog: () => void;
   openModView: () => void;
@@ -120,6 +127,22 @@ export function useAppActions({
     await action.run(() => mods.updateInstalledVersion(nextVersion));
   }, [action, mods]);
 
+  const activateModset = React.useCallback(async (modsetId: number) => {
+    await action.run(() => modsets.activateModset(modsetId), { rethrow: true });
+  }, [action, modsets]);
+
+  const createModset = React.useCallback(async (name: string) => {
+    await action.run(() => modsets.createModset(name), { rethrow: true });
+  }, [action, modsets]);
+
+  const updateModset = React.useCallback(async (modsetId: number, name: string) => {
+    await action.run(() => modsets.updateModset(modsetId, name), { rethrow: true });
+  }, [action, modsets]);
+
+  const deleteModset = React.useCallback(async (modsetId: number) => {
+    await action.run(() => modsets.deleteModset(modsetId), { rethrow: true });
+  }, [action, modsets]);
+
   return {
     loading: action.loading,
     error: action.error,
@@ -134,5 +157,9 @@ export function useAppActions({
     refreshMod,
     removeMod,
     updateInstalledVersion,
+    activateModset,
+    createModset,
+    updateModset,
+    deleteModset,
   };
 }

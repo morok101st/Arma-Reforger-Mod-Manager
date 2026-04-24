@@ -11,6 +11,7 @@ from app.database import Base, SessionLocal, engine
 from app.migrations import migrate_schema
 from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
+from app.routers.modsets import router as modsets_router
 from app.routers.mods import router as mods_router
 from app.routers.system import router as system_router
 from app.scheduler import start_scheduler
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(system_router)
     app.include_router(auth_router)
     app.include_router(admin_router)
+    app.include_router(modsets_router)
     app.include_router(mods_router)
     return app
 

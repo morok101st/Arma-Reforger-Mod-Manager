@@ -2,7 +2,7 @@ import React from "react";
 import { Home, LogOut, Pin, Plus, Shield } from "lucide-react";
 
 import { StatusIcon, UNKNOWN_VALUE } from "./common";
-import type { Mod, SortMode } from "../types";
+import type { Mod, Modset, SortMode } from "../types";
 
 export function Sidebar({
   username,
@@ -10,6 +10,8 @@ export function Sidebar({
   error,
   showDashboard,
   showUserAdmin,
+  modsets,
+  activeModsetId,
   searchQuery,
   sortMode,
   mods,
@@ -19,6 +21,8 @@ export function Sidebar({
   onToggleSecurity,
   onLogout,
   onShowAddMod,
+  onOpenModsetDialog,
+  onActivateModset,
   onSearchChange,
   onSortChange,
   onOpenMod,
@@ -28,6 +32,8 @@ export function Sidebar({
   error: string | null;
   showDashboard: boolean;
   showUserAdmin: boolean;
+  modsets: Modset[];
+  activeModsetId: number | null;
   searchQuery: string;
   sortMode: SortMode;
   mods: Mod[];
@@ -37,6 +43,8 @@ export function Sidebar({
   onToggleSecurity: () => void;
   onLogout: () => void;
   onShowAddMod: () => void;
+  onOpenModsetDialog: () => void;
+  onActivateModset: (modsetId: number) => void;
   onSearchChange: (value: string) => void;
   onSortChange: (value: SortMode) => void;
   onOpenMod: (id: string) => void;
@@ -74,6 +82,22 @@ export function Sidebar({
         <Plus size={18} />
         Add mod
       </button>
+
+      <div className="filter-row">
+        <label className="sort-control">
+          Modset
+          <select value={activeModsetId ?? ""} onChange={(event) => onActivateModset(Number(event.target.value))} disabled={loading || modsets.length === 0}>
+            {modsets.map((modset) => (
+              <option key={modset.id} value={modset.id}>
+                {modset.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="secondary-button compact" onClick={onOpenModsetDialog} type="button" disabled={loading}>
+          Manage
+        </button>
+      </div>
 
       {error && <div className="error-box">{error}</div>}
 

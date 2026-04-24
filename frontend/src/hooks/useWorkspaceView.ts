@@ -4,6 +4,7 @@ export function useWorkspaceView() {
   const [showDashboard, setShowDashboard] = React.useState(true);
   const [showUserAdmin, setShowUserAdmin] = React.useState(false);
   const [showAddModDialog, setShowAddModDialog] = React.useState(false);
+  const [showModsetDialog, setShowModsetDialog] = React.useState(false);
 
   const showDashboardView = React.useCallback(() => {
     setShowDashboard(true);
@@ -22,15 +23,20 @@ export function useWorkspaceView() {
 
   const openAddModDialog = React.useCallback(() => setShowAddModDialog(true), []);
   const closeAddModDialog = React.useCallback(() => setShowAddModDialog(false), []);
+  const openModsetDialog = React.useCallback(() => setShowModsetDialog(true), []);
+  const closeModsetDialog = React.useCallback(() => setShowModsetDialog(false), []);
 
   return {
     showDashboard,
     showUserAdmin,
     showAddModDialog,
+    showModsetDialog,
     showDashboardView,
     toggleSecurityView,
     openModView,
     openAddModDialog,
     closeAddModDialog,
+    openModsetDialog,
+    closeModsetDialog,
   };
 }

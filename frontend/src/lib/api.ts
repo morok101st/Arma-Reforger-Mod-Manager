@@ -1,4 +1,4 @@
-import type { AuditLog, AuthUser, Mod, SchedulerStatus, UserAccount, UserRole } from "../types";
+import type { AuditLog, AuthUser, Mod, Modset, SchedulerStatus, UserAccount, UserRole } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -7,6 +7,12 @@ type ApiRequestOptions = RequestInit & {
 };
 
 export function createApiClient(onUnauthorized?: () => void) {
+  function withModset(path: string, modsetId?: number | null) {
+    if (!modsetId) return path;
+    const separator = path.includes("?") ? "&" : "?";
+    return `${path}${separator}modset_id=${encodeURIComponent(String(modsetId))}`;
+  }
+
   async function request(path: string, options: ApiRequestOptions = {}) {
     const { json, headers, ...rest } = options;
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -54,25 +60,45 @@ export function createApiClient(onUnauthorized?: () => void) {
       });
       return readJsonOrThrow<AuthUser>(response, "Could not change password.");
     },
-    async listMods() {
-      const response = await request("/mods");
+    async listMods(modsetId?: number | null) {
+      const response = await request(withModset("/mods", modsetId));
       return readJsonOrThrow<Mod[]>(response, "Could not load mod list.");
     },
-    async createMod(id: string, currentVersion: string | null) {
-      const response = await request("/mods", { method: "POST", json: { id, current_version: currentVersion } });
+    async createMod(id: string, currentVersion: string | null, modsetId?: number | null) {
+      const response = await request(withModset("/mods", modsetId), { method: "POST", json: { id, current_version: currentVersion } });
       return readJsonOrThrow<Mod>(response, "Could not add mod.");
     },
-    async refreshMod(id: string) {
-      const response = await request(`/mods/${id}/refresh`, { method: "POST" });
+    async refreshMod(id: string, modsetId?: number | null) {
+      const response = await request(withModset(`/mods/${id}/refresh`, modsetId), { method: "POST" });
       return readJsonOrThrow<Mod>(response, "Refresh failed.");
     },
-    async deleteMod(id: string) {
-      const response = await request(`/mods/${id}`, { method: "DELETE" });
+    async deleteMod(id: string, modsetId?: number | null) {
+      const response = await request(withModset(`/mods/${id}`, modsetId), { method: "DELETE" });
       if (!response.ok) throw new Error("Could not delete mod.");
     },
-    async updateInstalledVersion(id: string, currentVersion: string | null) {
-      const response = await request(`/mods/${id}`, { method: "PATCH", json: { current_version: currentVersion } });
+    async updateInstalledVersion(id: string, currentVersion: string | null, modsetId?: number | null) {
+      const response = await request(withModset(`/mods/${id}`, modsetId), { method: "PATCH", json: { current_version: currentVersion } });
       return readJsonOrThrow<Mod>(response, "Could not update installed version.");
+    },
+    async listModsets() {
+      const response = await request("/modsets");
+      return readJsonOrThrow<Modset[]>(response, "Could not load modsets.");
+    },
+    async createModset(name: string) {
+      const response = await request("/modsets", { method: "POST", json: { name } });
+      return readJsonOrThrow<Modset>(response, "Could not create modset.");
+    },
+    async updateModset(modsetId: number, name: string) {
+      const response = await request(`/modsets/${modsetId}`, { method: "PATCH", json: { name } });
+      return readJsonOrThrow<Modset>(response, "Could not rename modset.");
+    },
+    async deleteModset(modsetId: number) {
+      const response = await request(`/modsets/${modsetId}`, { method: "DELETE" });
+      return readJsonOrThrow<AuthUser>(response, "Could not delete modset.");
+    },
+    async activateModset(modsetId: number) {
+      const response = await request(`/modsets/${modsetId}/activate`, { method: "POST" });
+      return readJsonOrThrow<AuthUser>(response, "Could not activate modset.");
     },
     async listUsers() {
       const response = await request("/users");

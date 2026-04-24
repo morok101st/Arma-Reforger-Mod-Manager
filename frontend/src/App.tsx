@@ -5,12 +5,13 @@ import { AuthFrame } from "./components/AuthFrame";
 import { Dashboard } from "./components/Dashboard";
 import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
+import { ModsetDialog } from "./components/ModsetDialog";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
 
 export function App() {
-  const { detailRef, view, auth, mods, admin, actions, openMod } = useAppController();
+  const { detailRef, view, auth, modsets, mods, admin, actions, openMod } = useAppController();
 
   if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
@@ -32,6 +33,8 @@ export function App() {
         error={actions.error}
         showDashboard={view.showDashboard}
         showUserAdmin={view.showUserAdmin}
+        modsets={modsets.modsets}
+        activeModsetId={modsets.activeModsetId}
         searchQuery={mods.searchQuery}
         sortMode={mods.sortMode}
         mods={mods.sortedMods}
@@ -41,12 +44,25 @@ export function App() {
         onToggleSecurity={view.toggleSecurityView}
         onLogout={actions.logout}
         onShowAddMod={view.openAddModDialog}
+        onOpenModsetDialog={view.openModsetDialog}
+        onActivateModset={actions.activateModset}
         onSearchChange={mods.setSearchQuery}
         onSortChange={mods.setSortMode}
         onOpenMod={openMod}
       />
 
       {view.showAddModDialog && <AddModDialog loading={actions.loading} onClose={view.closeAddModDialog} onSubmit={actions.addMod} />}
+      {view.showModsetDialog && (
+        <ModsetDialog
+          modsets={modsets.modsets}
+          activeModsetId={modsets.activeModsetId}
+          loading={actions.loading}
+          onClose={view.closeModsetDialog}
+          onCreate={actions.createModset}
+          onRename={actions.updateModset}
+          onDelete={actions.deleteModset}
+        />
+      )}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {view.showDashboard ? (
