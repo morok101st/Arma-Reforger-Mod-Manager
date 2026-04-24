@@ -1,14 +1,11 @@
 import React from "react";
 import { Pencil, Plus, TriangleAlert } from "lucide-react";
 
-import { getDashboardStats } from "../lib/utils";
-import type { Mod, Modset } from "../types";
-import { Dialog, Info } from "./common";
+import type { Modset } from "../types";
+import { Dialog } from "./common";
 
 export function ModsetManagement({
   modsets,
-  activeModsetId,
-  mods,
   loading,
   error,
   createModset,
@@ -16,16 +13,12 @@ export function ModsetManagement({
   deleteModset,
 }: {
   modsets: Modset[];
-  activeModsetId: number | null;
-  mods: Mod[];
   loading: boolean;
   error: string | null;
   createModset: (name: string) => Promise<void>;
   updateModset: (modsetId: number, name: string) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
 }) {
-  const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
-  const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? null;
   const [newName, setNewName] = React.useState("");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
@@ -66,13 +59,6 @@ export function ModsetManagement({
         </div>
       </header>
 
-      <div className="dashboard-stats">
-        <Info label="Active modset" value={activeModset?.name ?? "unknown"} />
-        <Info label="Tracked mods" value={String(stats.total)} />
-        <Info label="Updates" value={String(stats.updateAvailable)} />
-        <Info label="Defined modsets" value={String(modsets.length)} />
-      </div>
-
       {error && (
         <div className="status-band update_available">
           <TriangleAlert className="status-icon warn" size={20} />
@@ -81,46 +67,35 @@ export function ModsetManagement({
         </div>
       )}
 
-      <section className="dashboard-card content-section">
-        <div className="section-title-row">
-          <h3>Create modset</h3>
-          <button className="primary-button compact" onClick={() => setShowCreateDialog(true)} type="button">
-            <Plus size={18} />
-            Create modset
-          </button>
-        </div>
-      </section>
+      <button className="primary-button compact" onClick={() => setShowCreateDialog(true)} type="button">
+        <Plus size={18} />
+        Create modset
+      </button>
 
       <section className="dashboard-card content-section">
         <div className="section-title-row">
           <h3>Edit modsets</h3>
         </div>
-        <div className="modset-list">
+        <div className="user-list">
           {modsets.map((modset) => {
             return (
-              <article className="modset-row" key={modset.id}>
+              <article className="user-row modset-edit-row" key={modset.id}>
                 <div>
                   <strong>{modset.name}</strong>
+                  <small>ID {modset.id}</small>
                 </div>
-                <div className="modset-row-actions">
-                  <button
-                    className="secondary-button compact"
-                    disabled={loading}
-                    onClick={() => openEditDialog(modset)}
-                    type="button"
-                  >
-                    <Pencil size={16} />
-                    Edit
-                  </button>
-                  <button
-                    className="secondary-button compact"
-                    disabled={loading || modsets.length <= 1}
-                    onClick={() => deleteModset(modset.id).catch(() => null)}
-                    type="button"
-                  >
-                    Delete
-                  </button>
-                </div>
+                <button className="secondary-button compact" disabled={loading} onClick={() => openEditDialog(modset)} type="button">
+                  <Pencil size={16} />
+                  Edit
+                </button>
+                <button
+                  className="secondary-button compact"
+                  disabled={loading || modsets.length <= 1}
+                  onClick={() => deleteModset(modset.id).catch(() => null)}
+                  type="button"
+                >
+                  Delete
+                </button>
               </article>
             );
           })}
