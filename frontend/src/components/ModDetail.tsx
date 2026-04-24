@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, Check
 
 import { dependencyKey, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
-import { Info, StatusIcon, statusLabel } from "./common";
+import { Dialog, Info, StatusIcon, statusLabel } from "./common";
 
 export function ModDetail({
   selected,
@@ -34,6 +34,8 @@ export function ModDetail({
   trackedDependencyMatches: Map<string, Mod | null>;
   openMod: (id: string) => void;
 }) {
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+
   return (
     <>
       <header className="detail-header">
@@ -51,11 +53,37 @@ export function ModDetail({
           <button className="icon-button" onClick={() => refreshMod(selected.id)} disabled={loading} title="Refresh mod">
             <RefreshCw size={18} />
           </button>
-          <button className="icon-button danger" onClick={() => removeMod(selected.id)} disabled={loading} title="Remove mod">
+          <button className="icon-button danger" onClick={() => setShowDeleteDialog(true)} disabled={loading} title="Remove mod">
             <Trash2 size={18} />
           </button>
         </div>
       </header>
+
+      {showDeleteDialog && (
+        <Dialog title="Delete mod" onClose={() => setShowDeleteDialog(false)}>
+          <div className="dialog-form">
+            <p className="muted">
+              Delete <strong>{selected.name ?? selected.id}</strong> from this modset?
+            </p>
+            <div className="dialog-actions">
+              <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                Cancel
+              </button>
+              <button
+                className="secondary-button compact danger-button"
+                disabled={loading}
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  removeMod(selected.id);
+                }}
+                type="button"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
 
       <div className={`status-band ${selected.status.toLowerCase()}`}>
         <StatusIcon status={selected.status} />
