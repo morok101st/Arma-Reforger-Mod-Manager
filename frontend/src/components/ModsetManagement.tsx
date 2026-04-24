@@ -111,7 +111,7 @@ export function ModsetManagement({
                 Edit
               </button>
               <button
-                className="secondary-button compact"
+                className="secondary-button compact danger-button"
                 disabled={loading || modsets.length <= 1}
                 onClick={(event) => {
                   event.stopPropagation();

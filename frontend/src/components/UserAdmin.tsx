@@ -134,7 +134,7 @@ export function UserAdmin({
                   ariaLabel={`Role for ${user.username}`}
                 />
                 <button
-                  className="secondary-button compact"
+                  className={`secondary-button compact ${user.is_active ? "danger-button" : ""}`}
                   disabled={loading || user.id === currentUser.id}
                   onClick={() => updateUserAccount(user.id, { is_active: !user.is_active }).catch(() => null)}
                   type="button"

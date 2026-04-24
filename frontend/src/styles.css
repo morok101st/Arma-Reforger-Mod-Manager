@@ -382,6 +382,18 @@ input {
   min-height: 42px;
 }
 
+.secondary-button.danger-button {
+  background: #fff3f1;
+  border-color: #efc3bc;
+  color: #a63333;
+}
+
+.secondary-button.danger-button:hover {
+  background: #ffe7e3;
+  border-color: #e49f95;
+  color: #8f2a2a;
+}
+
 button:disabled {
   cursor: default;
   opacity: 0.65;
