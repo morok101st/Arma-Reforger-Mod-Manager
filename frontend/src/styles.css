@@ -1,5 +1,7 @@
 :root {
   --md-sys-color-primary: #2f6f5f;
+  --md-sys-color-primary-hover: #285f51;
+  --md-sys-color-primary-pressed: #214f43;
   --md-sys-color-on-primary: #ffffff;
   --md-sys-color-primary-container: #d4efe5;
   --md-sys-color-on-primary-container: #0f2a22;
@@ -270,12 +272,19 @@ select {
   justify-content: center;
   min-height: 44px;
   padding: 0 16px;
-  transition: filter 120ms ease, box-shadow 120ms ease;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
-.primary-button:hover {
-  box-shadow: var(--elevation-1);
-  filter: brightness(0.97);
+.primary-button:not(:disabled):hover {
+  background: var(--md-sys-color-primary-hover);
+  box-shadow: 0 6px 14px rgba(23, 54, 45, 0.24);
+  transform: translateY(-1px);
+}
+
+.primary-button:not(:disabled):active {
+  background: var(--md-sys-color-primary-pressed);
+  box-shadow: 0 2px 8px rgba(23, 54, 45, 0.22);
+  transform: translateY(0);
 }
 
 .primary-button.compact {
