@@ -12,6 +12,7 @@ import { useAppController } from "./hooks/useAppController";
 
 export function App() {
   const { detailRef, view, auth, modsets, mods, admin, actions, openMod } = useAppController();
+  const activeModsetName = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId)?.name ?? "Default";
 
   if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
@@ -63,7 +64,7 @@ export function App() {
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {view.showDashboard ? (
-          <Dashboard mods={mods.mods} schedulerStatus={mods.schedulerStatus} openMod={openMod} />
+          <Dashboard mods={mods.mods} schedulerStatus={mods.schedulerStatus} openMod={openMod} activeModsetName={activeModsetName} />
         ) : view.showModsetAdmin ? (
           <ModsetManagement
             modsets={modsets.modsets}

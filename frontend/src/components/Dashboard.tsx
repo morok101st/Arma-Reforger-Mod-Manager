@@ -9,10 +9,12 @@ export function Dashboard({
   mods,
   schedulerStatus,
   openMod,
+  activeModsetName,
 }: {
   mods: Mod[];
   schedulerStatus: SchedulerStatus | null;
   openMod: (id: string) => void;
+  activeModsetName: string;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
 
@@ -20,8 +22,7 @@ export function Dashboard({
     <>
       <header className="dashboard-hero">
         <div>
-          <p>Overview</p>
-          <h2>Dashboard</h2>
+          <h2>{`Overview - ${activeModsetName}`}</h2>
         </div>
       </header>
 
