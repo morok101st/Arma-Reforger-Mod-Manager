@@ -11,7 +11,6 @@ export function ModsetManagement({
   mods,
   loading,
   error,
-  activateModset,
   createModset,
   updateModset,
   deleteModset,
@@ -21,7 +20,6 @@ export function ModsetManagement({
   mods: Mod[];
   loading: boolean;
   error: string | null;
-  activateModset: (modsetId: number) => Promise<void>;
   createModset: (name: string) => Promise<void>;
   updateModset: (modsetId: number, name: string) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
@@ -48,7 +46,7 @@ export function ModsetManagement({
       <header className="detail-header">
         <div>
           <p>Modsets</p>
-          <h2>Modset Management</h2>
+          <h2>Modsets</h2>
         </div>
       </header>
 
@@ -66,28 +64,6 @@ export function ModsetManagement({
           <span>{error}</span>
         </div>
       )}
-
-      <section className="dashboard-card content-section">
-        <div className="section-title-row">
-          <h3>Select active modset</h3>
-        </div>
-        <div className="filter-row">
-          <label className="sort-control">
-            Active modset
-            <select
-              value={activeModsetId ?? ""}
-              onChange={(event) => activateModset(Number(event.target.value)).catch(() => null)}
-              disabled={loading || modsets.length === 0}
-            >
-              {modsets.map((modset) => (
-                <option key={modset.id} value={modset.id}>
-                  {modset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
 
       <section className="dashboard-card content-section">
         <div className="section-title-row">

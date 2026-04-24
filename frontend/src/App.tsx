@@ -63,7 +63,6 @@ export function App() {
             mods={mods.mods}
             loading={actions.loading}
             error={actions.error}
-            activateModset={actions.activateModset}
             createModset={actions.createModset}
             updateModset={actions.updateModset}
             deleteModset={actions.deleteModset}
