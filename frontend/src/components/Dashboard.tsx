@@ -44,7 +44,7 @@ export function Dashboard({
             <div className="compact-list">
               {stats.attentionMods.map((mod) => (
                 <button key={mod.id} onClick={() => openMod(mod.id)} type="button">
-                  <StatusIcon status={mod.status} />
+                  <StatusIcon status={mod.status} noInstalledVersion={!mod.current_version} />
                   <span>
                     <strong>{mod.name ?? mod.id}</strong>
                     <small>{mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}</small>

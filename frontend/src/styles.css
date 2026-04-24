@@ -612,8 +612,12 @@ button:disabled {
   color: #b7791f;
 }
 
-.status-icon.unknown {
+.status-icon.no-installed {
   color: #4f83c2;
+}
+
+.status-icon.unknown {
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .metrics {

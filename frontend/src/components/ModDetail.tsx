@@ -86,7 +86,7 @@ export function ModDetail({
       )}
 
       <div className={`status-band ${selected.status.toLowerCase()}`}>
-        <StatusIcon status={selected.status} />
+        <StatusIcon status={selected.status} noInstalledVersion={!selected.current_version} />
         <strong>{statusLabel(selected.status)}</strong>
         <span>
           Installed {selected.current_version ?? UNKNOWN_VALUE} · Latest {selected.latest_version ?? UNKNOWN_VALUE}
