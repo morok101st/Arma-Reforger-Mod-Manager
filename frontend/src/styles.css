@@ -134,8 +134,27 @@ h3 {
   box-shadow: var(--elevation-1);
 }
 
+.icon-button.active {
+  background: var(--md-sys-color-primary-container);
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 55%, #ffffff);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: var(--elevation-1);
+}
+
 .icon-button.danger {
   color: #a63333;
+}
+
+.icon-button.logout-button {
+  background: #fff3f1;
+  border-color: #efc3bc;
+  color: #a63333;
+}
+
+.icon-button.logout-button:hover {
+  background: #ffe7e3;
+  border-color: #e49f95;
+  color: #8f2a2a;
 }
 
 .action-link {

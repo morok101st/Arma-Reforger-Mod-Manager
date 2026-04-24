@@ -48,13 +48,23 @@ export function Sidebar({
           <p>Arma Reforger Mod Manager</p>
         </div>
         <div className="header-actions">
-          <button className="icon-button" onClick={onShowDashboard} title="Dashboard">
+          <button
+            className={`icon-button ${showDashboard ? "active" : ""}`}
+            onClick={onShowDashboard}
+            title="Dashboard"
+            aria-pressed={showDashboard}
+          >
             <Home size={18} />
           </button>
-          <button className="icon-button" onClick={onToggleSecurity} title="Security">
+          <button
+            className={`icon-button ${showUserAdmin ? "active" : ""}`}
+            onClick={onToggleSecurity}
+            title="Security"
+            aria-pressed={showUserAdmin}
+          >
             <Shield size={18} />
           </button>
-          <button className="icon-button" onClick={onLogout} title={`Logout ${username}`}>
+          <button className="icon-button logout-button" onClick={onLogout} title={`Logout ${username}`}>
             <LogOut size={18} />
           </button>
         </div>
