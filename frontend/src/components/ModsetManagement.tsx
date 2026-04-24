@@ -101,7 +101,6 @@ export function ModsetManagement({
               <article className="modset-row" key={modset.id}>
                 <div>
                   <strong>{modset.name}</strong>
-                  <small>{modset.id === activeModsetId ? "active" : "inactive"}</small>
                 </div>
                 <div className="modset-row-actions">
                   <button
