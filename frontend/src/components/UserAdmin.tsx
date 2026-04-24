@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, RefreshCw, Save } from "lucide-react";
+import { Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, UserAccount, UserRole } from "../types";
@@ -13,6 +13,7 @@ export function UserAdmin({
   changeOwnPassword,
   createUser,
   updateUserAccount,
+  deleteUser,
   resetUserPassword,
   loadAuditLogs,
 }: {
@@ -23,6 +24,7 @@ export function UserAdmin({
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   createUser: (username: string, password: string, role: UserRole) => Promise<void>;
   updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<void>;
+  deleteUser: (userId: number) => Promise<void>;
   resetUserPassword: (userId: number, password: string) => Promise<void>;
   loadAuditLogs: () => Promise<void>;
 }) {
@@ -33,10 +35,12 @@ export function UserAdmin({
   const [newRole, setNewRole] = React.useState<UserRole>("user");
   const [showCreateUserDialog, setShowCreateUserDialog] = React.useState(false);
   const [resetUserId, setResetUserId] = React.useState<number | null>(null);
+  const [deleteUserId, setDeleteUserId] = React.useState<number | null>(null);
   const [resetPasswords, setResetPasswords] = React.useState<Record<number, string>>({});
   const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
 
   const resetUser = users.find((user) => user.id === resetUserId) ?? null;
+  const deleteTarget = users.find((user) => user.id === deleteUserId) ?? null;
   const filteredAuditLogs = React.useMemo(() => filterAuditLogs(auditLogs, auditFilter), [auditLogs, auditFilter]);
 
   async function handleOwnPasswordChange(event: React.FormEvent) {
@@ -144,6 +148,15 @@ export function UserAdmin({
                 <button className="secondary-button compact" disabled={loading} onClick={() => setResetUserId(user.id)} type="button">
                   Reset Password
                 </button>
+                <button
+                  className="secondary-button compact danger-button"
+                  disabled={loading || user.id === currentUser.id}
+                  onClick={() => setDeleteUserId(user.id)}
+                  type="button"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
               </article>
             ))}
           </div>
@@ -206,6 +219,33 @@ export function UserAdmin({
                     type="button"
                   >
                     Reset
+                  </button>
+                </div>
+              </div>
+            </Dialog>
+          )}
+
+          {deleteTarget && (
+            <Dialog title={`Delete user ${deleteTarget.username}`} onClose={() => setDeleteUserId(null)}>
+              <div className="dialog-form">
+                <p className="muted">
+                  Delete <strong>{deleteTarget.username}</strong> permanently?
+                </p>
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setDeleteUserId(null)} type="button">
+                    Cancel
+                  </button>
+                  <button
+                    className="secondary-button compact danger-button"
+                    disabled={loading || deleteTarget.id === currentUser.id}
+                    onClick={() => {
+                      deleteUser(deleteTarget.id)
+                        .then(() => setDeleteUserId(null))
+                        .catch(() => null);
+                    }}
+                    type="button"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>

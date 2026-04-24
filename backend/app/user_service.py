@@ -72,3 +72,14 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserRead | No
     db.commit()
     db.refresh(user)
     return user_to_read(user)
+
+
+def delete_user(db: Session, user_id: int) -> UserRead | None:
+    user = db.get(User, user_id)
+    if not user:
+        return None
+
+    deleted = user_to_read(user)
+    db.delete(user)
+    db.commit()
+    return deleted

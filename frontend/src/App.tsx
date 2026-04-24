@@ -85,6 +85,7 @@ export function App() {
             changeOwnPassword={actions.changeOwnPassword}
             createUser={actions.createUser}
             updateUserAccount={actions.updateUserAccount}
+            deleteUser={actions.deleteUser}
             resetUserPassword={actions.resetUserPassword}
             loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}
           />

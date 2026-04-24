@@ -23,6 +23,7 @@ export function useAppActions({
   admin: {
     createUser: (username: string, password: string, role: UserAccount["role"]) => Promise<unknown>;
     updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<unknown>;
+    deleteUser: (userId: number) => Promise<void>;
     resetUserPassword: (userId: number, password: string) => Promise<void>;
     loadAuditLogs: () => Promise<unknown>;
   };
@@ -98,6 +99,13 @@ export function useAppActions({
   const resetUserPassword = React.useCallback(
     async (userId: number, password: string) => {
       await action.run(() => admin.resetUserPassword(userId, password), { rethrow: true });
+    },
+    [action, admin],
+  );
+
+  const deleteUser = React.useCallback(
+    async (userId: number) => {
+      await action.run(() => admin.deleteUser(userId), { rethrow: true });
     },
     [action, admin],
   );
@@ -179,6 +187,7 @@ export function useAppActions({
     changeOwnPassword,
     createUser,
     updateUserAccount,
+    deleteUser,
     resetUserPassword,
     addMod,
     refreshMod,

@@ -11,6 +11,7 @@ export function useAdminData({
     listAuditLogs: (limit?: number) => Promise<AuditLog[]>;
     createUser: (username: string, password: string, role: UserRole) => Promise<UserAccount>;
     updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<UserAccount>;
+    deleteUser: (userId: number) => Promise<void>;
     resetUserPassword: (userId: number, password: string) => Promise<void>;
   };
   authUser: AuthUser | null;
@@ -69,6 +70,15 @@ export function useAdminData({
     [api, loadAuditLogs, loadUsers],
   );
 
+  const deleteUser = React.useCallback(
+    async (userId: number) => {
+      await api.deleteUser(userId);
+      await loadUsers();
+      await loadAuditLogs();
+    },
+    [api, loadAuditLogs, loadUsers],
+  );
+
   return {
     users,
     auditLogs,
@@ -76,6 +86,7 @@ export function useAdminData({
     loadAuditLogs,
     createUser,
     updateUserAccount,
+    deleteUser,
     resetUserPassword,
   };
 }

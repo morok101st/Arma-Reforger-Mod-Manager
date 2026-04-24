@@ -116,6 +116,13 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(`/users/${userId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<UserAccount>(response, "Could not update user.");
     },
+    async deleteUser(userId: number) {
+      const response = await request(`/users/${userId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail ?? "Could not delete user.");
+      }
+    },
     async resetUserPassword(userId: number, password: string) {
       const response = await request(`/users/${userId}/password`, { method: "PATCH", json: { password } });
       if (!response.ok) {

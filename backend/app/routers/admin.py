@@ -9,7 +9,7 @@ from app.auth import hash_password, require_admin_user
 from app.models import User
 from app.schemas_audit import AuditLogRead
 from app.schemas_users import PasswordReset, UserCreate, UserRead, UserUpdate
-from app.user_service import create_user, list_users, update_user
+from app.user_service import create_user, delete_user, list_users, update_user
 
 router = APIRouter(tags=["admin"])
 
@@ -165,6 +165,66 @@ def api_reset_user_password(
         is_active=target.is_active,
         created_at=target.created_at,
         last_login_at=target.last_login_at,
+    )
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def api_delete_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_user),
+) -> None:
+    target = db.get(User, user_id)
+    if user_id == current_user.id:
+        fail_with_audit(
+            db,
+            action="user_delete_failed",
+            entity_type="user",
+            entity_id=str(user_id),
+            actor=current_user,
+            request=request,
+            status_code=400,
+            detail_message="Cannot delete current user",
+            audit_detail={"reason": "cannot_delete_current_user"},
+        )
+    if not target:
+        fail_with_audit(
+            db,
+            action="user_delete_failed",
+            entity_type="user",
+            entity_id=str(user_id),
+            actor=current_user,
+            request=request,
+            status_code=404,
+            detail_message="User not found",
+            audit_detail={"reason": "user_not_found"},
+        )
+    if target.role == "admin" and target.is_active:
+        active_admin_count = db.scalar(select(func.count()).select_from(User).where(User.role == "admin", User.is_active.is_(True))) or 0
+        if active_admin_count <= 1:
+            fail_with_audit(
+                db,
+                action="user_delete_failed",
+                entity_type="user",
+                entity_id=str(user_id),
+                actor=current_user,
+                request=request,
+                status_code=400,
+                detail_message="At least one active admin is required",
+                audit_detail={"reason": "last_active_admin"},
+            )
+
+    deleted = delete_user(db, user_id)
+    assert deleted is not None
+    audit_event(
+        db,
+        action="user_deleted",
+        entity_type="user",
+        entity_id=str(user_id),
+        actor=current_user,
+        request=request,
+        detail={"username": deleted.username, "role": deleted.role, "is_active": deleted.is_active},
     )
 
 
