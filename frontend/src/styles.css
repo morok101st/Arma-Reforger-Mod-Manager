@@ -64,7 +64,7 @@ select {
   border-right: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   min-height: 0;
   overflow: hidden;
   padding: 24px;
@@ -358,6 +358,39 @@ button:disabled {
   grid-auto-rows: max-content;
   min-height: 0;
   overflow: auto;
+}
+
+.modset-controls {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 300px) auto auto;
+}
+
+.mod-management-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.mod-management-list,
+.mod-management-detail {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-md);
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+}
+
+.mod-management-list .mod-list {
+  max-height: calc(100vh - 430px);
+}
+
+.mod-management-detail .detail-header {
+  margin-bottom: 4px;
 }
 
 .mod-row {
@@ -1018,6 +1051,15 @@ button:focus-visible,
 
   .filter-row {
     grid-template-columns: 1fr;
+  }
+
+  .modset-controls,
+  .mod-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mod-management-list .mod-list {
+    max-height: none;
   }
 
   .user-form,

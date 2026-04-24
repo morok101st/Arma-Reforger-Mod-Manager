@@ -4,7 +4,7 @@ import { AddModDialog } from "./components/AddModDialog";
 import { AuthFrame } from "./components/AuthFrame";
 import { Dashboard } from "./components/Dashboard";
 import { LoginForm } from "./components/LoginForm";
-import { ModDetail } from "./components/ModDetail";
+import { ModManagement } from "./components/ModManagement";
 import { ModsetDialog } from "./components/ModsetDialog";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
@@ -29,26 +29,13 @@ export function App() {
     <main className="app-shell">
       <Sidebar
         username={auth.authUser.username}
-        loading={actions.loading}
-        error={actions.error}
         showDashboard={view.showDashboard}
+        showModManagement={view.showModManagement}
         showUserAdmin={view.showUserAdmin}
-        modsets={modsets.modsets}
-        activeModsetId={modsets.activeModsetId}
-        searchQuery={mods.searchQuery}
-        sortMode={mods.sortMode}
-        mods={mods.sortedMods}
-        totalModsCount={mods.mods.length}
-        selectedModId={mods.selected?.id ?? null}
         onShowDashboard={view.showDashboardView}
+        onShowModManagement={view.showModManagementView}
         onToggleSecurity={view.toggleSecurityView}
         onLogout={actions.logout}
-        onShowAddMod={view.openAddModDialog}
-        onOpenModsetDialog={view.openModsetDialog}
-        onActivateModset={actions.activateModset}
-        onSearchChange={mods.setSearchQuery}
-        onSortChange={mods.setSortMode}
-        onOpenMod={openMod}
       />
 
       {view.showAddModDialog && <AddModDialog loading={actions.loading} onClose={view.closeAddModDialog} onSubmit={actions.addMod} />}
@@ -67,6 +54,34 @@ export function App() {
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
         {view.showDashboard ? (
           <Dashboard mods={mods.mods} schedulerStatus={mods.schedulerStatus} openMod={openMod} />
+        ) : view.showModManagement ? (
+          <ModManagement
+            loading={actions.loading}
+            modsets={modsets.modsets}
+            activeModsetId={modsets.activeModsetId}
+            mods={mods.mods}
+            sortedMods={mods.sortedMods}
+            selected={mods.selected}
+            selectedId={mods.selectedId}
+            searchQuery={mods.searchQuery}
+            sortMode={mods.sortMode}
+            saveState={mods.saveState}
+            installedVersionEdit={mods.installedVersionEdit}
+            changelogEntries={mods.changelogEntries}
+            expandedChangelogVersions={mods.expandedChangelogVersions}
+            trackedDependencyMatches={mods.trackedDependencyMatches}
+            setSearchQuery={mods.setSearchQuery}
+            setSortMode={mods.setSortMode}
+            setInstalledVersionEdit={mods.setInstalledVersionEdit}
+            openMod={openMod}
+            activateModset={actions.activateModset}
+            openAddModDialog={view.openAddModDialog}
+            openModsetDialog={view.openModsetDialog}
+            refreshMod={actions.refreshMod}
+            removeMod={actions.removeMod}
+            updateInstalledVersion={actions.updateInstalledVersion}
+            toggleChangelogVersion={mods.toggleChangelogVersion}
+          />
         ) : view.showUserAdmin ? (
           <UserAdmin
             users={admin.users}
@@ -78,22 +93,6 @@ export function App() {
             updateUserAccount={actions.updateUserAccount}
             resetUserPassword={actions.resetUserPassword}
             loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}
-          />
-        ) : mods.selected ? (
-          <ModDetail
-            selected={mods.selected}
-            loading={actions.loading}
-            saveState={mods.saveState}
-            installedVersionEdit={mods.installedVersionEdit}
-            setInstalledVersionEdit={mods.setInstalledVersionEdit}
-            refreshMod={actions.refreshMod}
-            removeMod={actions.removeMod}
-            updateInstalledVersion={actions.updateInstalledVersion}
-            changelogEntries={mods.changelogEntries}
-            expandedChangelogVersions={mods.expandedChangelogVersions}
-            toggleChangelogVersion={mods.toggleChangelogVersion}
-            trackedDependencyMatches={mods.trackedDependencyMatches}
-            openMod={openMod}
           />
         ) : (
           <div className="placeholder">
