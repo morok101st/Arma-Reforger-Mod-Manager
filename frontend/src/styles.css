@@ -244,22 +244,6 @@ input {
   width: 100%;
 }
 
-select {
-  appearance: none;
-  background: var(--md-sys-color-surface);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--shape-corner-sm);
-  color: var(--md-sys-color-on-surface);
-  cursor: pointer;
-  min-height: 42px;
-  padding: 0 36px 0 12px;
-  width: 100%;
-}
-
-.sort-control {
-  position: relative;
-}
-
 .custom-select {
   position: relative;
 }
@@ -280,6 +264,10 @@ select {
 
 .custom-select-trigger:hover {
   border-color: var(--md-sys-color-outline);
+}
+
+.custom-select-trigger:disabled {
+  cursor: default;
 }
 
 .custom-select-menu {
@@ -329,17 +317,6 @@ select {
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) minmax(130px, 150px);
-}
-
-.sort-control::after {
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--md-sys-color-on-surface-variant);
-  bottom: 16px;
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  right: 14px;
 }
 
 .primary-button {

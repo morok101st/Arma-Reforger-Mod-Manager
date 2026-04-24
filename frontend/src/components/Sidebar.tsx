@@ -1,7 +1,7 @@
 import React from "react";
-import { Check, ChevronDown, Home, Layers3, LogOut, Pin, Plus, Shield } from "lucide-react";
+import { Home, Layers3, LogOut, Pin, Plus, Shield } from "lucide-react";
 
-import { StatusIcon, UNKNOWN_VALUE } from "./common";
+import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, Modset, SortMode } from "../types";
 
 export function Sidebar({
@@ -49,24 +49,7 @@ export function Sidebar({
   onSortChange: (value: SortMode) => void;
   onOpenMod: (id: string) => void;
 }) {
-  const [showModsetMenu, setShowModsetMenu] = React.useState(false);
-  const modsetMenuRef = React.useRef<HTMLDivElement | null>(null);
   const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? modsets[0] ?? null;
-
-  React.useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (!modsetMenuRef.current?.contains(event.target as Node)) {
-        setShowModsetMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
-
-  function activateAndClose(modsetId: number) {
-    onActivateModset(modsetId);
-    setShowModsetMenu(false);
-  }
 
   return (
     <section className="sidebar" aria-label="Mod management">
@@ -112,36 +95,17 @@ export function Sidebar({
 
       <div className="content-section">
         <label>Modset</label>
-        <div className="custom-select" ref={modsetMenuRef}>
-          <button
-            className="custom-select-trigger"
-            type="button"
-            onClick={() => setShowModsetMenu((current) => !current)}
-            disabled={loading || modsets.length === 0}
-            aria-haspopup="listbox"
-            aria-expanded={showModsetMenu}
-          >
-            <span>{activeModset?.name ?? "No modset"}</span>
-            <ChevronDown size={16} />
-          </button>
-          {showModsetMenu && (
-            <div className="custom-select-menu" role="listbox" aria-label="Modset">
-              {modsets.map((modset) => (
-                <button
-                  key={modset.id}
-                  className={`custom-select-item ${activeModsetId === modset.id ? "active" : ""}`}
-                  type="button"
-                  role="option"
-                  aria-selected={activeModsetId === modset.id}
-                  onClick={() => activateAndClose(modset.id)}
-                >
-                  <span>{modset.name}</span>
-                  {activeModsetId === modset.id && <Check size={16} />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <CustomSelect<number>
+          value={activeModset?.id ?? 0}
+          options={
+            modsets.length > 0
+              ? modsets.map((modset) => ({ value: modset.id, label: modset.name }))
+              : [{ value: 0, label: "No modset" }]
+          }
+          onChange={onActivateModset}
+          disabled={loading || modsets.length === 0}
+          ariaLabel="Modset"
+        />
       </div>
 
       <div className="filter-row">
@@ -149,14 +113,19 @@ export function Sidebar({
           Search
           <input value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} placeholder="Mod name or ID" />
         </label>
-        <label className="sort-control">
+        <label>
           Sort by
-          <select value={sortMode} onChange={(event) => onSortChange(event.target.value as SortMode)}>
-            <option value="updates">Updates first</option>
-            <option value="name">Name</option>
-            <option value="status">Status</option>
-            <option value="last_checked">Last checked</option>
-          </select>
+          <CustomSelect<SortMode>
+            value={sortMode}
+            options={[
+              { value: "updates", label: "Updates first" },
+              { value: "name", label: "Name" },
+              { value: "status", label: "Status" },
+              { value: "last_checked", label: "Last checked" },
+            ]}
+            onChange={onSortChange}
+            ariaLabel="Sort by"
+          />
         </label>
       </div>
 

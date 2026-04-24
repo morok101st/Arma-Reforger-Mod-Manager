@@ -3,7 +3,7 @@ import { Plus, RefreshCw, Save } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, UserAccount, UserRole } from "../types";
-import { Dialog, Info } from "./common";
+import { CustomSelect, Dialog, Info } from "./common";
 
 export function UserAdmin({
   users,
@@ -123,10 +123,16 @@ export function UserAdmin({
                     {user.role} · {user.is_active ? "active" : "disabled"} · Last login {formatDate(user.last_login_at) ?? "never"}
                   </small>
                 </div>
-                <select value={user.role} disabled={loading} onChange={(event) => updateUserAccount(user.id, { role: event.target.value as UserRole }).catch(() => null)}>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
+                <CustomSelect<UserRole>
+                  value={user.role}
+                  options={[
+                    { value: "user", label: "User" },
+                    { value: "admin", label: "Admin" },
+                  ]}
+                  disabled={loading}
+                  onChange={(value) => updateUserAccount(user.id, { role: value }).catch(() => null)}
+                  ariaLabel={`Role for ${user.username}`}
+                />
                 <button
                   className="secondary-button compact"
                   disabled={loading || user.id === currentUser.id}
@@ -153,12 +159,17 @@ export function UserAdmin({
                   Initial password
                   <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="at least 12 characters" />
                 </label>
-                <label className="sort-control">
+                <label>
                   Role
-                  <select value={newRole} onChange={(event) => setNewRole(event.target.value as UserRole)}>
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                  <CustomSelect<UserRole>
+                    value={newRole}
+                    options={[
+                      { value: "user", label: "User" },
+                      { value: "admin", label: "Admin" },
+                    ]}
+                    onChange={setNewRole}
+                    ariaLabel="Role"
+                  />
                 </label>
                 <div className="dialog-actions">
                   <button className="secondary-button compact" onClick={() => setShowCreateUserDialog(false)} type="button">
