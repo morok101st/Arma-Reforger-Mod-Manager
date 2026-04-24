@@ -43,7 +43,7 @@ export function AddModDialog({
       <form className="dialog-form" onSubmit={handleSubmit}>
         <label>
           Workshop ID
-          <input value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
+          <input autoFocus value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
         </label>
         <label>
           Installed version

@@ -153,7 +153,7 @@ export function UserAdmin({
               <form className="dialog-form" onSubmit={handleCreateUser}>
                 <label>
                   Username
-                  <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
+                  <input autoFocus value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
                 </label>
                 <label>
                   Initial password

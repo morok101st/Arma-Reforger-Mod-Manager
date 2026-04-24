@@ -145,7 +145,7 @@ export function ModsetManagement({
           <form className="dialog-form" onSubmit={handleCreate}>
             <label>
               Name
-              <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
+              <input autoFocus value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
             </label>
             <div className="dialog-actions">
               <button className="secondary-button compact" onClick={() => setShowCreateDialog(false)} type="button">
