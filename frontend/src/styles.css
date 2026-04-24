@@ -382,6 +382,7 @@ button:disabled {
 }
 
 .mod-row.active {
+  background: var(--md-sys-color-primary-container);
   border-color: var(--md-sys-color-primary);
   box-shadow: inset 3px 0 0 var(--md-sys-color-primary);
 }
