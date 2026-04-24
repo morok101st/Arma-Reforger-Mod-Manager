@@ -2,7 +2,9 @@ from fastapi.testclient import TestClient
 
 from app import main as app_main
 from app.models import Mod, UserMod
+from app.scraper import ScrapedMod
 from tests.support import ApiTestCase
+from unittest.mock import patch
 
 
 class ModsetsApiTestCase(ApiTestCase):
@@ -82,3 +84,39 @@ class ModsetsApiTestCase(ApiTestCase):
                     {"modId": "664AFDC993C9CE1A", "name": "ACE Cook-Off Dev", "version": "1.2.3"},
                 ],
             )
+
+    def test_same_mod_can_be_tracked_in_multiple_modsets(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            first = client.post("/modsets", json={"name": "Server One"})
+            second = client.post("/modsets", json={"name": "Server Two"})
+            self.assertEqual(first.status_code, 201)
+            self.assertEqual(second.status_code, 201)
+            first_id = first.json()["id"]
+            second_id = second.json()["id"]
+
+            with patch(
+                "app.services.WorkshopScraper.fetch_mod",
+                autospec=True,
+                return_value=ScrapedMod(
+                    id="MODMULTI001",
+                    name="Shared Mod",
+                    latest_version="2.0.0",
+                    dependencies=[],
+                    source_url="https://reforger.armaplatform.com/workshop/MODMULTI001-Shared-Mod",
+                ),
+            ):
+                create_first = client.post(f"/mods?modset_id={first_id}", json={"id": "MODMULTI001", "current_version": "1.0.0"})
+                create_second = client.post(f"/mods?modset_id={second_id}", json={"id": "MODMULTI001", "current_version": "2.0.0"})
+
+            self.assertEqual(create_first.status_code, 201, create_first.text)
+            self.assertEqual(create_second.status_code, 201, create_second.text)
+
+            with self.SessionLocal() as db:
+                first_mapping = db.query(UserMod).filter_by(modset_id=first_id, mod_id="MODMULTI001").one_or_none()
+                second_mapping = db.query(UserMod).filter_by(modset_id=second_id, mod_id="MODMULTI001").one_or_none()
+                self.assertIsNotNone(first_mapping)
+                self.assertIsNotNone(second_mapping)
+                self.assertEqual(first_mapping.current_version, "1.0.0")
+                self.assertEqual(second_mapping.current_version, "2.0.0")

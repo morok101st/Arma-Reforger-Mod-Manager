@@ -66,6 +66,23 @@ def _migrate_user_mods_postgres(engine: Engine) -> None:
     with engine.begin() as connection:
         for constraint_name in old_unique_names:
             connection.execute(text(f'ALTER TABLE user_mods DROP CONSTRAINT IF EXISTS "{constraint_name}"'))
+        old_unique_index_names = [
+            row.indexname
+            for row in connection.execute(
+                text(
+                    "SELECT indexname "
+                    "FROM pg_indexes "
+                    "WHERE schemaname = current_schema() "
+                    "AND tablename = 'user_mods' "
+                    "AND indexname <> 'uq_user_mods_modset_mod' "
+                    "AND indexdef ILIKE 'CREATE UNIQUE INDEX%' "
+                    "AND indexdef ILIKE '%(mod_id)%' "
+                    "AND indexdef NOT ILIKE '%(modset_id, mod_id)%'"
+                )
+            ).all()
+        ]
+        for index_name in old_unique_index_names:
+            connection.execute(text(f'DROP INDEX IF EXISTS "{index_name}"'))
         connection.execute(
             text(
                 "DO $$ BEGIN "
