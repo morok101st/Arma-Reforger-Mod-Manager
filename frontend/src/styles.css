@@ -421,6 +421,27 @@ button:disabled {
   padding: 12px;
 }
 
+.danger-callout {
+  align-items: flex-start;
+  background: #fff3f1;
+  border: 1px solid #efc3bc;
+  border-radius: var(--shape-corner-sm);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 20px 1fr;
+  padding: 14px;
+}
+
+.danger-callout strong,
+.danger-callout span {
+  display: block;
+}
+
+.danger-callout span {
+  color: #7a251f;
+  margin-top: 4px;
+}
+
 .mod-list {
   align-content: start;
   display: grid;

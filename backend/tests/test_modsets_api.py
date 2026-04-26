@@ -40,7 +40,7 @@ class ModsetsApiTestCase(ApiTestCase):
             self.assertIn(default_id, after_ids)
             self.assertNotIn(modset_id, after_ids)
 
-    def test_delete_non_empty_modset_is_blocked(self) -> None:
+    def test_delete_non_empty_modset_removes_it(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
 
@@ -57,8 +57,12 @@ class ModsetsApiTestCase(ApiTestCase):
                 db.commit()
 
             delete_response = client.delete(f"/modsets/{modset_id}")
-            self.assertEqual(delete_response.status_code, 400)
-            self.assertIn("Cannot delete modset with tracked mods", delete_response.json().get("detail", ""))
+            self.assertEqual(delete_response.status_code, 200)
+
+            after = client.get("/modsets")
+            self.assertEqual(after.status_code, 200)
+            after_ids = [entry["id"] for entry in after.json()]
+            self.assertNotIn(modset_id, after_ids)
 
     def test_export_modset_returns_mod_config_shape(self) -> None:
         with TestClient(app_main.app) as client:

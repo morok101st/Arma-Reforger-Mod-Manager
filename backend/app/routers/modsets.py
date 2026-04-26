@@ -6,7 +6,6 @@ from app.database import get_db
 from app.modset_service import (
     ModSetConflictError,
     ModSetLastDeleteError,
-    ModSetNotEmptyError,
     ModSetNotFoundError,
     activate_modset,
     create_modset,
@@ -90,8 +89,6 @@ def api_delete_modset(
         delete_modset(db, modset_id)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ModSetNotEmptyError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ModSetLastDeleteError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

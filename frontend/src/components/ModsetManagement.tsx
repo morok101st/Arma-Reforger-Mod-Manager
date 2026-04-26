@@ -29,8 +29,10 @@ export function ModsetManagement({
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
   const [editName, setEditName] = React.useState("");
+  const [deleteModsetId, setDeleteModsetId] = React.useState<number | null>(null);
 
   const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
+  const deleteModsetTarget = modsets.find((modset) => modset.id === deleteModsetId) ?? null;
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -117,7 +119,7 @@ export function ModsetManagement({
                 disabled={loading || modsets.length <= 1}
                 onClick={(event) => {
                   event.stopPropagation();
-                  deleteModset(modset.id).catch(() => null);
+                  setDeleteModsetId(modset.id);
                 }}
                 type="button"
               >
@@ -175,6 +177,46 @@ export function ModsetManagement({
               </button>
             </div>
           </form>
+        </Dialog>
+      )}
+
+      {deleteModsetTarget && (
+        <Dialog title={`Delete modset ${deleteModsetTarget.name}`} onClose={() => setDeleteModsetId(null)}>
+          <div className="dialog-form">
+            {deleteModsetTarget.tracked_mods_count > 0 ? (
+              <div className="danger-callout">
+                <TriangleAlert className="status-icon warn" size={20} />
+                <div>
+                  <strong>This modset still contains tracked mods.</strong>
+                  <span>
+                    {deleteModsetTarget.tracked_mods_count} tracked mod{deleteModsetTarget.tracked_mods_count === 1 ? "" : "s"} will be removed with this modset.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="muted">Delete this modset?</p>
+            )}
+            <p className="muted">
+              Delete <strong>{deleteModsetTarget.name}</strong> permanently?
+            </p>
+            <div className="dialog-actions">
+              <button className="secondary-button compact" onClick={() => setDeleteModsetId(null)} type="button">
+                Cancel
+              </button>
+              <button
+                className="secondary-button compact danger-button"
+                disabled={loading}
+                onClick={() => {
+                  deleteModset(deleteModsetTarget.id)
+                    .then(() => setDeleteModsetId(null))
+                    .catch(() => null);
+                }}
+                type="button"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </Dialog>
       )}
     </>

@@ -23,10 +23,6 @@ class ModSetLastDeleteError(ModSetError):
     pass
 
 
-class ModSetNotEmptyError(ModSetError):
-    pass
-
-
 def list_modsets(db: Session) -> list[ModSetRead]:
     rows = db.execute(
         select(
@@ -120,10 +116,6 @@ def delete_modset(db: Session, modset_id: int) -> None:
     count = db.scalar(select(func.count()).select_from(ModSet)) or 0
     if count <= 1:
         raise ModSetLastDeleteError("At least one modset is required")
-
-    mod_count = db.scalar(select(func.count()).select_from(UserMod).where(UserMod.modset_id == modset_id)) or 0
-    if mod_count > 0:
-        raise ModSetNotEmptyError("Cannot delete modset with tracked mods")
 
     fallback = db.scalar(select(ModSet).where(ModSet.id != modset_id).order_by(ModSet.id).limit(1))
     if not fallback:
