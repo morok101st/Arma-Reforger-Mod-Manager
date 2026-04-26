@@ -37,6 +37,7 @@ export function App() {
         modsets={modsets.modsets}
         activeModsetId={modsets.activeModsetId}
         searchQuery={mods.searchQuery}
+        tagFilter={mods.tagFilter}
         sortMode={mods.sortMode}
         mods={mods.sortedMods}
         totalModsCount={mods.mods.length}
@@ -48,6 +49,7 @@ export function App() {
         onShowAddMod={view.openAddModDialog}
         onActivateModset={actions.activateModset}
         onSearchChange={mods.setSearchQuery}
+        onTagFilterChange={mods.setTagFilter}
         onSortChange={mods.setSortMode}
         onOpenMod={openMod}
       />

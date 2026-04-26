@@ -489,14 +489,61 @@ button:disabled {
 }
 
 .tracking-badge.core {
-  background: var(--md-sys-color-primary-container);
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 30%, #ffffff);
-  color: var(--md-sys-color-on-primary-container);
+  background: linear-gradient(135deg, #2f6f5f 0%, #25594c 100%);
+  border: 1px solid #214f43;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 .tracking-badge.dep {
   background: #eef4fb;
   border: 1px solid #a9c2e5;
+  color: #27518a;
+}
+
+.tag-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -6px;
+}
+
+.tag-filter-pill {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  min-height: 32px;
+  padding: 0 12px;
+  text-transform: uppercase;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.tag-filter-pill:hover {
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface);
+}
+
+.tag-filter-pill.active {
+  background: var(--md-sys-color-primary-container);
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 30%, #ffffff);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.tag-filter-pill.core.active {
+  background: linear-gradient(135deg, #2f6f5f 0%, #25594c 100%);
+  border-color: #214f43;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.tag-filter-pill.dep.active {
+  background: #eef4fb;
+  border-color: #7ea6dc;
   color: #27518a;
 }
 
@@ -1123,9 +1170,10 @@ pre {
 }
 
 .tag-toggle.active.core {
-  background: var(--md-sys-color-primary-container);
-  border-color: color-mix(in srgb, var(--md-sys-color-primary) 30%, #ffffff);
-  color: var(--md-sys-color-on-primary-container);
+  background: linear-gradient(135deg, #2f6f5f 0%, #25594c 100%);
+  border-color: #214f43;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 .tag-toggle.static.dep {
