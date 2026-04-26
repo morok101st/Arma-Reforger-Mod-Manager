@@ -1,4 +1,4 @@
-import type { AuditFilter, AuditLog, ChangelogEntry, Dependency, Mod, ModStatus, ModVersion, SortMode, TagFilter } from "../types";
+import type { AuditFilter, AuditLog, ChangelogEntry, Dependency, Mod, ModStatus, ModVersion, SortMode } from "../types";
 
 export const UNKNOWN_VALUE = "unknown";
 
@@ -169,15 +169,10 @@ export function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
   });
 }
 
-export function filterMods(mods: Mod[], searchQuery: string, tagFilter: TagFilter): Mod[] {
+export function filterMods(mods: Mod[], searchQuery: string): Mod[] {
   const query = searchQuery.trim().toLowerCase();
-  return mods.filter((mod) => {
-    const matchesTag = tagFilter === "all" || (tagFilter === "core" ? mod.is_core : mod.is_dependency);
-    if (!matchesTag) return false;
-    if (!query) return true;
-
-    return [mod.name, mod.id].filter(Boolean).join(" ").toLowerCase().includes(query);
-  });
+  if (!query) return mods;
+  return mods.filter((mod) => [mod.name, mod.id].filter(Boolean).join(" ").toLowerCase().includes(query));
 }
 
 function compareByName(left: Mod, right: Mod): number {

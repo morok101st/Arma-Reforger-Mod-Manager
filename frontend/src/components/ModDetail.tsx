@@ -14,7 +14,6 @@ export function ModDetail({
   refreshMod,
   removeMod,
   updateInstalledVersion,
-  toggleCore,
   changelogEntries,
   expandedChangelogVersions,
   toggleChangelogVersion,
@@ -29,7 +28,6 @@ export function ModDetail({
   refreshMod: (id: string) => void;
   removeMod: (id: string) => void;
   updateInstalledVersion: (nextVersion?: string) => void;
-  toggleCore: (nextCore: boolean) => void;
   changelogEntries: ChangelogEntry[];
   expandedChangelogVersions: Set<string>;
   toggleChangelogVersion: (version: string) => void;
@@ -59,7 +57,7 @@ export function ModDetail({
             className="icon-button danger"
             onClick={() => setShowDeleteDialog(true)}
             disabled={loading}
-            title={selected.delete_blocked ? "This mod is required by a core mod and cannot be deleted." : "Remove mod"}
+            title={selected.delete_blocked ? "This mod is required by another tracked mod and cannot be deleted." : "Remove mod"}
           >
             <Trash2 size={18} />
           </button>
@@ -150,25 +148,6 @@ export function ModDetail({
           </button>
         )}
       </div>
-
-      <section className="content-section compact-section">
-        <h3>Tags</h3>
-        <div className="chips tag-chips">
-          <button
-            className={`tag-toggle ${selected.is_core ? "active core" : ""}`}
-            disabled={loading}
-            onClick={() => toggleCore(!selected.is_core)}
-            type="button"
-          >
-            core
-          </button>
-          {selected.is_dependency && (
-            <span className="tag-toggle static dep" title="Automatically set because this mod is an active dependency in the current modset.">
-              dep
-            </span>
-          )}
-        </div>
-      </section>
 
       {saveState === "saved" && (
         <div className="status-band save-band">

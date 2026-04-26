@@ -1,7 +1,7 @@
 import React from "react";
 
 import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "../lib/utils";
-import type { AuthUser, Mod, SchedulerStatus, SortMode, TagFilter } from "../types";
+import type { AuthUser, Mod, SchedulerStatus, SortMode } from "../types";
 
 export function useMods({
   api,
@@ -14,7 +14,7 @@ export function useMods({
     createMod: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
     refreshMod: (id: string, modsetId?: number | null) => Promise<Mod>;
     deleteMod: (id: string, modsetId?: number | null) => Promise<void>;
-    updateMod: (id: string, payload: { current_version?: string | null; is_core?: boolean }, modsetId?: number | null) => Promise<Mod>;
+    updateMod: (id: string, payload: { current_version?: string | null }, modsetId?: number | null) => Promise<Mod>;
   };
   authUser: AuthUser | null;
   activeModsetId: number | null;
@@ -26,10 +26,9 @@ export function useMods({
   const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [tagFilter, setTagFilter] = React.useState<TagFilter>("all");
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
 
-  const visibleMods = React.useMemo(() => filterMods(mods, searchQuery, tagFilter), [mods, searchQuery, tagFilter]);
+  const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
   const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
   const changelogEntries = React.useMemo(() => changelogEntriesFromVersions(selected?.versions ?? []), [selected?.versions]);
@@ -141,17 +140,6 @@ export function useMods({
     });
   }, []);
 
-  const toggleCore = React.useCallback(
-    async (nextCore: boolean) => {
-      if (!selected || !activeModsetId) return null;
-      const updated = await api.updateMod(selected.id, { is_core: nextCore }, activeModsetId);
-      await loadMods();
-      setSelectedId(updated.id);
-      return updated;
-    },
-    [activeModsetId, api, loadMods, selected],
-  );
-
   return {
     mods,
     schedulerStatus,
@@ -161,7 +149,6 @@ export function useMods({
     expandedChangelogVersions,
     sortMode,
     searchQuery,
-    tagFilter,
     saveState,
     sortedMods,
     changelogEntries,
@@ -169,7 +156,6 @@ export function useMods({
     setInstalledVersionEdit,
     setSortMode,
     setSearchQuery,
-    setTagFilter,
     setSelectedId,
     loadMods,
     loadSchedulerStatus,
@@ -178,7 +164,6 @@ export function useMods({
     refreshMod,
     removeMod,
     updateInstalledVersion,
-    toggleCore,
     toggleChangelogVersion,
   };
 }

@@ -2,7 +2,7 @@ import React from "react";
 import { Home, Layers3, Lock, LogOut, Pin, Plus, Shield } from "lucide-react";
 
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
-import type { Mod, Modset, SortMode, TagFilter } from "../types";
+import type { Mod, Modset, SortMode } from "../types";
 
 export function Sidebar({
   username,
@@ -13,7 +13,6 @@ export function Sidebar({
   modsets,
   activeModsetId,
   searchQuery,
-  tagFilter,
   sortMode,
   mods,
   totalModsCount,
@@ -25,7 +24,6 @@ export function Sidebar({
   onShowAddMod,
   onActivateModset,
   onSearchChange,
-  onTagFilterChange,
   onSortChange,
   onOpenMod,
 }: {
@@ -37,7 +35,6 @@ export function Sidebar({
   modsets: Modset[];
   activeModsetId: number | null;
   searchQuery: string;
-  tagFilter: TagFilter;
   sortMode: SortMode;
   mods: Mod[];
   totalModsCount: number;
@@ -49,7 +46,6 @@ export function Sidebar({
   onShowAddMod: () => void;
   onActivateModset: (modsetId: number) => void;
   onSearchChange: (value: string) => void;
-  onTagFilterChange: (value: TagFilter) => void;
   onSortChange: (value: SortMode) => void;
   onOpenMod: (id: string) => void;
 }) {
@@ -144,18 +140,6 @@ export function Sidebar({
         </label>
       </div>
 
-      <div className="tag-filter-row" role="tablist" aria-label="Tag filters">
-        <button className={`tag-filter-pill ${tagFilter === "all" ? "active" : ""}`} onClick={() => onTagFilterChange("all")} type="button">
-          All
-        </button>
-        <button className={`tag-filter-pill core ${tagFilter === "core" ? "active" : ""}`} onClick={() => onTagFilterChange("core")} type="button">
-          Core
-        </button>
-        <button className={`tag-filter-pill dep ${tagFilter === "dep" ? "active" : ""}`} onClick={() => onTagFilterChange("dep")} type="button">
-          Dep
-        </button>
-      </div>
-
       <div className="mod-list">
         {mods.map((mod) => (
           <button
@@ -170,8 +154,6 @@ export function Sidebar({
                 {mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}
                 <span className="relation-count">{mod.dependencies.length} deps</span>
                 <span className="relation-count">{mod.dependents.length} req</span>
-                {mod.is_core && <span className="tracking-badge core">core</span>}
-                {mod.is_dependency && <span className="tracking-badge dep">dep</span>}
               </small>
             </span>
             <span className="mod-row-icons">

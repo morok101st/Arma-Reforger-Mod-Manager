@@ -32,7 +32,6 @@ export function useAppActions({
     refreshMod: (id: string) => Promise<unknown>;
     removeMod: (id: string) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string) => Promise<unknown>;
-    toggleCore: (nextCore: boolean) => Promise<unknown>;
   };
   modsets: {
     activateModset: (modsetId: number) => Promise<unknown>;
@@ -137,10 +136,6 @@ export function useAppActions({
     await action.run(() => mods.updateInstalledVersion(nextVersion));
   }, [action, mods]);
 
-  const toggleCore = React.useCallback(async (nextCore: boolean) => {
-    await action.run(() => mods.toggleCore(nextCore), { rethrow: true });
-  }, [action, mods]);
-
   const activateModset = React.useCallback(async (modsetId: number) => {
     await action.run(() => modsets.activateModset(modsetId), { rethrow: true });
   }, [action, modsets]);
@@ -198,7 +193,6 @@ export function useAppActions({
     refreshMod,
     removeMod,
     updateInstalledVersion,
-    toggleCore,
     activateModset,
     createModset,
     updateModset,
