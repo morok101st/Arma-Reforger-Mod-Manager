@@ -14,6 +14,7 @@ class ModCreate(BaseModel):
 class UserModUpdate(BaseModel):
     current_version: str | None = Field(default=None, max_length=80)
     pinned: bool | None = None
+    is_core: bool | None = None
 
 
 class DependencyRead(BaseModel):
@@ -52,7 +53,11 @@ class ModRead(BaseModel):
     last_checked: datetime | None
     current_version: str | None
     pinned: bool
+    is_core: bool
+    is_dependency: bool
     tracking_reason: TrackingReason
+    core_dependents: list[ModReferenceRead] = Field(default_factory=list)
+    delete_blocked: bool = False
     status: ModStatus
     versions: list[ModVersionRead] = []
 

@@ -78,7 +78,7 @@ export function getDashboardStats(mods: Mod[]) {
   const updateAvailable = mods.filter((mod) => mod.status === "UPDATE_AVAILABLE").length;
   const upToDate = mods.filter((mod) => mod.status === "UP_TO_DATE").length;
   const unknown = mods.filter((mod) => mod.status === "UNKNOWN").length;
-  const dependencyTracked = mods.filter((mod) => mod.tracking_reason === "dependency").length;
+  const dependencyTracked = mods.filter((mod) => mod.is_dependency).length;
   const noInstalledVersion = mods.filter((mod) => !mod.current_version).length;
   const dependencyLinks = mods.reduce((sum, mod) => sum + mod.dependencies.length, 0);
   const recentlyChecked = [...mods]

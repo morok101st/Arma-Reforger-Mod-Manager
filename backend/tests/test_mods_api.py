@@ -27,7 +27,11 @@ class ModsApiTestCase(ApiTestCase):
             last_checked=datetime.now(timezone.utc),
             current_version="1.0.0",
             pinned=False,
+            is_core=False,
+            is_dependency=False,
             tracking_reason=TrackingReason.manual,
+            core_dependents=[],
+            delete_blocked=False,
             status=ModStatus.update_available,
             versions=[],
         )
@@ -128,6 +132,12 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
                 self.assertIsNone(dependency_mapping.current_version)
 
+            list_response = client.get(f"/mods?modset_id={modset_id}")
+            self.assertEqual(list_response.status_code, 200, list_response.text)
+            mods = {entry["id"]: entry for entry in list_response.json()}
+            self.assertFalse(mods["PARENTMOD001"]["is_dependency"])
+            self.assertTrue(mods["DEPMOD001"]["is_dependency"])
+
     def test_setting_installed_version_still_tracks_dependencies_when_parent_refresh_fails(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
@@ -169,3 +179,96 @@ class ModsApiTestCase(ApiTestCase):
                 dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMOD002").one_or_none()
                 self.assertIsNotNone(dependency_mapping)
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
+
+    def test_dependency_tag_persists_after_manual_update(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Gamma"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="PARENTMOD003",
+                        name="Parent Mod 3",
+                        latest_version="1.0.0",
+                        dependencies=[
+                            {
+                                "name": "Dependency Mod 3",
+                                "url": "https://reforger.armaplatform.com/workshop/DEPMOD003-Dependency-Mod-3",
+                            }
+                        ],
+                        source_url="https://reforger.armaplatform.com/workshop/PARENTMOD003-Parent-Mod-3",
+                    )
+                )
+                db.add(
+                    Mod(
+                        id="DEPMOD003",
+                        name="Dependency Mod 3",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/DEPMOD003-Dependency-Mod-3",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMOD003", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="DEPMOD003", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.commit()
+
+            update_response = client.patch(f"/mods/DEPMOD003?modset_id={modset_id}", json={"current_version": "2.0.0"})
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+            payload = update_response.json()
+            self.assertEqual(payload["tracking_reason"], "manual")
+            self.assertTrue(payload["is_dependency"])
+
+            list_response = client.get(f"/mods?modset_id={modset_id}")
+            self.assertEqual(list_response.status_code, 200, list_response.text)
+            mods = {entry["id"]: entry for entry in list_response.json()}
+            self.assertTrue(mods["DEPMOD003"]["is_dependency"])
+
+    def test_active_dependency_of_core_mod_cannot_be_deleted(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Delta"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="COREMOD001",
+                        name="Core Mod",
+                        latest_version="1.0.0",
+                        dependencies=[
+                            {
+                                "name": "Protected Dependency",
+                                "url": "https://reforger.armaplatform.com/workshop/DEPMOD004-Protected-Dependency",
+                            }
+                        ],
+                        source_url="https://reforger.armaplatform.com/workshop/COREMOD001-Core-Mod",
+                    )
+                )
+                db.add(
+                    Mod(
+                        id="DEPMOD004",
+                        name="Protected Dependency",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/DEPMOD004-Protected-Dependency",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="COREMOD001", current_version="1.0.0", pinned=False, tracking_reason="manual", is_core=True))
+                db.add(UserMod(modset_id=modset_id, mod_id="DEPMOD004", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.commit()
+
+            list_response = client.get(f"/mods?modset_id={modset_id}")
+            self.assertEqual(list_response.status_code, 200, list_response.text)
+            mods = {entry["id"]: entry for entry in list_response.json()}
+            self.assertTrue(mods["DEPMOD004"]["delete_blocked"])
+            self.assertEqual([mod["id"] for mod in mods["DEPMOD004"]["core_dependents"]], ["COREMOD001"])
+
+            delete_response = client.delete(f"/mods/DEPMOD004?modset_id={modset_id}")
+            self.assertEqual(delete_response.status_code, 400, delete_response.text)
+            self.assertIn("active dependency of a core mod", delete_response.json().get("detail", ""))

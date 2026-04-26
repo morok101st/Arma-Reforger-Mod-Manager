@@ -17,7 +17,17 @@ from app.mod_router_helpers import (
 )
 from app.models import User
 from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
-from app.services import create_mod, delete_mod, get_mod_or_none, get_mod_read, list_mods, refresh_all_mods, refresh_mod, update_user_mod
+from app.services import (
+    ModDeleteBlockedError,
+    create_mod,
+    delete_mod,
+    get_mod_or_none,
+    get_mod_read,
+    list_mods,
+    refresh_all_mods,
+    refresh_mod,
+    update_user_mod,
+)
 
 router = APIRouter(tags=["mods"])
 
@@ -163,7 +173,10 @@ def api_delete_mod(
             actor=current_user,
         )
     mod_name = existing_mod.name
-    delete_mod(db, mod_id, effective_modset_id)
+    try:
+        delete_mod(db, mod_id, effective_modset_id)
+    except ModDeleteBlockedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     audit_mod_deleted(db, mod_id=mod_id, modset_id=effective_modset_id, mod_name=mod_name, request=request, actor=current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

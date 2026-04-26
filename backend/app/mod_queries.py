@@ -6,9 +6,20 @@ from app.schemas_mods import DependencyRead, ModRead, ModReferenceRead
 from app.versioning import compare_versions
 
 
-def mod_to_read(mod: Mod, user_mod: UserMod, all_tracked_mods: list[Mod] | None = None) -> ModRead:
+def mod_to_read(
+    mod: Mod,
+    user_mod: UserMod,
+    all_mappings: list[UserMod] | None = None,
+    dependency_ids: set[str] | None = None,
+    core_dependency_ids: set[str] | None = None,
+) -> ModRead:
     current_version = user_mod.current_version
     tracking_reason = user_mod.tracking_reason
+    all_mappings = all_mappings or []
+    tracked_mods = [mapping.mod for mapping in all_mappings]
+    dependency_ids = dependency_ids or set()
+    core_dependency_ids = core_dependency_ids or set()
+    core_dependents = find_dependents(mod, all_mappings, installed_only=True, core_only=True)
     return ModRead(
         id=mod.id,
         name=mod.name,
@@ -18,12 +29,16 @@ def mod_to_read(mod: Mod, user_mod: UserMod, all_tracked_mods: list[Mod] | None 
         game_version=mod.game_version,
         size=mod.size,
         dependencies=normalize_dependencies(mod.dependencies or []),
-        dependents=find_dependents(mod, all_tracked_mods or []),
+        dependents=find_dependents(mod, all_mappings, installed_only=False, core_only=False),
         source_url=mod.source_url,
         last_checked=mod.last_checked,
         current_version=current_version,
         pinned=bool(user_mod.pinned),
+        is_core=bool(user_mod.is_core),
+        is_dependency=mod.id in dependency_ids,
         tracking_reason=tracking_reason,
+        core_dependents=core_dependents,
+        delete_blocked=mod.id in core_dependency_ids,
         status=compare_versions(current_version, mod.latest_version),
         versions=sort_versions(mod.versions)[:10],
     )
@@ -31,8 +46,8 @@ def mod_to_read(mod: Mod, user_mod: UserMod, all_tracked_mods: list[Mod] | None 
 
 def list_mods(db: Session, modset_id: int) -> list[ModRead]:
     mappings = list_tracked_user_mods(db, modset_id)
-    tracked_mods = [mapping.mod for mapping in mappings]
-    return [mod_to_read(mapping.mod, mapping, tracked_mods) for mapping in mappings]
+    dependency_ids, core_dependency_ids = collect_dependency_sets(mappings)
+    return [mod_to_read(mapping.mod, mapping, mappings, dependency_ids, core_dependency_ids) for mapping in mappings]
 
 
 def get_mod_read(db: Session, mod_id: str, modset_id: int) -> ModRead | None:
@@ -40,7 +55,8 @@ def get_mod_read(db: Session, mod_id: str, modset_id: int) -> ModRead | None:
     target = next((mapping for mapping in mappings if mapping.mod_id == mod_id), None)
     if not target:
         return None
-    return mod_to_read(target.mod, target, [mapping.mod for mapping in mappings])
+    dependency_ids, core_dependency_ids = collect_dependency_sets(mappings)
+    return mod_to_read(target.mod, target, mappings, dependency_ids, core_dependency_ids)
 
 
 def list_tracked_user_mods(db: Session, modset_id: int) -> list[UserMod]:
@@ -88,15 +104,39 @@ def normalize_dependencies(dependencies: list[object]) -> list[DependencyRead]:
     return normalized
 
 
-def find_dependents(target: Mod, all_tracked_mods: list[Mod]) -> list[ModReferenceRead]:
+def find_dependents(target: Mod, all_mappings: list[UserMod], *, installed_only: bool, core_only: bool) -> list[ModReferenceRead]:
     dependents: list[ModReferenceRead] = []
-    for candidate in all_tracked_mods:
+    for mapping in all_mappings:
+        candidate = mapping.mod
         if candidate.id == target.id:
+            continue
+        if installed_only and not (mapping.current_version or "").strip():
+            continue
+        if core_only and not bool(mapping.is_core):
             continue
         dependencies = normalize_dependencies(candidate.dependencies or [])
         if any(dependency_matches_mod(dependency, target) for dependency in dependencies):
             dependents.append(ModReferenceRead(id=candidate.id, name=candidate.name, source_url=candidate.source_url))
     return dependents
+
+
+def collect_dependency_sets(mappings: list[UserMod]) -> tuple[set[str], set[str]]:
+    tracked_by_id = {mapping.mod_id: mapping.mod for mapping in mappings}
+    dependency_ids: set[str] = set()
+    core_dependency_ids: set[str] = set()
+
+    for mapping in mappings:
+        if not (mapping.current_version or "").strip():
+            continue
+        dependencies = normalize_dependencies(mapping.mod.dependencies or [])
+        for target_id, target_mod in tracked_by_id.items():
+            if target_id == mapping.mod_id:
+                continue
+            if any(dependency_matches_mod(dependency, target_mod) for dependency in dependencies):
+                dependency_ids.add(target_id)
+                if bool(mapping.is_core):
+                    core_dependency_ids.add(target_id)
+    return dependency_ids, core_dependency_ids
 
 
 def dependency_matches_mod(dependency: DependencyRead, target: Mod) -> bool:

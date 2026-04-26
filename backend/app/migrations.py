@@ -20,6 +20,9 @@ def migrate_schema(engine: Engine) -> None:
             connection.execute(
                 text("ALTER TABLE user_mods ADD COLUMN tracking_reason VARCHAR(24) NOT NULL DEFAULT 'manual'")
             )
+    if "is_core" not in user_mod_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE user_mods ADD COLUMN is_core BOOLEAN NOT NULL DEFAULT false"))
 
     if "modset_id" not in user_mod_columns:
         with engine.begin() as connection:

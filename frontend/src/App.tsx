@@ -100,6 +100,7 @@ export function App() {
             refreshMod={actions.refreshMod}
             removeMod={actions.removeMod}
             updateInstalledVersion={actions.updateInstalledVersion}
+            toggleCore={actions.toggleCore}
             changelogEntries={mods.changelogEntries}
             expandedChangelogVersions={mods.expandedChangelogVersions}
             toggleChangelogVersion={mods.toggleChangelogVersion}

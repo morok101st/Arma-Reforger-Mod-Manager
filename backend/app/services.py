@@ -4,10 +4,21 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.mod_dependencies import track_and_refresh_dependencies_for_installed_mod
 from app.mod_persistence import upsert_scraped_mod
-from app.mod_queries import get_mod_or_none, get_mod_read, get_user_mod_or_none, list_mods as list_mods_query
+from app.mod_queries import (
+    collect_dependency_sets,
+    get_mod_or_none,
+    get_mod_read,
+    get_user_mod_or_none,
+    list_mods as list_mods_query,
+    list_tracked_user_mods,
+)
 from app.models import Mod, UserMod
 from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.scraper import WorkshopScraper
+
+
+class ModDeleteBlockedError(Exception):
+    pass
 
 
 async def create_mod(db: Session, payload: ModCreate, modset_id: int) -> ModRead:
@@ -55,6 +66,8 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate, mods
         user_mod.current_version = payload.current_version
     if payload.pinned is not None:
         user_mod.pinned = payload.pinned
+    if payload.is_core is not None:
+        user_mod.is_core = payload.is_core
     user_mod.tracking_reason = "manual"
 
     db.commit()
@@ -121,6 +134,8 @@ def delete_mod(db: Session, mod_id: str, modset_id: int) -> bool:
     user_mod = get_user_mod_or_none(db, mod_id, modset_id)
     if not user_mod:
         return False
+    if is_delete_blocked(db, mod_id, modset_id):
+        raise ModDeleteBlockedError("Cannot delete a mod that is an active dependency of a core mod.")
     db.delete(user_mod)
     db.commit()
     return True
@@ -128,3 +143,9 @@ def delete_mod(db: Session, mod_id: str, modset_id: int) -> bool:
 
 def list_mods(db: Session, modset_id: int) -> list[ModRead]:
     return list_mods_query(db, modset_id)
+
+
+def is_delete_blocked(db: Session, mod_id: str, modset_id: int) -> bool:
+    mappings = list_tracked_user_mods(db, modset_id)
+    _, core_dependency_ids = collect_dependency_sets(mappings)
+    return mod_id in core_dependency_ids

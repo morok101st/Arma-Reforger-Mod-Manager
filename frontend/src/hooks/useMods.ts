@@ -14,7 +14,7 @@ export function useMods({
     createMod: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
     refreshMod: (id: string, modsetId?: number | null) => Promise<Mod>;
     deleteMod: (id: string, modsetId?: number | null) => Promise<void>;
-    updateInstalledVersion: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
+    updateMod: (id: string, payload: { current_version?: string | null; is_core?: boolean }, modsetId?: number | null) => Promise<Mod>;
   };
   authUser: AuthUser | null;
   activeModsetId: number | null;
@@ -120,7 +120,7 @@ export function useMods({
       if (!selected) return null;
       const normalizedVersion = nextVersion.trim();
       if (!activeModsetId) return null;
-      const updated = await api.updateInstalledVersion(selected.id, normalizedVersion || null, activeModsetId);
+      const updated = await api.updateMod(selected.id, { current_version: normalizedVersion || null }, activeModsetId);
       await loadMods();
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");
@@ -139,6 +139,17 @@ export function useMods({
       return next;
     });
   }, []);
+
+  const toggleCore = React.useCallback(
+    async (nextCore: boolean) => {
+      if (!selected || !activeModsetId) return null;
+      const updated = await api.updateMod(selected.id, { is_core: nextCore }, activeModsetId);
+      await loadMods();
+      setSelectedId(updated.id);
+      return updated;
+    },
+    [activeModsetId, api, loadMods, selected],
+  );
 
   return {
     mods,
@@ -164,6 +175,7 @@ export function useMods({
     refreshMod,
     removeMod,
     updateInstalledVersion,
+    toggleCore,
     toggleChangelogVersion,
   };
 }

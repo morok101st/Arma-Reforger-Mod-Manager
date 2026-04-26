@@ -68,7 +68,11 @@ export type Mod = {
   last_checked: string | null;
   current_version: string | null;
   pinned: boolean;
+  is_core: boolean;
+  is_dependency: boolean;
   tracking_reason: TrackingReason;
+  core_dependents: ModReference[];
+  delete_blocked: boolean;
   status: ModStatus;
   versions: ModVersion[];
 };

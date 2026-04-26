@@ -14,6 +14,7 @@ export function ModDetail({
   refreshMod,
   removeMod,
   updateInstalledVersion,
+  toggleCore,
   changelogEntries,
   expandedChangelogVersions,
   toggleChangelogVersion,
@@ -28,6 +29,7 @@ export function ModDetail({
   refreshMod: (id: string) => void;
   removeMod: (id: string) => void;
   updateInstalledVersion: (nextVersion?: string) => void;
+  toggleCore: (nextCore: boolean) => void;
   changelogEntries: ChangelogEntry[];
   expandedChangelogVersions: Set<string>;
   toggleChangelogVersion: (version: string) => void;
@@ -53,7 +55,12 @@ export function ModDetail({
           <button className="icon-button" onClick={() => refreshMod(selected.id)} disabled={loading} title="Refresh mod">
             <RefreshCw size={18} />
           </button>
-          <button className="icon-button danger" onClick={() => setShowDeleteDialog(true)} disabled={loading} title="Remove mod">
+          <button
+            className="icon-button danger"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={loading}
+            title={selected.delete_blocked ? "This mod is required by a core mod and cannot be deleted." : "Remove mod"}
+          >
             <Trash2 size={18} />
           </button>
         </div>
@@ -62,25 +69,45 @@ export function ModDetail({
       {showDeleteDialog && (
         <Dialog title="Delete mod" onClose={() => setShowDeleteDialog(false)}>
           <div className="dialog-form">
-            <p className="muted">
-              Delete <strong>{selected.name ?? selected.id}</strong> from this modset?
-            </p>
-            <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
-                Cancel
-              </button>
-              <button
-                className="secondary-button compact danger-button"
-                disabled={loading}
-                onClick={() => {
-                  setShowDeleteDialog(false);
-                  removeMod(selected.id);
-                }}
-                type="button"
-              >
-                Delete
-              </button>
-            </div>
+            {selected.delete_blocked ? (
+              <>
+                <p className="muted">
+                  <strong>{selected.name ?? selected.id}</strong> cannot be deleted because it is an active dependency of a core mod.
+                </p>
+                {selected.core_dependents.length > 0 && (
+                  <p className="muted">
+                    Core mods: {selected.core_dependents.map((mod) => mod.name ?? mod.id).join(", ")}
+                  </p>
+                )}
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="muted">
+                  Delete <strong>{selected.name ?? selected.id}</strong> from this modset?
+                </p>
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                    Cancel
+                  </button>
+                  <button
+                    className="secondary-button compact danger-button"
+                    disabled={loading}
+                    onClick={() => {
+                      setShowDeleteDialog(false);
+                      removeMod(selected.id);
+                    }}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </Dialog>
       )}
@@ -123,6 +150,25 @@ export function ModDetail({
           </button>
         )}
       </div>
+
+      <section className="content-section compact-section">
+        <h3>Tags</h3>
+        <div className="chips tag-chips">
+          <button
+            className={`tag-toggle ${selected.is_core ? "active core" : ""}`}
+            disabled={loading}
+            onClick={() => toggleCore(!selected.is_core)}
+            type="button"
+          >
+            core
+          </button>
+          {selected.is_dependency && (
+            <span className="tag-toggle static dep" title="Automatically set because this mod is an active dependency in the current modset.">
+              dep
+            </span>
+          )}
+        </div>
+      </section>
 
       {saveState === "saved" && (
         <div className="status-band save-band">

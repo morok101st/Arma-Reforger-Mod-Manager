@@ -150,7 +150,8 @@ export function Sidebar({
                 {mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}
                 <span className="relation-count">{mod.dependencies.length} deps</span>
                 <span className="relation-count">{mod.dependents.length} req</span>
-                {mod.tracking_reason === "dependency" && <span className="tracking-badge">dep</span>}
+                {mod.is_core && <span className="tracking-badge core">core</span>}
+                {mod.is_dependency && <span className="tracking-badge dep">dep</span>}
               </small>
             </span>
             {mod.pinned && <Pin size={14} />}
