@@ -480,6 +480,10 @@ button:disabled {
   color: #a63333;
 }
 
+.mod-row-lock-wrap {
+  display: inline-flex;
+}
+
 .relation-count {
   color: var(--md-sys-color-primary);
   display: inline-block;

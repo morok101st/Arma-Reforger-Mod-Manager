@@ -54,6 +54,10 @@ export function Sidebar({
   onOpenMod: (id: string) => void;
 }) {
   const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? modsets[0] ?? null;
+  const deleteBlockedTitle = React.useCallback((mod: Mod) => {
+    const names = mod.blocking_dependents.map((dependent) => dependent.name ?? dependent.id).filter(Boolean);
+    return names.length > 0 ? `Required by: ${names.join(", ")}` : "Required by another tracked mod";
+  }, []);
   const handleModsetChange = React.useCallback(
     (modsetId: number) => {
       onActivateModset(modsetId);
@@ -171,7 +175,11 @@ export function Sidebar({
               </small>
             </span>
             <span className="mod-row-icons">
-              {mod.delete_blocked && <Lock className="mod-row-lock" size={14} />}
+              {mod.delete_blocked && (
+                <span className="mod-row-lock-wrap" title={deleteBlockedTitle(mod)}>
+                  <Lock className="mod-row-lock" size={14} />
+                </span>
+              )}
               {mod.pinned && <Pin size={14} />}
             </span>
           </button>
