@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Layers3, LogOut, Pin, Plus, Shield } from "lucide-react";
+import { Home, Layers3, Lock, LogOut, Pin, Plus, Shield } from "lucide-react";
 
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, Modset, SortMode, TagFilter } from "../types";
@@ -170,7 +170,10 @@ export function Sidebar({
                 {mod.is_dependency && <span className="tracking-badge dep">dep</span>}
               </small>
             </span>
-            {mod.pinned && <Pin size={14} />}
+            <span className="mod-row-icons">
+              {mod.delete_blocked && <Lock className="mod-row-lock" size={14} />}
+              {mod.pinned && <Pin size={14} />}
+            </span>
           </button>
         ))}
         {totalModsCount === 0 && <p className="empty">No mods tracked yet.</p>}

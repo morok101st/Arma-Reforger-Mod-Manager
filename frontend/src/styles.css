@@ -464,9 +464,20 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.mod-row-icons {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .mod-row small {
   color: var(--md-sys-color-on-surface-variant);
   margin-top: 4px;
+}
+
+.mod-row-lock {
+  color: #a63333;
 }
 
 .relation-count {
