@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
 import { dependencyKey, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
@@ -69,14 +69,18 @@ export function ModDetail({
           <div className="dialog-form">
             {selected.delete_blocked ? (
               <>
-                <p className="muted">
-                  <strong>{selected.name ?? selected.id}</strong> cannot be deleted because it is an active dependency of another tracked mod.
-                </p>
-                {selected.blocking_dependents.length > 0 && (
-                  <p className="muted">
-                    Required by: {selected.blocking_dependents.map((mod) => mod.name ?? mod.id).join(", ")}
-                  </p>
-                )}
+                <div className="danger-callout">
+                  <TriangleAlert className="status-icon warn" size={20} />
+                  <div>
+                    <strong>This mod is still required by other tracked mods.</strong>
+                    <span>
+                      <strong>{selected.name ?? selected.id}</strong> cannot be deleted while it is still required.
+                    </span>
+                    {selected.blocking_dependents.length > 0 && (
+                      <span>Required by: {selected.blocking_dependents.map((mod) => mod.name ?? mod.id).join(", ")}</span>
+                    )}
+                  </div>
+                </div>
                 <div className="dialog-actions">
                   <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
                     Close
