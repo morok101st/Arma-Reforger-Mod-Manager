@@ -30,6 +30,7 @@ class ModsApiTestCase(ApiTestCase):
             is_core=False,
             is_dependency=False,
             tracking_reason=TrackingReason.manual,
+            blocking_dependents=[],
             core_dependents=[],
             delete_blocked=False,
             status=ModStatus.update_available,
@@ -227,7 +228,7 @@ class ModsApiTestCase(ApiTestCase):
             mods = {entry["id"]: entry for entry in list_response.json()}
             self.assertTrue(mods["DEPMOD003"]["is_dependency"])
 
-    def test_active_dependency_of_core_mod_cannot_be_deleted(self) -> None:
+    def test_active_dependency_cannot_be_deleted(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
 
@@ -238,8 +239,8 @@ class ModsApiTestCase(ApiTestCase):
             with self.SessionLocal() as db:
                 db.add(
                     Mod(
-                        id="COREMOD001",
-                        name="Core Mod",
+                        id="PARENTMOD004",
+                        name="Parent Mod 4",
                         latest_version="1.0.0",
                         dependencies=[
                             {
@@ -247,7 +248,7 @@ class ModsApiTestCase(ApiTestCase):
                                 "url": "https://reforger.armaplatform.com/workshop/DEPMOD004-Protected-Dependency",
                             }
                         ],
-                        source_url="https://reforger.armaplatform.com/workshop/COREMOD001-Core-Mod",
+                        source_url="https://reforger.armaplatform.com/workshop/PARENTMOD004-Parent-Mod-4",
                     )
                 )
                 db.add(
@@ -259,7 +260,7 @@ class ModsApiTestCase(ApiTestCase):
                         source_url="https://reforger.armaplatform.com/workshop/DEPMOD004-Protected-Dependency",
                     )
                 )
-                db.add(UserMod(modset_id=modset_id, mod_id="COREMOD001", current_version="1.0.0", pinned=False, tracking_reason="manual", is_core=True))
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMOD004", current_version="1.0.0", pinned=False, tracking_reason="manual", is_core=False))
                 db.add(UserMod(modset_id=modset_id, mod_id="DEPMOD004", current_version=None, pinned=False, tracking_reason="dependency"))
                 db.commit()
 
@@ -267,8 +268,8 @@ class ModsApiTestCase(ApiTestCase):
             self.assertEqual(list_response.status_code, 200, list_response.text)
             mods = {entry["id"]: entry for entry in list_response.json()}
             self.assertTrue(mods["DEPMOD004"]["delete_blocked"])
-            self.assertEqual([mod["id"] for mod in mods["DEPMOD004"]["core_dependents"]], ["COREMOD001"])
+            self.assertEqual([mod["id"] for mod in mods["DEPMOD004"]["blocking_dependents"]], ["PARENTMOD004"])
 
             delete_response = client.delete(f"/mods/DEPMOD004?modset_id={modset_id}")
             self.assertEqual(delete_response.status_code, 400, delete_response.text)
-            self.assertIn("active dependency of a core mod", delete_response.json().get("detail", ""))
+            self.assertIn("active dependency", delete_response.json().get("detail", ""))

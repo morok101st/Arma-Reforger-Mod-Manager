@@ -72,11 +72,11 @@ export function ModDetail({
             {selected.delete_blocked ? (
               <>
                 <p className="muted">
-                  <strong>{selected.name ?? selected.id}</strong> cannot be deleted because it is an active dependency of a core mod.
+                  <strong>{selected.name ?? selected.id}</strong> cannot be deleted because it is an active dependency of another tracked mod.
                 </p>
-                {selected.core_dependents.length > 0 && (
+                {selected.blocking_dependents.length > 0 && (
                   <p className="muted">
-                    Core mods: {selected.core_dependents.map((mod) => mod.name ?? mod.id).join(", ")}
+                    Required by: {selected.blocking_dependents.map((mod) => mod.name ?? mod.id).join(", ")}
                   </p>
                 )}
                 <div className="dialog-actions">

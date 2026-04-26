@@ -56,6 +56,7 @@ class ModRead(BaseModel):
     is_core: bool
     is_dependency: bool
     tracking_reason: TrackingReason
+    blocking_dependents: list[ModReferenceRead] = Field(default_factory=list)
     core_dependents: list[ModReferenceRead] = Field(default_factory=list)
     delete_blocked: bool = False
     status: ModStatus

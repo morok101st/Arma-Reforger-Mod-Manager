@@ -19,6 +19,7 @@ def mod_to_read(
     tracked_mods = [mapping.mod for mapping in all_mappings]
     dependency_ids = dependency_ids or set()
     core_dependency_ids = core_dependency_ids or set()
+    blocking_dependents = find_dependents(mod, all_mappings, installed_only=True, core_only=False)
     core_dependents = find_dependents(mod, all_mappings, installed_only=True, core_only=True)
     return ModRead(
         id=mod.id,
@@ -37,8 +38,9 @@ def mod_to_read(
         is_core=bool(user_mod.is_core),
         is_dependency=mod.id in dependency_ids,
         tracking_reason=tracking_reason,
+        blocking_dependents=blocking_dependents,
         core_dependents=core_dependents,
-        delete_blocked=mod.id in core_dependency_ids,
+        delete_blocked=mod.id in dependency_ids,
         status=compare_versions(current_version, mod.latest_version),
         versions=sort_versions(mod.versions)[:10],
     )

@@ -72,6 +72,7 @@ export type Mod = {
   is_core: boolean;
   is_dependency: boolean;
   tracking_reason: TrackingReason;
+  blocking_dependents: ModReference[];
   core_dependents: ModReference[];
   delete_blocked: boolean;
   status: ModStatus;

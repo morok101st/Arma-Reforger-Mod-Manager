@@ -135,7 +135,7 @@ def delete_mod(db: Session, mod_id: str, modset_id: int) -> bool:
     if not user_mod:
         return False
     if is_delete_blocked(db, mod_id, modset_id):
-        raise ModDeleteBlockedError("Cannot delete a mod that is an active dependency of a core mod.")
+        raise ModDeleteBlockedError("Cannot delete a mod that is an active dependency of another tracked mod.")
     db.delete(user_mod)
     db.commit()
     return True
@@ -147,5 +147,5 @@ def list_mods(db: Session, modset_id: int) -> list[ModRead]:
 
 def is_delete_blocked(db: Session, mod_id: str, modset_id: int) -> bool:
     mappings = list_tracked_user_mods(db, modset_id)
-    _, core_dependency_ids = collect_dependency_sets(mappings)
-    return mod_id in core_dependency_ids
+    dependency_ids, _ = collect_dependency_sets(mappings)
+    return mod_id in dependency_ids
