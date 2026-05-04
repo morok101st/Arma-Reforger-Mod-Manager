@@ -671,6 +671,11 @@ button:disabled {
   padding: 14px;
 }
 
+.user-row:hover {
+  background: var(--md-sys-color-surface-hover);
+  border-color: var(--md-sys-color-outline);
+}
+
 .row-actions {
   align-items: center;
   display: flex;
