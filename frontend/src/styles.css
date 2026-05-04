@@ -82,6 +82,10 @@ button,
 input,
 select,
 textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  background-clip: padding-box;
+  box-shadow: none;
   font: inherit;
   font-family: var(--font-family-base);
 }
@@ -318,6 +322,20 @@ input {
   min-height: 42px;
   padding: 0 12px;
   width: 100%;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--md-sys-color-on-surface);
+  box-shadow: 0 0 0 1000px var(--md-sys-color-surface) inset;
+  transition: background-color 9999s ease-out 0s;
 }
 
 .custom-select {
