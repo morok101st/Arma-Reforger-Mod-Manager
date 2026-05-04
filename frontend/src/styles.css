@@ -988,12 +988,13 @@ button:disabled {
 }
 
 :root[data-theme="dark"] .dialog-backdrop {
-  background: rgba(10, 10, 10, 0.56);
+  background: rgba(20, 20, 20, 0.92);
   backdrop-filter: none;
 }
 
 :root[data-theme="dark"] .dialog-panel {
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
+  background: #181818;
+  box-shadow: 0 0 0 1px rgba(74, 74, 74, 0.35);
 }
 
 .dialog-header,
