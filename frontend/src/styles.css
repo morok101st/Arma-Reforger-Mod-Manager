@@ -36,26 +36,26 @@
 }
 
 :root[data-theme="dark"] {
-  --md-sys-color-primary: #7cc7af;
-  --md-sys-color-primary-hover: #8fd6bf;
-  --md-sys-color-primary-pressed: #6ab69e;
-  --md-sys-color-on-primary: #0b1c17;
-  --md-sys-color-primary-container: #173a30;
-  --md-sys-color-on-primary-container: #d6f1e8;
-  --md-sys-color-secondary: #a9cfc0;
-  --md-sys-color-on-secondary: #12221d;
-  --md-sys-color-tertiary: #b8c7ff;
+  --md-sys-color-primary: #ffc720;
+  --md-sys-color-primary-hover: #ffce3a;
+  --md-sys-color-primary-pressed: #e3ac00;
+  --md-sys-color-on-primary: #1c1605;
+  --md-sys-color-primary-container: #382a09;
+  --md-sys-color-on-primary-container: #ffe9ab;
+  --md-sys-color-secondary: #d4bb73;
+  --md-sys-color-on-secondary: #1f1808;
+  --md-sys-color-tertiary: #c6baa1;
   --md-sys-color-error: #ffb4ab;
   --md-sys-color-on-error: #561e19;
-  --md-sys-color-background: #111715;
-  --md-sys-color-surface: #141b18;
-  --md-sys-color-surface-container: #1c2421;
-  --md-sys-color-surface-container-high: #222c28;
-  --md-sys-color-surface-container-low: #0f1513;
+  --md-sys-color-background: #141414;
+  --md-sys-color-surface: #1a1a1a;
+  --md-sys-color-surface-container: #1f1f1f;
+  --md-sys-color-surface-container-high: #242424;
+  --md-sys-color-surface-container-low: #181818;
   --md-sys-color-on-surface: #e4ece7;
   --md-sys-color-on-surface-variant: #a9b6b0;
-  --md-sys-color-outline: #718078;
-  --md-sys-color-outline-variant: #33403a;
+  --md-sys-color-outline: #4a4a4a;
+  --md-sys-color-outline-variant: #2e2e2e;
   color-scheme: dark;
 }
 
@@ -74,7 +74,7 @@ body {
 
 :root[data-theme="dark"] body {
   background:
-    radial-gradient(circle at 8% -12%, rgba(124, 199, 175, 0.14), transparent 24rem),
+    radial-gradient(circle at 8% -12%, rgba(255, 199, 32, 0.1), transparent 24rem),
     var(--md-sys-color-background);
 }
 
@@ -272,12 +272,12 @@ h3 {
 
 :root[data-theme="dark"] .auth-shell {
   background:
-    radial-gradient(circle at top left, rgba(124, 199, 175, 0.18), transparent 34rem),
-    linear-gradient(135deg, #101715 0%, #18211d 100%);
+    radial-gradient(circle at top left, rgba(255, 199, 32, 0.12), transparent 34rem),
+    linear-gradient(135deg, #141414 0%, #1f1f1f 100%);
 }
 
 :root[data-theme="dark"] .auth-card {
-  background: color-mix(in srgb, var(--md-sys-color-surface) 92%, #0b100e);
+  background: color-mix(in srgb, var(--md-sys-color-surface) 92%, #121212);
 }
 
 .auth-card > svg {
@@ -747,8 +747,8 @@ button:disabled {
 
 :root[data-theme="dark"] .dashboard-hero {
   background:
-    radial-gradient(circle at top right, rgba(124, 199, 175, 0.14), transparent 20rem),
-    linear-gradient(135deg, var(--md-sys-color-surface) 0%, #1a2420 100%);
+    radial-gradient(circle at top right, rgba(255, 199, 32, 0.12), transparent 20rem),
+    linear-gradient(135deg, var(--md-sys-color-surface) 0%, #242424 100%);
 }
 
 .dashboard-hero p {
