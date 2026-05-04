@@ -69,7 +69,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(24), default="user", server_default="user", index=True)
-    theme_preference: Mapped[str] = mapped_column(String(16), default="light", server_default="light")
+    theme_preference: Mapped[str] = mapped_column(String(16), default="dark", server_default="dark")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     active_modset_id: Mapped[int | None] = mapped_column(ForeignKey("modsets.id", ondelete="SET NULL"), nullable=True, index=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

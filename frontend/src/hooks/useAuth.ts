@@ -29,7 +29,7 @@ export function useAuth(onUnauthorized: () => void) {
   }, [api]);
 
   React.useEffect(() => {
-    document.documentElement.dataset.theme = authUser?.theme_preference ?? "light";
+    document.documentElement.dataset.theme = authUser?.theme_preference ?? "dark";
   }, [authUser?.theme_preference]);
 
   const login = React.useCallback(

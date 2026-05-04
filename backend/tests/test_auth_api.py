@@ -11,12 +11,12 @@ class AuthApiTestCase(ApiTestCase):
             login_response = client.post("/auth/login", json={"username": "admin", "password": "very-secure-admin-pass"})
             self.assertEqual(login_response.status_code, 200)
             self.assertIn("armm_session", login_response.headers.get("set-cookie", ""))
-            self.assertEqual(login_response.json()["theme_preference"], "light")
+            self.assertEqual(login_response.json()["theme_preference"], "dark")
 
             session_response = client.get("/auth/me")
             self.assertEqual(session_response.status_code, 200)
             self.assertEqual(session_response.json()["username"], "admin")
-            self.assertEqual(session_response.json()["theme_preference"], "light")
+            self.assertEqual(session_response.json()["theme_preference"], "dark")
 
             logout_response = client.post("/auth/logout")
             self.assertEqual(logout_response.status_code, 204)
