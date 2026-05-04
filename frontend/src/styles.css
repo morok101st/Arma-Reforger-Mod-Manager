@@ -85,6 +85,7 @@ textarea {
   appearance: none;
   -webkit-appearance: none;
   background-clip: padding-box;
+  background-image: none;
   box-shadow: none;
   font: inherit;
   font-family: var(--font-family-base);
@@ -318,6 +319,7 @@ input {
   background: var(--md-sys-color-surface);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--shape-corner-sm);
+  color-scheme: normal;
   color: var(--md-sys-color-on-surface);
   min-height: 42px;
   padding: 0 12px;
@@ -347,6 +349,7 @@ select:-webkit-autofill:focus {
   background: var(--md-sys-color-surface);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--shape-corner-sm);
+  color-scheme: normal;
   color: var(--md-sys-color-on-surface);
   cursor: pointer;
   display: flex;
