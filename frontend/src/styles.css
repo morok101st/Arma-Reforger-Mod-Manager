@@ -80,6 +80,10 @@ body {
     var(--md-sys-color-background);
 }
 
+:root[data-theme="dark"].dialog-open body {
+  background: var(--md-sys-color-background);
+}
+
 button,
 input,
 select,
@@ -985,6 +989,7 @@ button:disabled {
 
 :root[data-theme="dark"] .dialog-backdrop {
   background: rgba(10, 10, 10, 0.56);
+  backdrop-filter: none;
 }
 
 :root[data-theme="dark"] .dialog-panel {

@@ -5,6 +5,11 @@ import { UNKNOWN_VALUE, statusLabel } from "../lib/utils";
 import type { ModStatus } from "../types";
 
 export function Dialog({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  React.useEffect(() => {
+    document.documentElement.classList.add("dialog-open");
+    return () => document.documentElement.classList.remove("dialog-open");
+  }, []);
+
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="dialog-panel" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
