@@ -21,7 +21,7 @@ from app.auth import (
 )
 from app.models import User
 from app.modset_service import ensure_user_active_modset
-from app.schemas_auth import AuthUserRead, LoginRequest, PasswordChange
+from app.schemas_auth import AuthUserRead, LoginRequest, PasswordChange, ThemePreferenceUpdate
 from app.user_service import auth_user_to_read
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -136,5 +136,29 @@ def api_change_password(
         actor=current_user,
         request=request,
         detail={"username": current_user.username, "method": "self_service"},
+    )
+    return auth_user_to_read(current_user, session_expires_at(session_token))
+
+
+@router.patch("/theme", response_model=AuthUserRead)
+def api_change_theme_preference(
+    payload: ThemePreferenceUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_current_user),
+    session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
+) -> AuthUserRead:
+    ensure_user_active_modset(db, current_user)
+    current_user.theme_preference = payload.theme_preference
+    db.commit()
+    db.refresh(current_user)
+    audit_event(
+        db,
+        action="theme_preference_changed",
+        entity_type="user",
+        entity_id=str(current_user.id),
+        actor=current_user,
+        request=request,
+        detail={"username": current_user.username, "theme_preference": current_user.theme_preference},
     )
     return auth_user_to_read(current_user, session_expires_at(session_token))

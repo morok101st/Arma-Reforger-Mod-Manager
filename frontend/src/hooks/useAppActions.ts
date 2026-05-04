@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { ModsetExport, UserAccount } from "../types";
+import type { ModsetExport, ThemePreference, UserAccount } from "../types";
 import { useAsyncAction } from "./useAsyncAction";
 
 export function useAppActions({
@@ -13,7 +13,10 @@ export function useAppActions({
   showDashboardView,
 }: {
   auth: {
-    api: { changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<unknown> };
+    api: {
+      changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<unknown>;
+      updateThemePreference: (themePreference: ThemePreference) => Promise<unknown>;
+    };
     login: (username: string, password: string) => Promise<unknown>;
     logout: () => Promise<void>;
     setAuthChecked: (value: boolean) => void;
@@ -80,6 +83,19 @@ export function useAppActions({
       );
     },
     [action, admin, auth],
+  );
+
+  const updateThemePreference = React.useCallback(
+    async (themePreference: ThemePreference) => {
+      await action.run(
+        async () => {
+          const user = await auth.api.updateThemePreference(themePreference);
+          auth.setAuthUser(user);
+        },
+        { rethrow: true },
+      );
+    },
+    [action, auth],
   );
 
   const createUser = React.useCallback(
@@ -185,6 +201,7 @@ export function useAppActions({
     login,
     logout,
     changeOwnPassword,
+    updateThemePreference,
     createUser,
     updateUserAccount,
     deleteUser,

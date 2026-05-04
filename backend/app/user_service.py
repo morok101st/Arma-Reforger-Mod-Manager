@@ -28,6 +28,7 @@ def auth_user_to_read(user: User, session_expires_at=None):
         id=user.id,
         username=user.username,
         role=user.role,
+        theme_preference=user.theme_preference or "light",
         active_modset_id=user.active_modset_id,
         active_modset_name=user.active_modset.name if user.active_modset else None,
         session_expires_at=expires_at,

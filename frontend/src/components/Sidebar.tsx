@@ -1,11 +1,12 @@
 import React from "react";
-import { Home, Layers3, Lock, LogOut, Pin, Plus, Shield } from "lucide-react";
+import { Home, Layers3, Lock, LogOut, Moon, Pin, Plus, Shield, Sun } from "lucide-react";
 
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
-import type { Mod, Modset, SortMode } from "../types";
+import type { Mod, Modset, SortMode, ThemePreference } from "../types";
 
 export function Sidebar({
   username,
+  themePreference,
   loading,
   showDashboard,
   showModsetAdmin,
@@ -21,6 +22,7 @@ export function Sidebar({
   onShowModsetAdmin,
   onToggleSecurity,
   onLogout,
+  onToggleTheme,
   onShowAddMod,
   onActivateModset,
   onSearchChange,
@@ -28,6 +30,7 @@ export function Sidebar({
   onOpenMod,
 }: {
   username: string;
+  themePreference: ThemePreference;
   loading: boolean;
   showDashboard: boolean;
   showModsetAdmin: boolean;
@@ -43,6 +46,7 @@ export function Sidebar({
   onShowModsetAdmin: () => void;
   onToggleSecurity: () => void;
   onLogout: () => void;
+  onToggleTheme: () => void;
   onShowAddMod: () => void;
   onActivateModset: (modsetId: number) => void;
   onSearchChange: (value: string) => void;
@@ -95,6 +99,9 @@ export function Sidebar({
           </button>
           <button className="icon-button logout-button" onClick={onLogout} title={`Logout ${username}`}>
             <LogOut size={18} />
+          </button>
+          <button className="icon-button" onClick={onToggleTheme} title={themePreference === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            {themePreference === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </div>

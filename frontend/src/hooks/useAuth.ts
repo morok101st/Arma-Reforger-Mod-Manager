@@ -28,6 +28,10 @@ export function useAuth(onUnauthorized: () => void) {
       });
   }, [api]);
 
+  React.useEffect(() => {
+    document.documentElement.dataset.theme = authUser?.theme_preference ?? "light";
+  }, [authUser?.theme_preference]);
+
   const login = React.useCallback(
     async (username: string, password: string) => {
       setLoginError(null);

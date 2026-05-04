@@ -1,4 +1,4 @@
-import type { AuditLog, AuthUser, Mod, Modset, ModsetExport, SchedulerStatus, UserAccount, UserRole } from "../types";
+import type { AuditLog, AuthUser, Mod, Modset, ModsetExport, SchedulerStatus, ThemePreference, UserAccount, UserRole } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -59,6 +59,13 @@ export function createApiClient(onUnauthorized?: () => void) {
         json: { current_password: currentPassword, new_password: newPassword },
       });
       return readJsonOrThrow<AuthUser>(response, "Could not change password.");
+    },
+    async updateThemePreference(themePreference: ThemePreference) {
+      const response = await request("/auth/theme", {
+        method: "PATCH",
+        json: { theme_preference: themePreference },
+      });
+      return readJsonOrThrow<AuthUser>(response, "Could not update theme preference.");
     },
     async listMods(modsetId?: number | null) {
       const response = await request(withModset("/mods", modsetId));

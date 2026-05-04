@@ -3,11 +3,13 @@ export type SortMode = "name" | "status" | "last_checked" | "updates";
 export type TrackingReason = "manual" | "dependency";
 export type UserRole = "admin" | "user";
 export type AuditFilter = "all" | "auth" | "user" | "mod" | "failures";
+export type ThemePreference = "light" | "dark";
 
 export type AuthUser = {
   id: number;
   username: string;
   role: UserRole;
+  theme_preference: ThemePreference;
   active_modset_id: number | null;
   active_modset_name: string | null;
   session_expires_at: string | null;

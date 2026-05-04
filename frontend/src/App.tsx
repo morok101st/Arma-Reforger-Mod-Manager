@@ -26,10 +26,13 @@ export function App() {
     );
   }
 
+  const authUser = auth.authUser;
+
   return (
     <main className="app-shell">
       <Sidebar
-        username={auth.authUser.username}
+        username={authUser.username}
+        themePreference={authUser.theme_preference}
         loading={actions.loading}
         showDashboard={view.showDashboard}
         showModsetAdmin={view.showModsetAdmin}
@@ -44,6 +47,7 @@ export function App() {
         onShowDashboard={view.showDashboardView}
         onShowModsetAdmin={view.showModsetAdminView}
         onToggleSecurity={view.toggleSecurityView}
+        onToggleTheme={() => actions.updateThemePreference(authUser.theme_preference === "dark" ? "light" : "dark")}
         onLogout={actions.logout}
         onShowAddMod={view.openAddModDialog}
         onActivateModset={actions.activateModset}
@@ -80,7 +84,7 @@ export function App() {
         ) : view.showUserAdmin ? (
           <UserAdmin
             users={admin.users}
-            currentUser={auth.authUser}
+            currentUser={authUser}
             loading={actions.loading}
             auditLogs={admin.auditLogs}
             changeOwnPassword={actions.changeOwnPassword}

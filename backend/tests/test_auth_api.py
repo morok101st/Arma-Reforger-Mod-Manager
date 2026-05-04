@@ -11,10 +11,12 @@ class AuthApiTestCase(ApiTestCase):
             login_response = client.post("/auth/login", json={"username": "admin", "password": "very-secure-admin-pass"})
             self.assertEqual(login_response.status_code, 200)
             self.assertIn("armm_session", login_response.headers.get("set-cookie", ""))
+            self.assertEqual(login_response.json()["theme_preference"], "light")
 
             session_response = client.get("/auth/me")
             self.assertEqual(session_response.status_code, 200)
             self.assertEqual(session_response.json()["username"], "admin")
+            self.assertEqual(session_response.json()["theme_preference"], "light")
 
             logout_response = client.post("/auth/logout")
             self.assertEqual(logout_response.status_code, 204)
@@ -33,3 +35,15 @@ class AuthApiTestCase(ApiTestCase):
         with self.SessionLocal() as db:
             user = authenticate_user(db, "ADMIN", "very-secure-admin-pass")
             self.assertIsNotNone(user)
+
+    def test_auth_theme_preference_update(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            update_response = client.patch("/auth/theme", json={"theme_preference": "dark"})
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+            self.assertEqual(update_response.json()["theme_preference"], "dark")
+
+            session_response = client.get("/auth/me")
+            self.assertEqual(session_response.status_code, 200, session_response.text)
+            self.assertEqual(session_response.json()["theme_preference"], "dark")

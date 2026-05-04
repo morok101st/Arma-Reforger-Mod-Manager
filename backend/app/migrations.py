@@ -114,6 +114,9 @@ def _migrate_users(engine: Engine, inspector) -> None:
     if "active_modset_id" not in user_columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ADD COLUMN active_modset_id INTEGER"))
+    if "theme_preference" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN theme_preference VARCHAR(16) NOT NULL DEFAULT 'light'"))
 
     with engine.begin() as connection:
         default_modset_id = connection.execute(text("SELECT id FROM modsets ORDER BY id LIMIT 1")).scalar()

@@ -35,6 +35,30 @@
   text-rendering: optimizeLegibility;
 }
 
+:root[data-theme="dark"] {
+  --md-sys-color-primary: #7cc7af;
+  --md-sys-color-primary-hover: #8fd6bf;
+  --md-sys-color-primary-pressed: #6ab69e;
+  --md-sys-color-on-primary: #0b1c17;
+  --md-sys-color-primary-container: #173a30;
+  --md-sys-color-on-primary-container: #d6f1e8;
+  --md-sys-color-secondary: #a9cfc0;
+  --md-sys-color-on-secondary: #12221d;
+  --md-sys-color-tertiary: #b8c7ff;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #561e19;
+  --md-sys-color-background: #111715;
+  --md-sys-color-surface: #141b18;
+  --md-sys-color-surface-container: #1c2421;
+  --md-sys-color-surface-container-high: #222c28;
+  --md-sys-color-surface-container-low: #0f1513;
+  --md-sys-color-on-surface: #e4ece7;
+  --md-sys-color-on-surface-variant: #a9b6b0;
+  --md-sys-color-outline: #718078;
+  --md-sys-color-outline-variant: #33403a;
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -45,6 +69,13 @@ body {
     var(--md-sys-color-background);
   margin: 0;
   min-width: 320px;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 8% -12%, rgba(124, 199, 175, 0.14), transparent 24rem),
+    var(--md-sys-color-background);
 }
 
 button,
@@ -173,6 +204,25 @@ h3 {
   color: #8f2a2a;
 }
 
+:root[data-theme="dark"] .icon-button.subtle-danger:hover,
+:root[data-theme="dark"] .icon-button.logout-button,
+:root[data-theme="dark"] .secondary-button.danger-button,
+:root[data-theme="dark"] .danger-callout,
+:root[data-theme="dark"] .inline-danger-confirmation,
+:root[data-theme="dark"] .audit-badge.failure,
+:root[data-theme="dark"] .error-box {
+  background: #311616;
+  border-color: #7b3a35;
+  color: #ffcdc7;
+}
+
+:root[data-theme="dark"] .icon-button.logout-button:hover,
+:root[data-theme="dark"] .secondary-button.danger-button:hover {
+  background: #421d1d;
+  border-color: #9e4f48;
+  color: #ffd9d3;
+}
+
 .action-link {
   align-items: center;
   background: var(--md-sys-color-surface-container-low);
@@ -218,6 +268,16 @@ h3 {
   max-width: 440px;
   padding: 34px;
   width: 100%;
+}
+
+:root[data-theme="dark"] .auth-shell {
+  background:
+    radial-gradient(circle at top left, rgba(124, 199, 175, 0.18), transparent 34rem),
+    linear-gradient(135deg, #101715 0%, #18211d 100%);
+}
+
+:root[data-theme="dark"] .auth-card {
+  background: color-mix(in srgb, var(--md-sys-color-surface) 92%, #0b100e);
 }
 
 .auth-card > svg {
@@ -442,6 +502,10 @@ button:disabled {
   margin-top: 4px;
 }
 
+:root[data-theme="dark"] .danger-callout span {
+  color: #ffd2cc;
+}
+
 .mod-list {
   align-content: start;
   display: grid;
@@ -622,6 +686,26 @@ button:disabled {
   border-color: #9fc8ad;
 }
 
+:root[data-theme="dark"] .status-band.update_available,
+:root[data-theme="dark"] .health-summary.warn,
+:root[data-theme="dark"] .priority-card.warn {
+  background: #302611;
+  border-color: #8e7130;
+}
+
+:root[data-theme="dark"] .status-band.up_to_date,
+:root[data-theme="dark"] .status-band.save-band,
+:root[data-theme="dark"] .health-summary.ok,
+:root[data-theme="dark"] .priority-card.ok {
+  background: #163124;
+  border-color: #3d7a58;
+}
+
+:root[data-theme="dark"] .health-summary.neutral {
+  background: #152334;
+  border-color: #456185;
+}
+
 .save-band svg {
   color: #237245;
 }
@@ -659,6 +743,12 @@ button:disabled {
   gap: 18px;
   justify-content: space-between;
   padding: 24px;
+}
+
+:root[data-theme="dark"] .dashboard-hero {
+  background:
+    radial-gradient(circle at top right, rgba(124, 199, 175, 0.14), transparent 20rem),
+    linear-gradient(135deg, var(--md-sys-color-surface) 0%, #1a2420 100%);
 }
 
 .dashboard-hero p {
@@ -800,6 +890,10 @@ button:disabled {
   border-radius: 999px;
   height: 10px;
   overflow: hidden;
+}
+
+:root[data-theme="dark"] .health-track {
+  background: #24302b;
 }
 
 .health-fill {
@@ -1004,6 +1098,11 @@ pre {
   overflow: auto;
   padding: 18px;
   white-space: pre-wrap;
+}
+
+:root[data-theme="dark"] pre {
+  background: #0b100e;
+  color: #dce7df;
 }
 
 .changelog-list {
