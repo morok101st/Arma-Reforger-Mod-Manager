@@ -16,6 +16,7 @@
   --md-sys-color-surface-container: #eef3ef;
   --md-sys-color-surface-container-high: #e7ede8;
   --md-sys-color-surface-container-low: #f9fcf9;
+  --md-sys-color-surface-hover: #e7ede8;
   --md-sys-color-on-surface: #1a1d1b;
   --md-sys-color-on-surface-variant: #424a45;
   --md-sys-color-outline: #707973;
@@ -52,6 +53,7 @@
   --md-sys-color-surface-container: #1f1f1f;
   --md-sys-color-surface-container-high: #242424;
   --md-sys-color-surface-container-low: #181818;
+  --md-sys-color-surface-hover: #242424;
   --md-sys-color-on-surface: #e4ece7;
   --md-sys-color-on-surface-variant: #a9b6b0;
   --md-sys-color-outline: #4a4a4a;
@@ -197,7 +199,7 @@ h3 {
 }
 
 .icon-button:hover {
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-hover);
   border-color: var(--md-sys-color-outline);
   box-shadow: var(--elevation-1);
 }
@@ -272,7 +274,7 @@ h3 {
 }
 
 .action-link:hover {
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-hover);
   border-color: var(--md-sys-color-outline);
 }
 
@@ -415,7 +417,7 @@ input {
 }
 
 .custom-select-item:hover {
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-hover);
 }
 
 .custom-select-item.active {
@@ -480,7 +482,7 @@ input {
 }
 
 .secondary-button:hover {
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-hover);
   border-color: var(--md-sys-color-outline);
 }
 
@@ -567,7 +569,7 @@ button:disabled {
 }
 
 .mod-row:hover {
-  background: var(--md-sys-color-surface-container-low);
+  background: var(--md-sys-color-surface-hover);
   box-shadow: var(--elevation-1);
 }
 
@@ -849,6 +851,7 @@ button:disabled {
 }
 
 .compact-list button:hover {
+  background: var(--md-sys-color-surface-hover);
   border-color: var(--md-sys-color-outline);
 }
 
@@ -1181,7 +1184,7 @@ pre {
 }
 
 .changelog-toggle:hover {
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-hover);
 }
 
 .changelog-toggle span {
