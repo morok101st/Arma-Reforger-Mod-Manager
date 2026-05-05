@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
 import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
@@ -38,7 +38,6 @@ export function ModDetail({
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = React.useState(false);
-  const [deactivateOrphanDependencies, setDeactivateOrphanDependencies] = React.useState(true);
   const normalizedInstalledVersionEdit = installedVersionEdit.trim();
   const currentInstalledVersion = (selected.current_version ?? "").trim();
   const hasInstalledVersionChange = normalizedInstalledVersionEdit !== currentInstalledVersion;
@@ -162,14 +161,6 @@ export function ModDetail({
                         <strong>{selected.name ?? selected.id}</strong>.
                       </span>
                       <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
-                      <button
-                        className={`toggle-row ${deactivateOrphanDependencies ? "active" : ""}`}
-                        onClick={() => setDeactivateOrphanDependencies((current) => !current)}
-                        type="button"
-                      >
-                        <span className="toggle-row-box">{deactivateOrphanDependencies && <Check size={14} />}</span>
-                        <span>Set these dependency mods to No installed version as well</span>
-                      </button>
                     </div>
                   </div>
                 )}
@@ -177,17 +168,45 @@ export function ModDetail({
                   <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
                     Cancel
                   </button>
-                  <button
-                    className="secondary-button compact danger-button"
-                    disabled={loading}
-                    onClick={() => {
-                      setShowDeleteDialog(false);
-                      removeMod(selected.id, { deactivateOrphanDependencies: deactivateOrphanDependencies && orphanedDependencyCandidates.length > 0 });
-                    }}
-                    type="button"
-                  >
-                    Delete
-                  </button>
+                  {orphanedDependencyCandidates.length > 0 && (
+                    <>
+                      <button
+                        className="secondary-button compact danger-button"
+                        disabled={loading}
+                        onClick={() => {
+                          setShowDeleteDialog(false);
+                          removeMod(selected.id, { deactivateOrphanDependencies: false });
+                        }}
+                        type="button"
+                      >
+                        No
+                      </button>
+                      <button
+                        className="secondary-button compact danger-button"
+                        disabled={loading}
+                        onClick={() => {
+                          setShowDeleteDialog(false);
+                          removeMod(selected.id, { deactivateOrphanDependencies: true });
+                        }}
+                        type="button"
+                      >
+                        Yes
+                      </button>
+                    </>
+                  )}
+                  {orphanedDependencyCandidates.length === 0 && (
+                    <button
+                      className="secondary-button compact danger-button"
+                      disabled={loading}
+                      onClick={() => {
+                        setShowDeleteDialog(false);
+                        removeMod(selected.id, { deactivateOrphanDependencies: false });
+                      }}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -196,50 +215,72 @@ export function ModDetail({
       )}
 
       {showDeactivateDialog && (
-        <Dialog title="Set no installed version" onClose={() => setShowDeactivateDialog(false)}>
+        <Dialog title="Dependency follow-up" onClose={() => setShowDeactivateDialog(false)}>
           <div className="dialog-form">
-            <p className="muted">
-              Set <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>?
-            </p>
-            {orphanedDependencyCandidates.length > 0 && (
-              <div className="danger-callout">
-                <TriangleAlert className="status-icon warn" size={20} />
-                <div>
-                  <strong>Dependency follow-up detected.</strong>
-                  <span>
-                    These dependency mods are no longer required by any other installed tracked mod after changing{" "}
-                    <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>.
-                  </span>
-                  <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
+            {orphanedDependencyCandidates.length > 0 ? (
+              <>
+                <div className="danger-callout">
+                  <TriangleAlert className="status-icon warn" size={20} />
+                  <div>
+                    <strong>Set dependent mods to No installed version as well?</strong>
+                    <span>
+                      These dependency mods are no longer required by any other installed tracked mod after changing{" "}
+                      <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>.
+                    </span>
+                    <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
+                  </div>
+                </div>
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                    Cancel
+                  </button>
                   <button
-                    className={`toggle-row ${deactivateOrphanDependencies ? "active" : ""}`}
-                    onClick={() => setDeactivateOrphanDependencies((current) => !current)}
+                    className="secondary-button compact"
+                    disabled={loading}
+                    onClick={() => {
+                      setShowDeactivateDialog(false);
+                      updateInstalledVersion("", { deactivateOrphanDependencies: false });
+                    }}
                     type="button"
                   >
-                    <span className="toggle-row-box">{deactivateOrphanDependencies && <Check size={14} />}</span>
-                    <span>Set these dependency mods to No installed version as well</span>
+                    No
+                  </button>
+                  <button
+                    className="primary-button compact"
+                    disabled={loading}
+                    onClick={() => {
+                      setShowDeactivateDialog(false);
+                      updateInstalledVersion("", { deactivateOrphanDependencies: true });
+                    }}
+                    type="button"
+                  >
+                    Yes
                   </button>
                 </div>
-              </div>
+              </>
+            ) : (
+              <>
+                <p className="muted">
+                  Set <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>?
+                </p>
+                <div className="dialog-actions">
+                  <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                    Cancel
+                  </button>
+                  <button
+                    className="primary-button compact"
+                    disabled={loading}
+                    onClick={() => {
+                      setShowDeactivateDialog(false);
+                      updateInstalledVersion("", { deactivateOrphanDependencies: false });
+                    }}
+                    type="button"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </>
             )}
-            <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
-                Cancel
-              </button>
-              <button
-                className="primary-button compact"
-                disabled={loading}
-                onClick={() => {
-                  setShowDeactivateDialog(false);
-                  updateInstalledVersion("", {
-                    deactivateOrphanDependencies: deactivateOrphanDependencies && orphanedDependencyCandidates.length > 0,
-                  });
-                }}
-                type="button"
-              >
-                Confirm
-              </button>
-            </div>
           </div>
         </Dialog>
       )}
