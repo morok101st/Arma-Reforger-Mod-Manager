@@ -528,8 +528,8 @@ button:disabled {
   padding: 14px;
 }
 
-.danger-callout strong,
-.danger-callout span {
+.danger-callout > div > strong,
+.danger-callout > div > span {
   display: block;
 }
 
