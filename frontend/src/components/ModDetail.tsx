@@ -35,6 +35,9 @@ export function ModDetail({
   openMod: (id: string) => void;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const normalizedInstalledVersionEdit = installedVersionEdit.trim();
+  const currentInstalledVersion = (selected.current_version ?? "").trim();
+  const hasInstalledVersionChange = normalizedInstalledVersionEdit !== currentInstalledVersion;
   const installedVersionOptions = React.useMemo(() => {
     const seen = new Set<string>();
     const versions: string[] = [];
@@ -169,7 +172,7 @@ export function ModDetail({
         </label>
         <button
           className="primary-button compact"
-          disabled={loading || installedVersionEdit.trim() === (selected.current_version ?? "")}
+          disabled={loading || !hasInstalledVersionChange}
           onClick={() => updateInstalledVersion()}
           type="button"
         >
