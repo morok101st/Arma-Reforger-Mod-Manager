@@ -37,8 +37,8 @@
 }
 
 :root[data-theme="dark"] {
-  --md-sys-color-primary: #ffc720;
-  --md-sys-color-primary-hover: #ffce3a;
+  --md-sys-color-primary: #ffce3a;
+  --md-sys-color-primary-hover: #ffd552;
   --md-sys-color-primary-pressed: #e3ac00;
   --md-sys-color-on-primary: #1c1605;
   --md-sys-color-primary-container: #382a09;
