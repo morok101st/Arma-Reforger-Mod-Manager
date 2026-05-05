@@ -14,7 +14,12 @@ export function useMods({
     createMod: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
     refreshMod: (id: string, modsetId?: number | null) => Promise<Mod>;
     deleteMod: (id: string, modsetId?: number | null, options?: { deactivateOrphanDependencies?: boolean }) => Promise<void>;
-    updateMod: (id: string, payload: { current_version?: string | null }, modsetId?: number | null) => Promise<Mod>;
+    updateMod: (
+      id: string,
+      payload: { current_version?: string | null },
+      modsetId?: number | null,
+      options?: { deactivateOrphanDependencies?: boolean },
+    ) => Promise<Mod>;
   };
   authUser: AuthUser | null;
   activeModsetId: number | null;
@@ -116,11 +121,11 @@ export function useMods({
   );
 
   const updateInstalledVersion = React.useCallback(
-    async (nextVersion = installedVersionEdit) => {
+    async (nextVersion = installedVersionEdit, options?: { deactivateOrphanDependencies?: boolean }) => {
       if (!selected) return null;
       const normalizedVersion = nextVersion.trim();
       if (!activeModsetId) return null;
-      const updated = await api.updateMod(selected.id, { current_version: normalizedVersion || null }, activeModsetId);
+      const updated = await api.updateMod(selected.id, { current_version: normalizedVersion || null }, activeModsetId, options);
       await loadMods();
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");

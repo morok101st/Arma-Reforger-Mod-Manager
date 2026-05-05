@@ -62,6 +62,7 @@ async def update_user_mod(
     payload: UserModUpdate,
     modset_id: int,
     provided_fields: set[str] | None = None,
+    deactivate_orphan_dependencies: bool = False,
 ) -> ModRead | None:
     mod = db.get(Mod, mod_id)
     if not mod:
@@ -84,6 +85,9 @@ async def update_user_mod(
 
     db.commit()
     current_version = (user_mod.current_version or "").strip()
+    if deactivate_orphan_dependencies and previous_current_version and not current_version:
+        orphaned_dependency_ids = find_orphaned_dependency_ids_for_mod_delete(db, mod_id, modset_id)
+        deactivate_dependency_tracking(db, modset_id, orphaned_dependency_ids)
     scraper = WorkshopScraper(get_settings().workshop_base_url)
     # If a mod transitions from "no installed version" to a defined version, try a full refresh first.
     # If that fails (network/workshop issue), fall back to the stored dependency list so dependency

@@ -90,8 +90,17 @@ export function createApiClient(onUnauthorized?: () => void) {
         throw new Error(payload?.detail ?? "Could not delete mod.");
       }
     },
-    async updateMod(id: string, payload: { current_version?: string | null; is_core?: boolean }, modsetId?: number | null) {
-      const response = await request(withModset(`/mods/${id}`, modsetId), { method: "PATCH", json: payload });
+    async updateMod(
+      id: string,
+      payload: { current_version?: string | null; is_core?: boolean },
+      modsetId?: number | null,
+      options?: { deactivateOrphanDependencies?: boolean },
+    ) {
+      const basePath = withModset(`/mods/${id}`, modsetId);
+      const path = options?.deactivateOrphanDependencies
+        ? `${basePath}${basePath.includes("?") ? "&" : "?"}deactivate_orphan_dependencies=true`
+        : basePath;
+      const response = await request(path, { method: "PATCH", json: payload });
       return readJsonOrThrow<Mod>(response, "Could not update mod.");
     },
     async listModsets() {

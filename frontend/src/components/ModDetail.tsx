@@ -28,7 +28,7 @@ export function ModDetail({
   setInstalledVersionEdit: (value: string) => void;
   refreshMod: (id: string) => void;
   removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
-  updateInstalledVersion: (nextVersion?: string) => void;
+  updateInstalledVersion: (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
   changelogEntries: ChangelogEntry[];
   expandedChangelogVersions: Set<string>;
   toggleChangelogVersion: (version: string) => void;
@@ -37,6 +37,7 @@ export function ModDetail({
   openMod: (id: string) => void;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = React.useState(false);
   const [deactivateOrphanDependencies, setDeactivateOrphanDependencies] = React.useState(true);
   const normalizedInstalledVersionEdit = installedVersionEdit.trim();
   const currentInstalledVersion = (selected.current_version ?? "").trim();
@@ -93,6 +94,7 @@ export function ModDetail({
       });
     });
   }, [allTrackedMods, selected, trackedDependencyMatches]);
+  const isSettingNoInstalledVersion = hasInstalledVersionChange && normalizedInstalledVersionEdit === "";
 
   return (
     <>
@@ -193,6 +195,55 @@ export function ModDetail({
         </Dialog>
       )}
 
+      {showDeactivateDialog && (
+        <Dialog title="Set no installed version" onClose={() => setShowDeactivateDialog(false)}>
+          <div className="dialog-form">
+            <p className="muted">
+              Set <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>?
+            </p>
+            {orphanedDependencyCandidates.length > 0 && (
+              <div className="danger-callout">
+                <TriangleAlert className="status-icon warn" size={20} />
+                <div>
+                  <strong>Dependency follow-up detected.</strong>
+                  <span>
+                    These dependency mods are no longer required by any other installed tracked mod after changing{" "}
+                    <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>.
+                  </span>
+                  <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
+                  <label className="checkbox-row">
+                    <input
+                      checked={deactivateOrphanDependencies}
+                      onChange={(event) => setDeactivateOrphanDependencies(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span>Set these dependency mods to No installed version as well</span>
+                  </label>
+                </div>
+              </div>
+            )}
+            <div className="dialog-actions">
+              <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                Cancel
+              </button>
+              <button
+                className="primary-button compact"
+                disabled={loading}
+                onClick={() => {
+                  setShowDeactivateDialog(false);
+                  updateInstalledVersion("", {
+                    deactivateOrphanDependencies: deactivateOrphanDependencies && orphanedDependencyCandidates.length > 0,
+                  });
+                }}
+                type="button"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
       <div className={`status-band ${selected.status.toLowerCase()}`}>
         <StatusIcon status={selected.status} />
         <strong>{statusLabel(selected.status)}</strong>
@@ -217,7 +268,13 @@ export function ModDetail({
         <button
           className="primary-button compact"
           disabled={loading || !hasInstalledVersionChange}
-          onClick={() => updateInstalledVersion()}
+          onClick={() => {
+            if (isSettingNoInstalledVersion) {
+              setShowDeactivateDialog(true);
+              return;
+            }
+            updateInstalledVersion();
+          }}
           type="button"
         >
           <Save size={18} />

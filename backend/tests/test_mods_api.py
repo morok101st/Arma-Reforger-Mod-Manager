@@ -426,3 +426,47 @@ class ModsApiTestCase(ApiTestCase):
                 assert dependency_mapping is not None
                 self.assertIsNone(dependency_mapping.current_version)
                 self.assertTrue(dependency_mapping.dependency_origin)
+
+    def test_clearing_installed_version_can_deactivate_orphaned_dependency_origins(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Zeta"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            dependency = {
+                "name": "Dependency Zeta",
+                "url": "https://reforger.armaplatform.com/workshop/DEPMODZET-Dependency-Zeta",
+            }
+            with self.SessionLocal() as db:
+                db.add(Mod(id="PARENTMODZET", name="Parent Zeta", latest_version="1.0.0", dependencies=[dependency]))
+                db.add(Mod(id="DEPMODZET", name="Dependency Zeta", latest_version="2.0.0", dependencies=[]))
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODZET", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="DEPMODZET",
+                        current_version="2.0.0",
+                        pinned=False,
+                        tracking_reason="manual",
+                        dependency_origin=True,
+                    )
+                )
+                db.commit()
+
+            update_response = client.patch(
+                f"/mods/PARENTMODZET?modset_id={modset_id}&deactivate_orphan_dependencies=true",
+                json={"current_version": None},
+            )
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+            payload = update_response.json()
+            self.assertIsNone(payload["current_version"])
+            self.assertEqual(payload["status"], ModStatus.not_installed.value)
+
+            with self.SessionLocal() as db:
+                dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODZET").one_or_none()
+                self.assertIsNotNone(dependency_mapping)
+                assert dependency_mapping is not None
+                self.assertIsNone(dependency_mapping.current_version)
+                self.assertTrue(dependency_mapping.dependency_origin)

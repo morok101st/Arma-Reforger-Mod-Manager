@@ -91,6 +91,7 @@ async def api_update_user_mod(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
     modset_id: int | None = None,
+    deactivate_orphan_dependencies: bool = False,
 ) -> ModRead:
     try:
         effective_modset_id = resolve_modset_id(db, current_user, modset_id)
@@ -98,7 +99,14 @@ async def api_update_user_mod(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     request_payload = await request.json()
     provided_fields = set(request_payload.keys()) if isinstance(request_payload, dict) else set()
-    mod = await update_user_mod(db, mod_id, payload, effective_modset_id, provided_fields=provided_fields)
+    mod = await update_user_mod(
+        db,
+        mod_id,
+        payload,
+        effective_modset_id,
+        provided_fields=provided_fields,
+        deactivate_orphan_dependencies=deactivate_orphan_dependencies,
+    )
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
     audit_mod_updated(
