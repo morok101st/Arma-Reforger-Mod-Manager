@@ -8,9 +8,12 @@ It stores mod data per modset, regularly crawls Workshop data, compares installe
 - Tracks Workshop mods by mod ID.
 - Supports multiple modsets (for example, one per server).
 - Compares `Installed Version` vs. `Latest Version`.
+- Uses a dedicated `No installed version` state for tracked mods without an installed target version.
 - Runs an automatic crawl on startup and then at a configured interval.
 - Shows dependency and `Required by` relations between tracked mods.
 - Automatically adds dependencies to tracking when an installed version is set.
+- Preserves dependency origin information even when a dependency mod is later edited manually.
+- Can optionally set orphaned dependency mods to `No installed version` when a parent mod is deleted or deactivated.
 - Stores changelog history per version including `Last modified`.
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
 
@@ -25,13 +28,15 @@ It stores mod data per modset, regularly crawls Workshop data, compares installe
 ### Mod management
 
 - Add mod (dialog), optionally directly into another modset.
-- Mod detail view with status, metadata, set/save installed version, “Set to latest”, refresh, and delete confirmation.
+- Mod detail view with status, metadata, installed-version selection from known changelog versions, “Set to latest”, refresh, and delete confirmation.
+- Dedicated `No installed version` / `NOT_INSTALLED` handling instead of overloading the generic unknown state.
+- Follow-up confirmation dialogs when deleting a mod or changing it to `No installed version` would orphan dependency-origin mods.
 - Compact `deps` and `req` indicators in the mod list.
 - Search by mod name and mod ID.
 
 ### Modsets
 
-- Create, rename, activate, and delete modsets (delete allowed only when empty and not the last modset).
+- Create, rename, activate, and delete modsets (deleting non-empty modsets is allowed, but the last remaining modset is protected).
 - Export each modset as a JSON file.
 
 ### Security area
@@ -68,6 +73,8 @@ Base path behind the frontend proxy: `/api`
 - `GET /api/auth/me`
 - `PATCH /api/auth/password`
 - `GET/POST/PATCH/DELETE /api/mods...`
+- `PATCH /api/mods/{mod_id}?deactivate_orphan_dependencies=true`
+- `DELETE /api/mods/{mod_id}?deactivate_orphan_dependencies=true`
 - `POST /api/mods/{mod_id}/refresh`
 - `GET/POST/PATCH/DELETE /api/modsets...`
 - `GET /api/modsets/{modset_id}/export`
