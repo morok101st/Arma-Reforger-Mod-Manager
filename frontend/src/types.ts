@@ -71,6 +71,7 @@ export type Mod = {
   current_version: string | null;
   pinned: boolean;
   is_core: boolean;
+  dependency_origin: boolean;
   is_dependency: boolean;
   tracking_reason: TrackingReason;
   blocking_dependents: ModReference[];

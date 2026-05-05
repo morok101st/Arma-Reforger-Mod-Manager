@@ -160,6 +160,7 @@ def api_delete_mod(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
     modset_id: int | None = None,
+    deactivate_orphan_dependencies: bool = False,
 ) -> Response:
     try:
         effective_modset_id = resolve_modset_id(db, current_user, modset_id)
@@ -177,7 +178,7 @@ def api_delete_mod(
         )
     mod_name = existing_mod.name
     try:
-        delete_mod(db, mod_id, effective_modset_id)
+        delete_mod(db, mod_id, effective_modset_id, deactivate_orphan_dependencies=deactivate_orphan_dependencies)
     except ModDeleteBlockedError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     audit_mod_deleted(db, mod_id=mod_id, modset_id=effective_modset_id, mod_name=mod_name, request=request, actor=current_user)

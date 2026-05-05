@@ -54,6 +54,7 @@ class ModRead(BaseModel):
     current_version: str | None
     pinned: bool
     is_core: bool
+    dependency_origin: bool
     is_dependency: bool
     tracking_reason: TrackingReason
     blocking_dependents: list[ModReferenceRead] = Field(default_factory=list)

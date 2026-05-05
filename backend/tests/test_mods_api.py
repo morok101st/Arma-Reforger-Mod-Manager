@@ -28,6 +28,7 @@ class ModsApiTestCase(ApiTestCase):
             current_version="1.0.0",
             pinned=False,
             is_core=False,
+            dependency_origin=False,
             is_dependency=False,
             tracking_reason=TrackingReason.manual,
             blocking_dependents=[],
@@ -181,7 +182,7 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertIsNotNone(dependency_mapping)
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
 
-    def test_clearing_installed_version_sets_not_installed_and_removes_orphaned_dependency_tracking(self) -> None:
+    def test_clearing_installed_version_sets_not_installed_and_keeps_dependency_tracking_origin(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
 
@@ -214,7 +215,16 @@ class ModsApiTestCase(ApiTestCase):
                     )
                 )
                 db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODCLR", current_version="1.0.0", pinned=False, tracking_reason="manual"))
-                db.add(UserMod(modset_id=modset_id, mod_id="DEPMODCLR", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="DEPMODCLR",
+                        current_version="2.0.0",
+                        pinned=False,
+                        tracking_reason="manual",
+                        dependency_origin=True,
+                    )
+                )
                 db.commit()
 
             update_response = client.patch(f"/mods/PARENTMODCLR?modset_id={modset_id}", json={"current_version": None})
@@ -225,7 +235,10 @@ class ModsApiTestCase(ApiTestCase):
 
             with self.SessionLocal() as db:
                 dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODCLR").one_or_none()
-                self.assertIsNone(dependency_mapping)
+                self.assertIsNotNone(dependency_mapping)
+                assert dependency_mapping is not None
+                self.assertTrue(dependency_mapping.dependency_origin)
+                self.assertEqual(dependency_mapping.current_version, "2.0.0")
 
     def test_clearing_installed_version_keeps_shared_dependency_tracking(self) -> None:
         with TestClient(app_main.app) as client:
@@ -245,7 +258,16 @@ class ModsApiTestCase(ApiTestCase):
                 db.add(Mod(id="DEPMODSHR", name="Dependency Shared", latest_version="2.0.0", dependencies=[]))
                 db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODA", current_version="1.0.0", pinned=False, tracking_reason="manual"))
                 db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODB", current_version="1.0.0", pinned=False, tracking_reason="manual"))
-                db.add(UserMod(modset_id=modset_id, mod_id="DEPMODSHR", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="DEPMODSHR",
+                        current_version=None,
+                        pinned=False,
+                        tracking_reason="dependency",
+                        dependency_origin=True,
+                    )
+                )
                 db.commit()
 
             update_response = client.patch(f"/mods/PARENTMODA?modset_id={modset_id}", json={"current_version": None})
@@ -289,7 +311,16 @@ class ModsApiTestCase(ApiTestCase):
                     )
                 )
                 db.add(UserMod(modset_id=modset_id, mod_id="PARENTMOD003", current_version="1.0.0", pinned=False, tracking_reason="manual"))
-                db.add(UserMod(modset_id=modset_id, mod_id="DEPMOD003", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="DEPMOD003",
+                        current_version=None,
+                        pinned=False,
+                        tracking_reason="dependency",
+                        dependency_origin=True,
+                    )
+                )
                 db.commit()
 
             update_response = client.patch(f"/mods/DEPMOD003?modset_id={modset_id}", json={"current_version": "2.0.0"})
@@ -336,7 +367,16 @@ class ModsApiTestCase(ApiTestCase):
                     )
                 )
                 db.add(UserMod(modset_id=modset_id, mod_id="PARENTMOD004", current_version="1.0.0", pinned=False, tracking_reason="manual", is_core=False))
-                db.add(UserMod(modset_id=modset_id, mod_id="DEPMOD004", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="DEPMOD004",
+                        current_version=None,
+                        pinned=False,
+                        tracking_reason="dependency",
+                        dependency_origin=True,
+                    )
+                )
                 db.commit()
 
             list_response = client.get(f"/mods?modset_id={modset_id}")
@@ -348,3 +388,41 @@ class ModsApiTestCase(ApiTestCase):
             delete_response = client.delete(f"/mods/DEPMOD004?modset_id={modset_id}")
             self.assertEqual(delete_response.status_code, 400, delete_response.text)
             self.assertIn("active dependency", delete_response.json().get("detail", ""))
+
+    def test_delete_mod_can_deactivate_orphaned_dependency_origins(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Epsilon"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            dependency = {
+                "name": "Dependency Epsilon",
+                "url": "https://reforger.armaplatform.com/workshop/DEPMODEPS-Dependency-Epsilon",
+            }
+            with self.SessionLocal() as db:
+                db.add(Mod(id="PARENTMODEPS", name="Parent Epsilon", latest_version="1.0.0", dependencies=[dependency]))
+                db.add(Mod(id="DEPMODEPS", name="Dependency Epsilon", latest_version="2.0.0", dependencies=[]))
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODEPS", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="DEPMODEPS",
+                        current_version="2.0.0",
+                        pinned=False,
+                        tracking_reason="manual",
+                        dependency_origin=True,
+                    )
+                )
+                db.commit()
+
+            delete_response = client.delete(f"/mods/PARENTMODEPS?modset_id={modset_id}&deactivate_orphan_dependencies=true")
+            self.assertEqual(delete_response.status_code, 204, delete_response.text)
+
+            with self.SessionLocal() as db:
+                dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODEPS").one_or_none()
+                self.assertIsNotNone(dependency_mapping)
+                assert dependency_mapping is not None
+                self.assertIsNone(dependency_mapping.current_version)
+                self.assertTrue(dependency_mapping.dependency_origin)

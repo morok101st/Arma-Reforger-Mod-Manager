@@ -54,6 +54,7 @@ class UserMod(Base):
     current_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     is_core: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    dependency_origin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     tracking_reason: Mapped[str] = mapped_column(String(24), default="manual", server_default="manual")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

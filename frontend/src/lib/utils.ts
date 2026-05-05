@@ -189,10 +189,10 @@ function timestamp(value: string | null): number {
 }
 
 export function findTrackedDependency(dependency: Dependency, mods: Mod[]): Mod | null {
-  return mods.find((mod) => dependencyMatchesMod(dependency, mod)) ?? null;
+  return mods.find((mod) => dependencyTargetsMod(dependency, mod)) ?? null;
 }
 
-function dependencyMatchesMod(dependency: Dependency, mod: Mod): boolean {
+export function dependencyTargetsMod(dependency: Dependency, mod: Mod): boolean {
   const modId = normalizeMatchValue(mod.id);
   const modName = normalizeMatchValue(mod.name);
   const dependencyName = normalizeMatchValue(dependency.name);

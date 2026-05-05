@@ -33,7 +33,7 @@ export function useAppActions({
   mods: {
     addMod: (modId: string, currentVersion: string | null, modsetId?: number) => Promise<unknown>;
     refreshMod: (id: string) => Promise<unknown>;
-    removeMod: (id: string) => Promise<unknown>;
+    removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string) => Promise<unknown>;
   };
   modsets: {
@@ -144,8 +144,8 @@ export function useAppActions({
     await action.run(() => mods.refreshMod(id));
   }, [action, mods]);
 
-  const removeMod = React.useCallback(async (id: string) => {
-    await action.run(() => mods.removeMod(id));
+  const removeMod = React.useCallback(async (id: string, options?: { deactivateOrphanDependencies?: boolean }) => {
+    await action.run(() => mods.removeMod(id, options));
   }, [action, mods]);
 
   const updateInstalledVersion = React.useCallback(async (nextVersion?: string) => {

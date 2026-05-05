@@ -13,7 +13,7 @@ export function useMods({
     getSchedulerStatus: () => Promise<SchedulerStatus>;
     createMod: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
     refreshMod: (id: string, modsetId?: number | null) => Promise<Mod>;
-    deleteMod: (id: string, modsetId?: number | null) => Promise<void>;
+    deleteMod: (id: string, modsetId?: number | null, options?: { deactivateOrphanDependencies?: boolean }) => Promise<void>;
     updateMod: (id: string, payload: { current_version?: string | null }, modsetId?: number | null) => Promise<Mod>;
   };
   authUser: AuthUser | null;
@@ -106,9 +106,9 @@ export function useMods({
   );
 
   const removeMod = React.useCallback(
-    async (id: string) => {
+    async (id: string, options?: { deactivateOrphanDependencies?: boolean }) => {
       if (!activeModsetId) return;
-      await api.deleteMod(id, activeModsetId);
+      await api.deleteMod(id, activeModsetId, options);
       setSelectedId(null);
       await loadMods();
     },

@@ -1,7 +1,7 @@
 import React from "react";
 import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
-import { dependencyKey, formatDate, UNKNOWN_VALUE } from "../lib/utils";
+import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
 import { CustomSelect, Dialog, Info, StatusIcon, statusLabel } from "./common";
 
@@ -18,6 +18,7 @@ export function ModDetail({
   expandedChangelogVersions,
   toggleChangelogVersion,
   trackedDependencyMatches,
+  allTrackedMods,
   openMod,
 }: {
   selected: Mod;
@@ -26,15 +27,17 @@ export function ModDetail({
   installedVersionEdit: string;
   setInstalledVersionEdit: (value: string) => void;
   refreshMod: (id: string) => void;
-  removeMod: (id: string) => void;
+  removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
   updateInstalledVersion: (nextVersion?: string) => void;
   changelogEntries: ChangelogEntry[];
   expandedChangelogVersions: Set<string>;
   toggleChangelogVersion: (version: string) => void;
   trackedDependencyMatches: Map<string, Mod | null>;
+  allTrackedMods: Mod[];
   openMod: (id: string) => void;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [deactivateOrphanDependencies, setDeactivateOrphanDependencies] = React.useState(true);
   const normalizedInstalledVersionEdit = installedVersionEdit.trim();
   const currentInstalledVersion = (selected.current_version ?? "").trim();
   const hasInstalledVersionChange = normalizedInstalledVersionEdit !== currentInstalledVersion;
@@ -72,6 +75,24 @@ export function ModDetail({
       }),
     ];
   }, [selected.current_version, selected.latest_version, selected.versions]);
+  const orphanedDependencyCandidates = React.useMemo(() => {
+    const selectedDependencyIds = new Set(
+      selected.dependencies
+        .map((dependency) => trackedDependencyMatches.get(dependencyKey(dependency)))
+        .filter((mod): mod is Mod => Boolean(mod))
+        .filter((mod) => mod.dependency_origin)
+        .map((mod) => mod.id),
+    );
+    if (selectedDependencyIds.size === 0) return [];
+
+    return allTrackedMods.filter((mod) => {
+      if (!selectedDependencyIds.has(mod.id)) return false;
+      return !allTrackedMods.some((candidate) => {
+        if (candidate.id === selected.id || candidate.id === mod.id || !candidate.current_version) return false;
+        return candidate.dependencies.some((dependency) => dependencyTargetsMod(dependency, mod));
+      });
+    });
+  }, [allTrackedMods, selected, trackedDependencyMatches]);
 
   return (
     <>
@@ -129,6 +150,27 @@ export function ModDetail({
                 <p className="muted">
                   Delete <strong>{selected.name ?? selected.id}</strong> from this modset?
                 </p>
+                {orphanedDependencyCandidates.length > 0 && (
+                  <div className="danger-callout">
+                    <TriangleAlert className="status-icon warn" size={20} />
+                    <div>
+                      <strong>Dependency follow-up detected.</strong>
+                      <span>
+                        These dependency mods are no longer required by any other installed tracked mod after deleting{" "}
+                        <strong>{selected.name ?? selected.id}</strong>.
+                      </span>
+                      <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
+                      <label className="checkbox-row">
+                        <input
+                          checked={deactivateOrphanDependencies}
+                          onChange={(event) => setDeactivateOrphanDependencies(event.target.checked)}
+                          type="checkbox"
+                        />
+                        <span>Set these dependency mods to No installed version as well</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
                 <div className="dialog-actions">
                   <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
                     Cancel
@@ -138,7 +180,7 @@ export function ModDetail({
                     disabled={loading}
                     onClick={() => {
                       setShowDeleteDialog(false);
-                      removeMod(selected.id);
+                      removeMod(selected.id, { deactivateOrphanDependencies: deactivateOrphanDependencies && orphanedDependencyCandidates.length > 0 });
                     }}
                     type="button"
                   >

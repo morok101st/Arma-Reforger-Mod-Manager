@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
@@ -23,6 +25,10 @@ def migrate_schema(engine: Engine) -> None:
     if "is_core" not in user_mod_columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE user_mods ADD COLUMN is_core BOOLEAN NOT NULL DEFAULT false"))
+    if "dependency_origin" not in user_mod_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE user_mods ADD COLUMN dependency_origin BOOLEAN NOT NULL DEFAULT false"))
+            connection.execute(text("UPDATE user_mods SET dependency_origin = true WHERE tracking_reason = 'dependency'"))
 
     if "modset_id" not in user_mod_columns:
         with engine.begin() as connection:
@@ -41,6 +47,7 @@ def migrate_schema(engine: Engine) -> None:
         _migrate_user_mods_postgres(engine)
 
     inspector = inspect(engine)
+    _backfill_dependency_origin(engine)
     _migrate_mod_versions(engine, inspector)
     _migrate_users(engine, inspector)
 
@@ -149,3 +156,50 @@ def _ensure_default_modset(engine: Engine) -> None:
         if int(count) > 0:
             return
         connection.execute(text("INSERT INTO modsets (name) VALUES ('Default')"))
+
+
+def _backfill_dependency_origin(engine: Engine) -> None:
+    with engine.begin() as connection:
+        modsets = connection.execute(text("SELECT DISTINCT modset_id FROM user_mods WHERE modset_id IS NOT NULL")).all()
+        for row in modsets:
+            modset_id = int(row.modset_id)
+            mappings = connection.execute(
+                text(
+                    "SELECT um.mod_id, um.current_version, m.dependencies "
+                    "FROM user_mods um "
+                    "JOIN mods m ON m.id = um.mod_id "
+                    "WHERE um.modset_id = :modset_id"
+                ),
+                {"modset_id": modset_id},
+            ).all()
+            tracked_ids = {mapping.mod_id for mapping in mappings}
+            dependency_ids: set[str] = set()
+            for mapping in mappings:
+                dependencies = mapping.dependencies or []
+                if isinstance(dependencies, str):
+                    try:
+                        dependencies = json.loads(dependencies)
+                    except json.JSONDecodeError:
+                        dependencies = []
+                if not isinstance(dependencies, list):
+                    continue
+                for dependency in dependencies:
+                    if not isinstance(dependency, dict):
+                        continue
+                    dependency_url = str(dependency.get("url") or "")
+                    dependency_name = str(dependency.get("name") or "").strip()
+                    dependency_id = ""
+                    if "/workshop/" in dependency_url:
+                        dependency_id = dependency_url.split("/workshop/", 1)[1].split("/", 1)[0].split("?", 1)[0].split("#", 1)[0].split("-", 1)[0].strip()
+                    elif dependency_name in tracked_ids:
+                        dependency_id = dependency_name
+                    if dependency_id and dependency_id in tracked_ids:
+                        dependency_ids.add(dependency_id)
+            for dependency_id in dependency_ids:
+                connection.execute(
+                    text(
+                        "UPDATE user_mods SET dependency_origin = true "
+                        "WHERE modset_id = :modset_id AND mod_id = :mod_id"
+                    ),
+                    {"modset_id": modset_id, "mod_id": dependency_id},
+                )

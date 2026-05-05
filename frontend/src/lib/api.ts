@@ -79,8 +79,12 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(withModset(`/mods/${id}/refresh`, modsetId), { method: "POST" });
       return readJsonOrThrow<Mod>(response, "Refresh failed.");
     },
-    async deleteMod(id: string, modsetId?: number | null) {
-      const response = await request(withModset(`/mods/${id}`, modsetId), { method: "DELETE" });
+    async deleteMod(id: string, modsetId?: number | null, options?: { deactivateOrphanDependencies?: boolean }) {
+      const basePath = withModset(`/mods/${id}`, modsetId);
+      const path = options?.deactivateOrphanDependencies
+        ? `${basePath}${basePath.includes("?") ? "&" : "?"}deactivate_orphan_dependencies=true`
+        : basePath;
+      const response = await request(path, { method: "DELETE" });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.detail ?? "Could not delete mod.");

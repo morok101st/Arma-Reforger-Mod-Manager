@@ -36,6 +36,7 @@ def mod_to_read(
         current_version=current_version,
         pinned=bool(user_mod.pinned),
         is_core=bool(user_mod.is_core),
+        dependency_origin=bool(user_mod.dependency_origin),
         is_dependency=mod.id in dependency_ids,
         tracking_reason=tracking_reason,
         blocking_dependents=blocking_dependents,

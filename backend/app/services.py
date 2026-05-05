@@ -2,7 +2,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.mod_dependencies import synchronize_dependency_tracking_for_modset_state, track_and_refresh_dependencies_for_installed_mod
+from app.mod_dependencies import (
+    dependency_mod_id,
+    synchronize_dependency_tracking_for_modset_state,
+    track_and_refresh_dependencies_for_installed_mod,
+)
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import (
     collect_dependency_sets,
@@ -11,6 +15,7 @@ from app.mod_queries import (
     get_user_mod_or_none,
     list_mods as list_mods_query,
     list_tracked_user_mods,
+    normalize_dependencies,
 )
 from app.models import Mod, UserMod
 from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
@@ -137,14 +142,17 @@ async def refresh_mod_for_all_modsets(db: Session, mod_id: str) -> None:
         await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
 
 
-def delete_mod(db: Session, mod_id: str, modset_id: int) -> bool:
+def delete_mod(db: Session, mod_id: str, modset_id: int, deactivate_orphan_dependencies: bool = False) -> bool:
     user_mod = get_user_mod_or_none(db, mod_id, modset_id)
     if not user_mod:
         return False
     if is_delete_blocked(db, mod_id, modset_id):
         raise ModDeleteBlockedError("Cannot delete a mod that is an active dependency of another tracked mod.")
+    orphaned_dependency_ids = find_orphaned_dependency_ids_for_mod_delete(db, mod_id, modset_id)
     db.delete(user_mod)
     db.commit()
+    if deactivate_orphan_dependencies:
+        deactivate_dependency_tracking(db, modset_id, orphaned_dependency_ids)
     synchronize_dependency_tracking_for_modset_state(db, modset_id)
     return True
 
@@ -157,3 +165,53 @@ def is_delete_blocked(db: Session, mod_id: str, modset_id: int) -> bool:
     mappings = list_tracked_user_mods(db, modset_id)
     dependency_ids, _ = collect_dependency_sets(mappings)
     return mod_id in dependency_ids
+
+
+def find_orphaned_dependency_ids_for_mod_delete(db: Session, mod_id: str, modset_id: int) -> list[str]:
+    mappings = list_tracked_user_mods(db, modset_id)
+    selected_mapping = next((mapping for mapping in mappings if mapping.mod_id == mod_id), None)
+    if not selected_mapping:
+        return []
+
+    candidate_ids: set[str] = set()
+    for dependency in normalize_dependencies(selected_mapping.mod.dependencies or []):
+        dependency_id = dependency_mod_id(dependency, db)
+        if not dependency_id or dependency_id == mod_id:
+            continue
+        tracked_dependency = next((mapping for mapping in mappings if mapping.mod_id == dependency_id), None)
+        if tracked_dependency and tracked_dependency.dependency_origin:
+            candidate_ids.add(dependency_id)
+
+    if not candidate_ids:
+        return []
+
+    remaining_mappings = [mapping for mapping in mappings if mapping.mod_id != mod_id and (mapping.current_version or "").strip()]
+    orphaned_ids: list[str] = []
+    for candidate_id in sorted(candidate_ids):
+        still_required = False
+        candidate_mod = next((mapping.mod for mapping in mappings if mapping.mod_id == candidate_id), None)
+        if not candidate_mod:
+            continue
+        for mapping in remaining_mappings:
+            if any(dependency_matches_candidate(dependency, candidate_mod, db) for dependency in normalize_dependencies(mapping.mod.dependencies or [])):
+                still_required = True
+                break
+        if not still_required:
+            orphaned_ids.append(candidate_id)
+    return orphaned_ids
+
+
+def dependency_matches_candidate(dependency, candidate_mod: Mod, db: Session) -> bool:
+    dependency_id = dependency_mod_id(dependency, db)
+    return dependency_id == candidate_mod.id if dependency_id else False
+
+
+def deactivate_dependency_tracking(db: Session, modset_id: int, mod_ids: list[str]) -> None:
+    if not mod_ids:
+        return
+    mappings = list(
+        db.scalars(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id.in_(mod_ids))).all()
+    )
+    for mapping in mappings:
+        mapping.current_version = None
+    db.commit()

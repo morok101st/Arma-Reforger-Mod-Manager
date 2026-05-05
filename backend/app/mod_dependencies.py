@@ -28,6 +28,7 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
     tracked_mappings_by_id = {mapping.mod_id: mapping for mapping in mappings}
     required_dependencies: dict[str, DependencyRead] = {}
     dependency_ids_to_refresh: list[str] = []
+    state_changed = False
     for mapping in mappings:
         if not (mapping.current_version or "").strip():
             continue
@@ -37,17 +38,13 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
                 continue
             required_dependencies.setdefault(dependency_id, dependency)
 
-    existing_dependency_mappings = list(
-        db.scalars(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.tracking_reason == "dependency")).all()
-    )
-    existing_dependency_ids = {mapping.mod_id for mapping in existing_dependency_mappings}
-
     for dependency_id, dependency in required_dependencies.items():
         dependency_mod = db.get(Mod, dependency_id)
         if not dependency_mod:
             dependency_mod = Mod(id=dependency_id, name=dependency.name, source_url=dependency.url)
             db.add(dependency_mod)
             db.flush()
+            state_changed = True
         else:
             dependency_mod.name = dependency_mod.name or dependency.name
             dependency_mod.source_url = dependency_mod.source_url or dependency.url
@@ -60,18 +57,20 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
                     mod_id=dependency_id,
                     current_version=None,
                     pinned=False,
+                    dependency_origin=True,
                     tracking_reason="dependency",
                 )
             )
             dependency_ids_to_refresh.append(dependency_id)
-        elif not dependency_mod.latest_version:
-            dependency_ids_to_refresh.append(dependency_id)
+            state_changed = True
+        else:
+            if not existing_mapping.dependency_origin:
+                existing_mapping.dependency_origin = True
+                state_changed = True
+            if not dependency_mod.latest_version:
+                dependency_ids_to_refresh.append(dependency_id)
 
-    stale_dependency_mappings = [mapping for mapping in existing_dependency_mappings if mapping.mod_id not in required_dependencies]
-    for stale_mapping in stale_dependency_mappings:
-        db.delete(stale_mapping)
-
-    if dependency_ids_to_refresh or stale_dependency_mappings:
+    if dependency_ids_to_refresh or state_changed:
         db.commit()
     return dependency_ids_to_refresh
 

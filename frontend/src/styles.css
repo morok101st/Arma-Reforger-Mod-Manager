@@ -542,6 +542,21 @@ button:disabled {
   color: #ffd2cc;
 }
 
+.checkbox-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.checkbox-row input {
+  margin: 0;
+}
+
+.checkbox-row span {
+  margin-top: 0;
+}
+
 .mod-list {
   align-content: start;
   display: grid;

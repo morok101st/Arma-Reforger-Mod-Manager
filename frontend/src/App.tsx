@@ -108,6 +108,7 @@ export function App() {
             expandedChangelogVersions={mods.expandedChangelogVersions}
             toggleChangelogVersion={mods.toggleChangelogVersion}
             trackedDependencyMatches={mods.trackedDependencyMatches}
+            allTrackedMods={mods.mods}
             openMod={openMod}
           />
         ) : (
