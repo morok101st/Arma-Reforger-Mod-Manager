@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, Check
 
 import { dependencyKey, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
-import { Dialog, Info, StatusIcon, statusLabel } from "./common";
+import { CustomSelect, Dialog, Info, StatusIcon, statusLabel } from "./common";
 
 export function ModDetail({
   selected,
@@ -35,6 +35,40 @@ export function ModDetail({
   openMod: (id: string) => void;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const installedVersionOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    const versions: string[] = [];
+
+    for (const version of selected.versions) {
+      if (version.version && !seen.has(version.version)) {
+        seen.add(version.version);
+        versions.push(version.version);
+      }
+    }
+
+    if (selected.latest_version && !seen.has(selected.latest_version)) {
+      seen.add(selected.latest_version);
+      versions.unshift(selected.latest_version);
+    }
+
+    if (selected.current_version && !seen.has(selected.current_version)) {
+      seen.add(selected.current_version);
+      versions.unshift(selected.current_version);
+    }
+
+    return [
+      { value: "", label: "No installed version" },
+      ...versions.map((version) => {
+        const markers = [];
+        if (version === selected.latest_version) markers.push("Latest");
+        if (version === selected.current_version) markers.push("Installed");
+        return {
+          value: version,
+          label: markers.length > 0 ? `${version} (${markers.join(", ")})` : version,
+        };
+      }),
+    ];
+  }, [selected.current_version, selected.latest_version, selected.versions]);
 
   return (
     <>
@@ -125,16 +159,12 @@ export function ModDetail({
       <div className="version-editor">
         <label>
           Installed version
-          <input
+          <CustomSelect<string>
             value={installedVersionEdit}
-            onChange={(event) => setInstalledVersionEdit(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !loading && installedVersionEdit.trim() !== (selected.current_version ?? "")) {
-                event.preventDefault();
-                updateInstalledVersion();
-              }
-            }}
-            placeholder={selected.latest_version ?? "1.0.0"}
+            options={installedVersionOptions}
+            onChange={setInstalledVersionEdit}
+            disabled={loading}
+            ariaLabel="Installed version"
           />
         </label>
         <button
