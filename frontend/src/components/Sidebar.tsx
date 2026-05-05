@@ -154,7 +154,7 @@ export function Sidebar({
             className={`mod-row ${!showDashboard && !showModsetAdmin && !showUserAdmin && selectedModId === mod.id ? "active" : ""}`}
             onClick={() => onOpenMod(mod.id)}
           >
-            <StatusIcon status={mod.status} noInstalledVersion={!mod.current_version} />
+            <StatusIcon status={mod.status} />
             <span>
               <strong>{mod.name ?? mod.id}</strong>
               <small>

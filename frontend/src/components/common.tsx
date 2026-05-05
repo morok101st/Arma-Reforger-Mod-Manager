@@ -25,8 +25,8 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
   );
 }
 
-export function StatusIcon({ status, noInstalledVersion = false }: { status: ModStatus; noInstalledVersion?: boolean }) {
-  if (noInstalledVersion) return <InfoIcon className="status-icon no-installed" size={20} />;
+export function StatusIcon({ status }: { status: ModStatus }) {
+  if (status === "NOT_INSTALLED") return <InfoIcon className="status-icon no-installed" size={20} />;
   if (status === "UPDATE_AVAILABLE") return <TriangleAlert className="status-icon warn" size={20} />;
   if (status === "UP_TO_DATE") return <CheckCircle2 className="status-icon ok" size={20} />;
   return <RefreshCw className="status-icon unknown" size={20} />;

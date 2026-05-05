@@ -17,7 +17,9 @@ def normalize_version(value: str | None) -> str | None:
 def compare_versions(installed: str | None, latest: str | None) -> ModStatus:
     installed = normalize_version(installed)
     latest = normalize_version(latest)
-    if not installed or not latest:
+    if not installed:
+        return ModStatus.not_installed
+    if not latest:
         return ModStatus.unknown
 
     try:

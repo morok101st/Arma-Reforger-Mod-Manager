@@ -15,6 +15,7 @@ export function formatDate(value: string | null) {
 }
 
 export function statusLabel(status: ModStatus) {
+  if (status === "NOT_INSTALLED") return "No installed version";
   if (status === "UPDATE_AVAILABLE") return "Update available";
   if (status === "UP_TO_DATE") return "Up to date";
   return "Status unknown";
@@ -78,17 +79,17 @@ export function getDashboardStats(mods: Mod[]) {
   const updateAvailable = mods.filter((mod) => mod.status === "UPDATE_AVAILABLE").length;
   const upToDate = mods.filter((mod) => mod.status === "UP_TO_DATE").length;
   const unknown = mods.filter((mod) => mod.status === "UNKNOWN").length;
+  const notInstalled = mods.filter((mod) => mod.status === "NOT_INSTALLED").length;
   const dependencyTracked = mods.filter((mod) => mod.is_dependency).length;
-  const noInstalledVersion = mods.filter((mod) => !mod.current_version).length;
   const dependencyLinks = mods.reduce((sum, mod) => sum + mod.dependencies.length, 0);
   const recentlyChecked = [...mods]
     .filter((mod) => mod.last_checked)
     .sort((left, right) => timestamp(right.last_checked) - timestamp(left.last_checked))
     .slice(0, 5);
   const attentionMods = [...mods]
-    .filter((mod) => mod.status !== "UP_TO_DATE" || !mod.current_version)
+    .filter((mod) => mod.status !== "UP_TO_DATE")
     .sort((left, right) => {
-      const missingVersionRank = Number(!right.current_version) - Number(!left.current_version);
+      const missingVersionRank = Number(right.status === "NOT_INSTALLED") - Number(left.status === "NOT_INSTALLED");
       if (missingVersionRank !== 0) return missingVersionRank;
       return statusPriority(left.status) - statusPriority(right.status) || compareByName(left, right);
     })
@@ -104,8 +105,8 @@ export function getDashboardStats(mods: Mod[]) {
     updateAvailable,
     upToDate,
     unknown,
+    notInstalled,
     dependencyTracked,
-    noInstalledVersion,
     dependencyLinks,
     recentlyChecked,
     attentionMods,
@@ -141,15 +142,17 @@ function normalizeVersionLabel(value: string): string {
 
 function statusPriority(status: ModStatus): number {
   if (status === "UPDATE_AVAILABLE") return 0;
-  if (status === "UNKNOWN") return 1;
-  return 2;
+  if (status === "NOT_INSTALLED") return 1;
+  if (status === "UNKNOWN") return 2;
+  return 3;
 }
 
 export function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
   const statusRank: Record<ModStatus, number> = {
     UPDATE_AVAILABLE: 0,
-    UNKNOWN: 1,
-    UP_TO_DATE: 2,
+    NOT_INSTALLED: 1,
+    UNKNOWN: 2,
+    UP_TO_DATE: 3,
   };
 
   return [...mods].sort((left, right) => {

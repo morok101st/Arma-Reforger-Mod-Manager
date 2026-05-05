@@ -29,7 +29,7 @@ export function Dashboard({
       <div className="dashboard-stats">
         <Info label="Tracked mods" value={String(stats.total)} />
         <Info label="Updates" value={String(stats.updateAvailable)} />
-        <Info label="No installed version" value={String(stats.noInstalledVersion)} />
+        <Info label="No installed version" value={String(stats.notInstalled)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
         <Info label="Last auto crawl" value={formatDate(schedulerStatus?.last_automatic_completed_at ?? null)} />
         <Info label="Next auto crawl" value={formatDate(schedulerStatus?.next_automatic_run_at ?? null)} />
@@ -43,7 +43,7 @@ export function Dashboard({
         <div className="health-summary-grid">
           <HealthSummary label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
           <HealthSummary label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
-          <HealthSummary label="Unknown" value={stats.unknown} total={stats.total} tone="neutral" />
+          <HealthSummary label="No installed version" value={stats.notInstalled} total={stats.total} tone="neutral" />
         </div>
       </section>
 
@@ -57,7 +57,7 @@ export function Dashboard({
             <div className="compact-list">
               {stats.attentionMods.map((mod) => (
                 <button key={mod.id} onClick={() => openMod(mod.id)} type="button">
-                  <StatusIcon status={mod.status} noInstalledVersion={!mod.current_version} />
+                  <StatusIcon status={mod.status} />
                   <span>
                     <strong>{mod.name ?? mod.id}</strong>
                     <small>{mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}</small>
@@ -66,7 +66,7 @@ export function Dashboard({
               ))}
             </div>
           ) : (
-            <p className="muted">No update or unknown version state detected.</p>
+            <p className="muted">No updates or missing installed versions detected.</p>
           )}
         </section>
 

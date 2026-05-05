@@ -1,4 +1,4 @@
-export type ModStatus = "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
+export type ModStatus = "NOT_INSTALLED" | "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
 export type SortMode = "name" | "status" | "last_checked" | "updates";
 export type TrackingReason = "manual" | "dependency";
 export type UserRole = "admin" | "user";

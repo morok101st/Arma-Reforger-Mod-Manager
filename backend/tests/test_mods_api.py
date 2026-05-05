@@ -181,7 +181,7 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertIsNotNone(dependency_mapping)
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
 
-    def test_clearing_installed_version_sets_unknown_and_removes_orphaned_dependency_tracking(self) -> None:
+    def test_clearing_installed_version_sets_not_installed_and_removes_orphaned_dependency_tracking(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
 
@@ -221,7 +221,7 @@ class ModsApiTestCase(ApiTestCase):
             self.assertEqual(update_response.status_code, 200, update_response.text)
             payload = update_response.json()
             self.assertIsNone(payload["current_version"])
-            self.assertEqual(payload["status"], ModStatus.unknown.value)
+            self.assertEqual(payload["status"], ModStatus.not_installed.value)
 
             with self.SessionLocal() as db:
                 dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODCLR").one_or_none()
