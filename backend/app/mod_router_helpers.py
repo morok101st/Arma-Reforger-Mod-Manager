@@ -82,9 +82,11 @@ def audit_mod_updated(
     modset_id: int,
     mod: ModRead,
     payload: UserModUpdate,
+    provided_fields: set[str] | None,
     request: Request,
     actor: User,
 ) -> None:
+    provided_fields = provided_fields or set(payload.model_fields_set)
     audit_event(
         db,
         action="mod_updated",
@@ -94,9 +96,9 @@ def audit_mod_updated(
         request=request,
         detail={
             "mod_name": mod.name,
-            "current_version_changed": payload.current_version is not None,
+            "current_version_changed": "current_version" in provided_fields,
             "current_version": mod.current_version,
-            "pinned_changed": payload.pinned is not None,
+            "pinned_changed": "pinned" in provided_fields,
             "pinned": mod.pinned,
             "modset_id": modset_id,
         },

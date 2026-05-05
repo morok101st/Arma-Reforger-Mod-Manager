@@ -96,7 +96,9 @@ async def api_update_user_mod(
         effective_modset_id = resolve_modset_id(db, current_user, modset_id)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    mod = await update_user_mod(db, mod_id, payload, effective_modset_id)
+    request_payload = await request.json()
+    provided_fields = set(request_payload.keys()) if isinstance(request_payload, dict) else set()
+    mod = await update_user_mod(db, mod_id, payload, effective_modset_id, provided_fields=provided_fields)
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
     audit_mod_updated(
@@ -105,6 +107,7 @@ async def api_update_user_mod(
         modset_id=effective_modset_id,
         mod=mod,
         payload=payload,
+        provided_fields=provided_fields,
         request=request,
         actor=current_user,
     )

@@ -155,7 +155,7 @@ export function ModDetail({
         <StatusIcon status={selected.status} noInstalledVersion={!selected.current_version} />
         <strong>{statusLabel(selected.status)}</strong>
         <span>
-          Installed {selected.current_version ?? UNKNOWN_VALUE} · Latest {selected.latest_version ?? UNKNOWN_VALUE}
+          Installed {selected.current_version ?? "No installed version"} · Latest {selected.latest_version ?? UNKNOWN_VALUE}
         </span>
       </div>
 

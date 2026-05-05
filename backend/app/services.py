@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.mod_dependencies import track_and_refresh_dependencies_for_installed_mod
+from app.mod_dependencies import synchronize_dependency_tracking_for_modset_state, track_and_refresh_dependencies_for_installed_mod
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import (
     collect_dependency_sets,
@@ -51,7 +51,13 @@ async def create_mod(db: Session, payload: ModCreate, modset_id: int) -> ModRead
     return read
 
 
-async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate, modset_id: int) -> ModRead | None:
+async def update_user_mod(
+    db: Session,
+    mod_id: str,
+    payload: UserModUpdate,
+    modset_id: int,
+    provided_fields: set[str] | None = None,
+) -> ModRead | None:
     mod = db.get(Mod, mod_id)
     if not mod:
         return None
@@ -61,12 +67,13 @@ async def update_user_mod(db: Session, mod_id: str, payload: UserModUpdate, mods
         user_mod = UserMod(modset_id=modset_id, mod_id=mod_id, tracking_reason="manual")
         db.add(user_mod)
     previous_current_version = (user_mod.current_version or "").strip()
+    provided_fields = provided_fields or set(payload.model_fields_set)
 
-    if payload.current_version is not None:
+    if "current_version" in provided_fields:
         user_mod.current_version = payload.current_version
-    if payload.pinned is not None:
+    if "pinned" in provided_fields and payload.pinned is not None:
         user_mod.pinned = payload.pinned
-    if payload.is_core is not None:
+    if "is_core" in provided_fields and payload.is_core is not None:
         user_mod.is_core = payload.is_core
     user_mod.tracking_reason = "manual"
 
@@ -138,6 +145,7 @@ def delete_mod(db: Session, mod_id: str, modset_id: int) -> bool:
         raise ModDeleteBlockedError("Cannot delete a mod that is an active dependency of another tracked mod.")
     db.delete(user_mod)
     db.commit()
+    synchronize_dependency_tracking_for_modset_state(db, modset_id)
     return True
 
 

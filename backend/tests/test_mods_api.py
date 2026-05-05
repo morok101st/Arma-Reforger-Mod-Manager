@@ -181,6 +181,81 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertIsNotNone(dependency_mapping)
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
 
+    def test_clearing_installed_version_sets_unknown_and_removes_orphaned_dependency_tracking(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Clear"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="PARENTMODCLR",
+                        name="Parent Clear",
+                        latest_version="1.2.0",
+                        dependencies=[
+                            {
+                                "name": "Dependency Clear",
+                                "url": "https://reforger.armaplatform.com/workshop/DEPMODCLR-Dependency-Clear",
+                            }
+                        ],
+                        source_url="https://reforger.armaplatform.com/workshop/PARENTMODCLR-Parent-Clear",
+                    )
+                )
+                db.add(
+                    Mod(
+                        id="DEPMODCLR",
+                        name="Dependency Clear",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/DEPMODCLR-Dependency-Clear",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODCLR", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="DEPMODCLR", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.commit()
+
+            update_response = client.patch(f"/mods/PARENTMODCLR?modset_id={modset_id}", json={"current_version": None})
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+            payload = update_response.json()
+            self.assertIsNone(payload["current_version"])
+            self.assertEqual(payload["status"], ModStatus.unknown.value)
+
+            with self.SessionLocal() as db:
+                dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODCLR").one_or_none()
+                self.assertIsNone(dependency_mapping)
+
+    def test_clearing_installed_version_keeps_shared_dependency_tracking(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Shared"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            dependency = {
+                "name": "Dependency Shared",
+                "url": "https://reforger.armaplatform.com/workshop/DEPMODSHR-Dependency-Shared",
+            }
+            with self.SessionLocal() as db:
+                db.add(Mod(id="PARENTMODA", name="Parent A", latest_version="1.0.0", dependencies=[dependency]))
+                db.add(Mod(id="PARENTMODB", name="Parent B", latest_version="1.0.0", dependencies=[dependency]))
+                db.add(Mod(id="DEPMODSHR", name="Dependency Shared", latest_version="2.0.0", dependencies=[]))
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODA", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODB", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="DEPMODSHR", current_version=None, pinned=False, tracking_reason="dependency"))
+                db.commit()
+
+            update_response = client.patch(f"/mods/PARENTMODA?modset_id={modset_id}", json={"current_version": None})
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+
+            with self.SessionLocal() as db:
+                dependency_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODSHR").one_or_none()
+                self.assertIsNotNone(dependency_mapping)
+                self.assertEqual(dependency_mapping.tracking_reason, "dependency")
+
     def test_dependency_tag_persists_after_manual_update(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)

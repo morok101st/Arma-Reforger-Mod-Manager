@@ -5,22 +5,44 @@ from sqlalchemy.orm import Session
 
 from app.models import Mod, UserMod
 from app.mod_persistence import upsert_scraped_mod
-from app.mod_queries import normalize_dependencies, normalize_match_value
+from app.mod_queries import list_tracked_user_mods, normalize_dependencies, normalize_match_value
 from app.schemas_mods import DependencyRead
 from app.scraper import WorkshopScraper
 
 
 async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, modset_id: int, scraper: WorkshopScraper) -> None:
     user_mod = db.scalar(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id == mod.id))
-    if not user_mod or not user_mod.current_version:
+    if not user_mod:
         return
+    await synchronize_dependency_tracking_for_modset(db, modset_id, scraper)
 
+
+async def synchronize_dependency_tracking_for_modset(db: Session, modset_id: int, scraper: WorkshopScraper) -> None:
+    dependency_ids_to_refresh = synchronize_dependency_tracking_for_modset_state(db, modset_id)
+    if dependency_ids_to_refresh:
+        await refresh_dependency_mods(db, dependency_ids_to_refresh, scraper)
+
+
+def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int) -> list[str]:
+    mappings = list_tracked_user_mods(db, modset_id)
+    tracked_mappings_by_id = {mapping.mod_id: mapping for mapping in mappings}
+    required_dependencies: dict[str, DependencyRead] = {}
     dependency_ids_to_refresh: list[str] = []
-    for dependency in normalize_dependencies(mod.dependencies or []):
-        dependency_id = dependency_mod_id(dependency, db)
-        if not dependency_id or dependency_id == mod.id:
+    for mapping in mappings:
+        if not (mapping.current_version or "").strip():
             continue
+        for dependency in normalize_dependencies(mapping.mod.dependencies or []):
+            dependency_id = dependency_mod_id(dependency, db)
+            if not dependency_id or dependency_id == mapping.mod_id:
+                continue
+            required_dependencies.setdefault(dependency_id, dependency)
 
+    existing_dependency_mappings = list(
+        db.scalars(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.tracking_reason == "dependency")).all()
+    )
+    existing_dependency_ids = {mapping.mod_id for mapping in existing_dependency_mappings}
+
+    for dependency_id, dependency in required_dependencies.items():
         dependency_mod = db.get(Mod, dependency_id)
         if not dependency_mod:
             dependency_mod = Mod(id=dependency_id, name=dependency.name, source_url=dependency.url)
@@ -30,24 +52,28 @@ async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod
             dependency_mod.name = dependency_mod.name or dependency.name
             dependency_mod.source_url = dependency_mod.source_url or dependency.url
 
-        dependency_mapping = db.scalar(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id == dependency_mod.id))
-        if not dependency_mapping:
+        existing_mapping = tracked_mappings_by_id.get(dependency_id)
+        if not existing_mapping:
             db.add(
                 UserMod(
                     modset_id=modset_id,
-                    mod_id=dependency_mod.id,
+                    mod_id=dependency_id,
                     current_version=None,
                     pinned=False,
                     tracking_reason="dependency",
                 )
             )
-            dependency_ids_to_refresh.append(dependency_mod.id)
+            dependency_ids_to_refresh.append(dependency_id)
         elif not dependency_mod.latest_version:
-            dependency_ids_to_refresh.append(dependency_mod.id)
+            dependency_ids_to_refresh.append(dependency_id)
 
-    if dependency_ids_to_refresh:
+    stale_dependency_mappings = [mapping for mapping in existing_dependency_mappings if mapping.mod_id not in required_dependencies]
+    for stale_mapping in stale_dependency_mappings:
+        db.delete(stale_mapping)
+
+    if dependency_ids_to_refresh or stale_dependency_mappings:
         db.commit()
-        await refresh_dependency_mods(db, dependency_ids_to_refresh, scraper)
+    return dependency_ids_to_refresh
 
 
 async def refresh_dependency_mods(db: Session, mod_ids: list[str], scraper: WorkshopScraper) -> None:
