@@ -542,19 +542,51 @@ button:disabled {
   color: #ffd2cc;
 }
 
-.checkbox-row {
+.toggle-row {
   align-items: center;
+  background: color-mix(in srgb, var(--md-sys-color-surface) 92%, transparent);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  color: inherit;
+  cursor: pointer;
   display: flex;
   gap: 10px;
   margin-top: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.checkbox-row input {
-  margin: 0;
+.toggle-row:hover {
+  background: color-mix(in srgb, var(--md-sys-color-surface-hover) 88%, transparent);
+  border-color: var(--md-sys-color-outline);
 }
 
-.checkbox-row span {
+.toggle-row.active {
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 70%, transparent);
+  border-color: color-mix(in srgb, var(--md-sys-color-primary) 45%, var(--md-sys-color-outline));
+}
+
+.toggle-row span {
   margin-top: 0;
+}
+
+.toggle-row-box {
+  align-items: center;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  display: inline-flex;
+  flex: 0 0 20px;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
+
+.toggle-row.active .toggle-row-box {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .mod-list {

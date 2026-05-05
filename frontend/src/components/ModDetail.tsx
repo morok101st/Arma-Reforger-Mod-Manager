@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
 import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
@@ -162,14 +162,14 @@ export function ModDetail({
                         <strong>{selected.name ?? selected.id}</strong>.
                       </span>
                       <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
-                      <label className="checkbox-row">
-                        <input
-                          checked={deactivateOrphanDependencies}
-                          onChange={(event) => setDeactivateOrphanDependencies(event.target.checked)}
-                          type="checkbox"
-                        />
+                      <button
+                        className={`toggle-row ${deactivateOrphanDependencies ? "active" : ""}`}
+                        onClick={() => setDeactivateOrphanDependencies((current) => !current)}
+                        type="button"
+                      >
+                        <span className="toggle-row-box">{deactivateOrphanDependencies && <Check size={14} />}</span>
                         <span>Set these dependency mods to No installed version as well</span>
-                      </label>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -211,14 +211,14 @@ export function ModDetail({
                     <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>.
                   </span>
                   <span>{orphanedDependencyCandidates.map((mod) => mod.name ?? mod.id).join(", ")}</span>
-                  <label className="checkbox-row">
-                    <input
-                      checked={deactivateOrphanDependencies}
-                      onChange={(event) => setDeactivateOrphanDependencies(event.target.checked)}
-                      type="checkbox"
-                    />
+                  <button
+                    className={`toggle-row ${deactivateOrphanDependencies ? "active" : ""}`}
+                    onClick={() => setDeactivateOrphanDependencies((current) => !current)}
+                    type="button"
+                  >
+                    <span className="toggle-row-box">{deactivateOrphanDependencies && <Check size={14} />}</span>
                     <span>Set these dependency mods to No installed version as well</span>
-                  </label>
+                  </button>
                 </div>
               </div>
             )}
