@@ -19,16 +19,18 @@ export function ModsetManagement({
   activeModsetId: number | null;
   loading: boolean;
   error: string | null;
-  createModset: (name: string) => Promise<void>;
-  updateModset: (modsetId: number, name: string) => Promise<void>;
+  createModset: (name: string, shared?: boolean) => Promise<void>;
+  updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
   activateModset: (modsetId: number) => Promise<void>;
   exportModset: (modsetId: number, modsetName: string) => Promise<void>;
 }) {
   const [newName, setNewName] = React.useState("");
+  const [newShared, setNewShared] = React.useState(false);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
   const [editName, setEditName] = React.useState("");
+  const [editShared, setEditShared] = React.useState(false);
   const [deleteModsetId, setDeleteModsetId] = React.useState<number | null>(null);
 
   const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
@@ -38,24 +40,42 @@ export function ModsetManagement({
     event.preventDefault();
     const name = newName.trim();
     if (!name) return;
-    await createModset(name);
-    setNewName("");
-    setShowCreateDialog(false);
+    await createModset(name, newShared);
+    closeCreateDialog();
   }
 
   async function handleEdit(event: React.FormEvent) {
     event.preventDefault();
     if (!editModset) return;
     const name = editName.trim();
-    if (!name || name === editModset.name) return;
-    await updateModset(editModset.id, name);
-    setEditModsetId(null);
-    setEditName("");
+    const sharedChanged = editModset.is_owner && editShared !== editModset.shared;
+    if (!name || (name === editModset.name && !sharedChanged)) return;
+    await updateModset(editModset.id, name, sharedChanged ? editShared : undefined);
+    closeEditDialog();
   }
 
   function openEditDialog(modset: Modset) {
     setEditModsetId(modset.id);
     setEditName(modset.name);
+    setEditShared(modset.shared);
+  }
+
+  function openCreateDialog() {
+    setNewName("");
+    setNewShared(false);
+    setShowCreateDialog(true);
+  }
+
+  function closeCreateDialog() {
+    setShowCreateDialog(false);
+    setNewName("");
+    setNewShared(false);
+  }
+
+  function closeEditDialog() {
+    setEditModsetId(null);
+    setEditName("");
+    setEditShared(false);
   }
 
   return (
@@ -75,7 +95,7 @@ export function ModsetManagement({
         </div>
       )}
 
-      <button className="primary-button compact" onClick={() => setShowCreateDialog(true)} type="button">
+      <button className="primary-button compact" onClick={openCreateDialog} type="button">
         <Plus size={18} />
         Create modset
       </button>
@@ -99,7 +119,8 @@ export function ModsetManagement({
               <div>
                 <strong>{modset.name}</strong>
                 <small>
-                  {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"}
+                  {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"} · {modset.shared ? "Shared" : "Private"} ·{" "}
+                  {modset.is_owner ? "Owner: you" : `Owner: ${modset.owner_username ?? "unknown"}`}
                 </small>
               </div>
               <button
@@ -143,14 +164,18 @@ export function ModsetManagement({
       </div>
 
       {showCreateDialog && (
-        <Dialog title="Create modset" onClose={() => setShowCreateDialog(false)}>
+        <Dialog title="Create modset" onClose={closeCreateDialog}>
           <form className="dialog-form" onSubmit={handleCreate}>
             <label>
               Name
               <input autoFocus value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
             </label>
+            <label className="checkbox-row">
+              <input checked={newShared} onChange={(event) => setNewShared(event.target.checked)} type="checkbox" />
+              Shared
+            </label>
             <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setShowCreateDialog(false)} type="button">
+              <button className="secondary-button compact" onClick={closeCreateDialog} type="button">
                 Cancel
               </button>
               <button className="primary-button compact" disabled={loading || !newName.trim()}>
@@ -162,14 +187,24 @@ export function ModsetManagement({
       )}
 
       {editModset && (
-        <Dialog title={`Edit modset ${editModset.name}`} onClose={() => setEditModsetId(null)}>
+        <Dialog title={`Edit modset ${editModset.name}`} onClose={closeEditDialog}>
           <form className="dialog-form" onSubmit={handleEdit}>
             <label>
               Name
               <input value={editName} onChange={(event) => setEditName(event.target.value)} />
             </label>
+            {editModset.is_owner ? (
+              <label className="checkbox-row">
+                <input checked={editShared} onChange={(event) => setEditShared(event.target.checked)} type="checkbox" />
+                Shared
+              </label>
+            ) : (
+              <p className="muted">
+                Shared by <strong>{editModset.owner_username ?? "another user"}</strong>.
+              </p>
+            )}
             <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setEditModsetId(null)} type="button">
+              <button className="secondary-button compact" onClick={closeEditDialog} type="button">
                 Cancel
               </button>
               <button className="primary-button compact" disabled={loading || !editName.trim() || editName.trim() === editModset.name}>

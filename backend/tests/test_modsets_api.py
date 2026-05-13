@@ -124,3 +124,43 @@ class ModsetsApiTestCase(ApiTestCase):
                 self.assertIsNotNone(second_mapping)
                 self.assertEqual(first_mapping.current_version, "1.0.0")
                 self.assertEqual(second_mapping.current_version, "2.0.0")
+
+    def test_private_modset_is_hidden_until_shared(self) -> None:
+        with TestClient(app_main.app) as admin_client, TestClient(app_main.app) as user_client:
+            self.login_admin(admin_client)
+            self._create_user("alice", "very-secure-alice-pass")
+            login_response = user_client.post("/auth/login", json={"username": "alice", "password": "very-secure-alice-pass"})
+            self.assertEqual(login_response.status_code, 200, login_response.text)
+
+            created = admin_client.post("/modsets", json={"name": "Private Server"})
+            self.assertEqual(created.status_code, 201)
+            modset_id = created.json()["id"]
+
+            visible_for_user = user_client.get("/modsets")
+            self.assertEqual(visible_for_user.status_code, 200)
+            visible_ids = [entry["id"] for entry in visible_for_user.json()]
+            self.assertNotIn(modset_id, visible_ids)
+
+            shared = admin_client.patch(f"/modsets/{modset_id}", json={"name": "Private Server", "shared": True})
+            self.assertEqual(shared.status_code, 200, shared.text)
+            self.assertTrue(shared.json()["shared"])
+
+            visible_after_share = user_client.get("/modsets")
+            self.assertEqual(visible_after_share.status_code, 200)
+            visible_after_ids = [entry["id"] for entry in visible_after_share.json()]
+            self.assertIn(modset_id, visible_after_ids)
+
+            with patch(
+                "app.services.WorkshopScraper.fetch_mod",
+                autospec=True,
+                return_value=ScrapedMod(
+                    id="MODSHARED001",
+                    name="Shared Access Mod",
+                    latest_version="1.0.0",
+                    dependencies=[],
+                    source_url="https://reforger.armaplatform.com/workshop/MODSHARED001-Shared-Access-Mod",
+                ),
+            ):
+                create_shared = user_client.post(f"/mods?modset_id={modset_id}", json={"id": "MODSHARED001", "current_version": "1.0.0"})
+
+            self.assertEqual(create_shared.status_code, 201, create_shared.text)

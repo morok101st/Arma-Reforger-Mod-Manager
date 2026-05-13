@@ -107,12 +107,14 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request("/modsets");
       return readJsonOrThrow<Modset[]>(response, "Could not load modsets.");
     },
-    async createModset(name: string) {
-      const response = await request("/modsets", { method: "POST", json: { name } });
+    async createModset(name: string, shared = false) {
+      const response = await request("/modsets", { method: "POST", json: { name, shared } });
       return readJsonOrThrow<Modset>(response, "Could not create modset.");
     },
-    async updateModset(modsetId: number, name: string) {
-      const response = await request(`/modsets/${modsetId}`, { method: "PATCH", json: { name } });
+    async updateModset(modsetId: number, name: string, shared?: boolean) {
+      const payload: { name: string; shared?: boolean } = { name };
+      if (shared !== undefined) payload.shared = shared;
+      const response = await request(`/modsets/${modsetId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<Modset>(response, "Could not rename modset.");
     },
     async deleteModset(modsetId: number) {

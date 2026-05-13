@@ -38,8 +38,8 @@ export function useAppActions({
   };
   modsets: {
     activateModset: (modsetId: number) => Promise<unknown>;
-    createModset: (name: string) => Promise<unknown>;
-    updateModset: (modsetId: number, name: string) => Promise<unknown>;
+    createModset: (name: string, shared?: boolean) => Promise<unknown>;
+    updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<unknown>;
     deleteModset: (modsetId: number) => Promise<unknown>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
   };
@@ -156,12 +156,12 @@ export function useAppActions({
     await action.run(() => modsets.activateModset(modsetId), { rethrow: true });
   }, [action, modsets]);
 
-  const createModset = React.useCallback(async (name: string) => {
-    await action.run(() => modsets.createModset(name), { rethrow: true });
+  const createModset = React.useCallback(async (name: string, shared = false) => {
+    await action.run(() => modsets.createModset(name, shared), { rethrow: true });
   }, [action, modsets]);
 
-  const updateModset = React.useCallback(async (modsetId: number, name: string) => {
-    await action.run(() => modsets.updateModset(modsetId, name), { rethrow: true });
+  const updateModset = React.useCallback(async (modsetId: number, name: string, shared?: boolean) => {
+    await action.run(() => modsets.updateModset(modsetId, name, shared), { rethrow: true });
   }, [action, modsets]);
 
   const deleteModset = React.useCallback(async (modsetId: number) => {

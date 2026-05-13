@@ -34,6 +34,19 @@ def migrate_schema(engine: Engine) -> None:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE user_mods ADD COLUMN modset_id INTEGER"))
 
+    modset_columns = {column["name"] for column in inspector.get_columns("modsets")} if "modsets" in inspector.get_table_names() else set()
+    if "owner_user_id" not in modset_columns and "modsets" in inspector.get_table_names():
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE modsets ADD COLUMN owner_user_id INTEGER"))
+    if "shared" not in modset_columns and "modsets" in inspector.get_table_names():
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE modsets ADD COLUMN shared BOOLEAN NOT NULL DEFAULT false"))
+    if "modsets" in inspector.get_table_names():
+        _backfill_modset_ownership(engine)
+
+    if dialect == "postgresql" and "modsets" in inspector.get_table_names():
+        _migrate_modsets_postgres(engine)
+
     _ensure_default_modset(engine)
     with engine.begin() as connection:
         default_modset_id = connection.execute(text("SELECT id FROM modsets ORDER BY id LIMIT 1")).scalar()
@@ -150,12 +163,39 @@ def _migrate_users(engine: Engine, inspector) -> None:
                 )
 
 
+def _migrate_modsets_postgres(engine: Engine) -> None:
+    inspector = inspect(engine)
+    fk_names = {fk["name"] for fk in inspector.get_foreign_keys("modsets") if fk.get("name")}
+    with engine.begin() as connection:
+        if "modsets_owner_user_id_fkey" not in fk_names:
+            connection.execute(
+                text(
+                    "ALTER TABLE modsets "
+                    "ADD CONSTRAINT modsets_owner_user_id_fkey "
+                    "FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL"
+                )
+            )
+
+
 def _ensure_default_modset(engine: Engine) -> None:
     with engine.begin() as connection:
         count = connection.execute(text("SELECT COUNT(*) FROM modsets")).scalar() or 0
         if int(count) > 0:
             return
-        connection.execute(text("INSERT INTO modsets (name) VALUES ('Default')"))
+        connection.execute(text("INSERT INTO modsets (name, shared) VALUES ('Default', true)"))
+
+
+def _backfill_modset_ownership(engine: Engine) -> None:
+    with engine.begin() as connection:
+        owner_id = connection.execute(
+            text("SELECT id FROM users ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, id LIMIT 1")
+        ).scalar()
+        if owner_id is None:
+            return
+        connection.execute(
+            text("UPDATE modsets SET owner_user_id = :owner_id, shared = true WHERE owner_user_id IS NULL"),
+            {"owner_id": int(owner_id)},
+        )
 
 
 def _backfill_dependency_origin(engine: Engine) -> None:

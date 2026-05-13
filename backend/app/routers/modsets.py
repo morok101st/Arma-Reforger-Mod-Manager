@@ -7,6 +7,7 @@ from app.modset_service import (
     ModSetConflictError,
     ModSetLastDeleteError,
     ModSetNotFoundError,
+    ModSetPermissionError,
     activate_modset,
     create_modset,
     delete_modset,
@@ -25,8 +26,8 @@ router = APIRouter(tags=["modsets"])
 
 
 @router.get("/modsets", response_model=list[ModSetRead])
-def api_list_modsets(db: Session = Depends(get_db), _: User = Depends(require_current_user)) -> list[ModSetRead]:
-    return list_modsets(db)
+def api_list_modsets(db: Session = Depends(get_db), current_user: User = Depends(require_current_user)) -> list[ModSetRead]:
+    return list_modsets(db, current_user)
 
 
 @router.post("/modsets", response_model=ModSetRead, status_code=status.HTTP_201_CREATED)
@@ -37,7 +38,7 @@ def api_create_modset(
     current_user: User = Depends(require_current_user),
 ) -> ModSetRead:
     try:
-        created = create_modset(db, payload)
+        created = create_modset(db, current_user, payload)
     except ModSetConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     audit_event(
@@ -61,11 +62,13 @@ def api_update_modset(
     current_user: User = Depends(require_current_user),
 ) -> ModSetRead:
     try:
-        updated = update_modset(db, modset_id, payload)
+        updated = update_modset(db, current_user, modset_id, payload)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ModSetConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ModSetPermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     audit_event(
         db,
         action="modset_updated",
@@ -86,7 +89,7 @@ def api_delete_modset(
     current_user: User = Depends(require_current_user),
 ) -> AuthUserRead:
     try:
-        delete_modset(db, modset_id)
+        delete_modset(db, current_user, modset_id)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ModSetLastDeleteError as exc:
@@ -133,9 +136,9 @@ def api_activate_modset(
 def api_export_modset(
     modset_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_current_user),
+    current_user: User = Depends(require_current_user),
 ) -> list[ModSetExportEntry]:
     try:
-        return export_modset(db, modset_id)
+        return export_modset(db, current_user, modset_id)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -9,8 +9,8 @@ export function useModsets({
 }: {
   api: {
     listModsets: () => Promise<Modset[]>;
-    createModset: (name: string) => Promise<Modset>;
-    updateModset: (modsetId: number, name: string) => Promise<Modset>;
+    createModset: (name: string, shared?: boolean) => Promise<Modset>;
+    updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<Modset>;
     deleteModset: (modsetId: number) => Promise<AuthUser>;
     activateModset: (modsetId: number) => Promise<AuthUser>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
@@ -60,8 +60,8 @@ export function useModsets({
   );
 
   const createModset = React.useCallback(
-    async (name: string) => {
-      const created = await api.createModset(name);
+    async (name: string, shared = false) => {
+      const created = await api.createModset(name, shared);
       await loadModsets();
       return created;
     },
@@ -69,8 +69,8 @@ export function useModsets({
   );
 
   const updateModset = React.useCallback(
-    async (modsetId: number, name: string) => {
-      const updated = await api.updateModset(modsetId, name);
+    async (modsetId: number, name: string, shared?: boolean) => {
+      const updated = await api.updateModset(modsetId, name, shared);
       await loadModsets();
       return updated;
     },

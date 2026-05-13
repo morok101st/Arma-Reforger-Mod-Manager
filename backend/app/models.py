@@ -77,7 +77,8 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    active_modset: Mapped["ModSet | None"] = relationship(back_populates="active_users")
+    active_modset: Mapped["ModSet | None"] = relationship(back_populates="active_users", foreign_keys="User.active_modset_id")
+    owned_modsets: Mapped[list["ModSet"]] = relationship(back_populates="owner", foreign_keys="ModSet.owner_user_id")
 
 
 class ModSet(Base):
@@ -85,11 +86,14 @@ class ModSet(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    shared: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user_mods: Mapped[list[UserMod]] = relationship(back_populates="modset", cascade="all, delete-orphan")
-    active_users: Mapped[list[User]] = relationship(back_populates="active_modset")
+    active_users: Mapped[list[User]] = relationship(back_populates="active_modset", foreign_keys="User.active_modset_id")
+    owner: Mapped["User | None"] = relationship(back_populates="owned_modsets", foreign_keys="ModSet.owner_user_id")
 
 
 class AuditLog(Base):

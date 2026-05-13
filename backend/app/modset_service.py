@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Mod, ModSet, User, UserMod
@@ -19,21 +19,35 @@ class ModSetConflictError(ModSetError):
     pass
 
 
+class ModSetPermissionError(ModSetError):
+    pass
+
+
 class ModSetLastDeleteError(ModSetError):
     pass
 
 
-def list_modsets(db: Session) -> list[ModSetRead]:
+def _accessible_modset_filter(user: User):
+    return or_(ModSet.shared.is_(True), ModSet.owner_user_id == user.id)
+
+
+def list_modsets(db: Session, user: User) -> list[ModSetRead]:
     rows = db.execute(
         select(
             ModSet.id,
             ModSet.name,
+            ModSet.shared,
+            ModSet.owner_user_id,
+            User.username.label("owner_username"),
             ModSet.created_at,
             ModSet.updated_at,
             func.count(UserMod.mod_id).label("tracked_mods_count"),
         )
         .outerjoin(UserMod, UserMod.modset_id == ModSet.id)
+        .outerjoin(User, User.id == ModSet.owner_user_id)
+        .where(_accessible_modset_filter(user))
         .group_by(ModSet.id, ModSet.name, ModSet.created_at, ModSet.updated_at)
+        .group_by(ModSet.shared, ModSet.owner_user_id, User.username)
         .order_by(func.lower(ModSet.name), ModSet.id)
     ).all()
     return [
@@ -41,6 +55,9 @@ def list_modsets(db: Session) -> list[ModSetRead]:
             id=row.id,
             name=row.name,
             tracked_mods_count=int(row.tracked_mods_count or 0),
+            shared=bool(row.shared),
+            owner_username=row.owner_username,
+            is_owner=bool(row.owner_user_id == user.id),
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -49,10 +66,14 @@ def list_modsets(db: Session) -> list[ModSetRead]:
 
 
 def ensure_default_modset(db: Session) -> ModSet:
-    existing = db.scalar(select(ModSet).order_by(ModSet.id).limit(1))
+    existing = db.scalar(select(ModSet).where(func.lower(ModSet.name) == "default").order_by(ModSet.id).limit(1))
     if existing:
+        if not existing.shared:
+            existing.shared = True
+            db.commit()
+            db.refresh(existing)
         return existing
-    modset = ModSet(name="Default")
+    modset = ModSet(name="Default", shared=True)
     db.add(modset)
     db.commit()
     db.refresh(modset)
@@ -62,9 +83,16 @@ def ensure_default_modset(db: Session) -> ModSet:
 def ensure_user_active_modset(db: Session, user: User) -> ModSet:
     if user.active_modset_id:
         current = db.get(ModSet, user.active_modset_id)
-        if current:
+        if current and _is_modset_accessible(user, current):
             return current
-    fallback = ensure_default_modset(db)
+    fallback = db.scalar(
+        select(ModSet)
+        .where(_accessible_modset_filter(user))
+        .order_by(func.lower(ModSet.name), ModSet.id)
+        .limit(1)
+    )
+    if not fallback:
+        fallback = ensure_default_modset(db)
     user.active_modset_id = fallback.id
     db.commit()
     db.refresh(user)
@@ -73,27 +101,27 @@ def ensure_user_active_modset(db: Session, user: User) -> ModSet:
 
 def resolve_modset_id(db: Session, user: User, requested_modset_id: int | None) -> int:
     if requested_modset_id is not None:
-        modset = db.get(ModSet, requested_modset_id)
+        modset = _get_accessible_modset(db, user, requested_modset_id)
         if not modset:
             raise ModSetNotFoundError("Modset not found")
         return modset.id
     return ensure_user_active_modset(db, user).id
 
 
-def create_modset(db: Session, payload: ModSetCreate) -> ModSetRead:
+def create_modset(db: Session, user: User, payload: ModSetCreate) -> ModSetRead:
     name = payload.name.strip()
     existing = db.scalar(select(ModSet).where(func.lower(ModSet.name) == name.casefold()))
     if existing:
         raise ModSetConflictError("Modset name already exists")
-    modset = ModSet(name=name)
+    modset = ModSet(name=name, owner_user_id=user.id, shared=payload.shared)
     db.add(modset)
     db.commit()
     db.refresh(modset)
-    return _modset_to_read(db, modset)
+    return _modset_to_read(db, modset, user)
 
 
-def update_modset(db: Session, modset_id: int, payload: ModSetUpdate) -> ModSetRead:
-    modset = db.get(ModSet, modset_id)
+def update_modset(db: Session, user: User, modset_id: int, payload: ModSetUpdate) -> ModSetRead:
+    modset = _get_accessible_modset(db, user, modset_id)
     if not modset:
         raise ModSetNotFoundError("Modset not found")
 
@@ -102,14 +130,19 @@ def update_modset(db: Session, modset_id: int, payload: ModSetUpdate) -> ModSetR
     if existing:
         raise ModSetConflictError("Modset name already exists")
 
+    if payload.shared is not None and modset.owner_user_id != user.id:
+        raise ModSetPermissionError("Only the owner can change sharing")
+
     modset.name = name
+    if payload.shared is not None:
+        modset.shared = payload.shared
     db.commit()
     db.refresh(modset)
-    return _modset_to_read(db, modset)
+    return _modset_to_read(db, modset, user)
 
 
-def delete_modset(db: Session, modset_id: int) -> None:
-    modset = db.get(ModSet, modset_id)
+def delete_modset(db: Session, user: User, modset_id: int) -> None:
+    modset = _get_accessible_modset(db, user, modset_id)
     if not modset:
         raise ModSetNotFoundError("Modset not found")
 
@@ -117,20 +150,16 @@ def delete_modset(db: Session, modset_id: int) -> None:
     if count <= 1:
         raise ModSetLastDeleteError("At least one modset is required")
 
-    fallback = db.scalar(select(ModSet).where(ModSet.id != modset_id).order_by(ModSet.id).limit(1))
-    if not fallback:
-        raise ModSetLastDeleteError("At least one modset is required")
-
     users = db.scalars(select(User).where(User.active_modset_id == modset_id)).all()
-    for user in users:
-        user.active_modset_id = fallback.id
-
     db.delete(modset)
     db.commit()
 
+    for affected_user in users:
+        ensure_user_active_modset(db, affected_user)
+
 
 def activate_modset(db: Session, user: User, modset_id: int) -> ModSet:
-    modset = db.get(ModSet, modset_id)
+    modset = _get_accessible_modset(db, user, modset_id)
     if not modset:
         raise ModSetNotFoundError("Modset not found")
     user.active_modset_id = modset.id
@@ -139,8 +168,8 @@ def activate_modset(db: Session, user: User, modset_id: int) -> ModSet:
     return modset
 
 
-def export_modset(db: Session, modset_id: int) -> list[ModSetExportEntry]:
-    modset = db.get(ModSet, modset_id)
+def export_modset(db: Session, user: User, modset_id: int) -> list[ModSetExportEntry]:
+    modset = _get_accessible_modset(db, user, modset_id)
     if not modset:
         raise ModSetNotFoundError("Modset not found")
 
@@ -165,12 +194,23 @@ def export_modset(db: Session, modset_id: int) -> list[ModSetExportEntry]:
     ]
 
 
-def _modset_to_read(db: Session, modset: ModSet) -> ModSetRead:
+def _get_accessible_modset(db: Session, user: User, modset_id: int) -> ModSet | None:
+    return db.scalar(select(ModSet).where(ModSet.id == modset_id, _accessible_modset_filter(user)))
+
+
+def _is_modset_accessible(user: User, modset: ModSet) -> bool:
+    return bool(modset.shared or modset.owner_user_id == user.id)
+
+
+def _modset_to_read(db: Session, modset: ModSet, user: User) -> ModSetRead:
     tracked_mods_count = db.scalar(select(func.count()).select_from(UserMod).where(UserMod.modset_id == modset.id)) or 0
     return ModSetRead(
         id=modset.id,
         name=modset.name,
         tracked_mods_count=int(tracked_mods_count),
+        shared=bool(modset.shared),
+        owner_username=modset.owner.username if modset.owner else None,
+        is_owner=bool(modset.owner_user_id == user.id),
         created_at=modset.created_at,
         updated_at=modset.updated_at,
     )

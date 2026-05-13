@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import User
+from app.models import ModSet, User
 from app.passwords import hash_password
 
 
@@ -26,3 +26,10 @@ def bootstrap_admin(db: Session) -> None:
         )
     )
     db.commit()
+
+    admin = db.scalar(select(User).where(User.role == "admin").order_by(User.id).limit(1))
+    default_modset = db.scalar(select(ModSet).where(ModSet.name == "Default").order_by(ModSet.id).limit(1))
+    if admin and default_modset and default_modset.owner_user_id is None:
+        default_modset.owner_user_id = admin.id
+        default_modset.shared = True
+        db.commit()

@@ -101,6 +101,9 @@ export type Modset = {
   id: number;
   name: string;
   tracked_mods_count: number;
+  shared: boolean;
+  owner_username: string | null;
+  is_owner: boolean;
   created_at: string;
   updated_at: string;
 };
