@@ -711,6 +711,31 @@ button:disabled {
   margin-top: 4px;
 }
 
+.modset-sharing-state {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.modset-sharing-state.shared {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
+  border-radius: 999px;
+  color: var(--md-sys-color-primary);
+  font-weight: 800;
+  padding: 2px 8px;
+}
+
+:root[data-theme="dark"] .modset-sharing-state.shared {
+  background: rgba(255, 206, 58, 0.12);
+  border-color: rgba(255, 206, 58, 0.24);
+}
+
+.modset-sharing-state svg {
+  flex: 0 0 auto;
+}
+
 .modset-edit-row {
   cursor: pointer;
   grid-template-columns: minmax(200px, 1fr) auto auto auto;

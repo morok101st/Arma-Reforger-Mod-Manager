@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Pencil, Plus, TriangleAlert } from "lucide-react";
+import { Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
 
 import type { Modset } from "../types";
 import { Dialog } from "./common";
@@ -119,8 +119,16 @@ export function ModsetManagement({
               <div>
                 <strong>{modset.name}</strong>
                 <small>
-                  {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"} · {modset.shared ? "Shared" : "Private"} ·{" "}
-                  {modset.is_owner ? "Owner: you" : `Owner: ${modset.owner_username ?? "unknown"}`}
+                  {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"} ·{" "}
+                  {modset.shared ? (
+                    <span className="modset-sharing-state shared" title="Shared modset">
+                      <Share2 size={13} />
+                      Shared
+                    </span>
+                  ) : (
+                    "Private"
+                  )}{" "}
+                  · {modset.is_owner ? "Owner: you" : `Owner: ${modset.owner_username ?? "unknown"}`}
                 </small>
               </div>
               <button
