@@ -84,6 +84,7 @@ export function Sidebar({
 
   return (
     <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management">
+      <div className="sidebar-handle" aria-hidden="true" />
       <div className="brand">
         <div>
           <p>Arma Reforger Mod Manager</p>

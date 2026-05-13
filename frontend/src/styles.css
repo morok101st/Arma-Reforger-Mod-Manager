@@ -1306,12 +1306,12 @@ button:focus-visible,
     box-shadow: var(--elevation-2);
     left: 0;
     overflow: auto;
-    padding-bottom: 28px;
+    padding: 14px 20px 28px 16px;
     top: 16px;
     position: fixed;
     transform: translateX(-102%);
     transition: transform 180ms ease;
-    width: min(calc(100vw - 28px), 390px);
+    width: min(calc(100vw - 16px), 430px);
     z-index: 30;
   }
 
@@ -1338,6 +1338,15 @@ button:focus-visible,
     inset: 0;
     position: fixed;
     z-index: 25;
+  }
+
+  .sidebar-handle {
+    align-self: center;
+    background: color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
+    border-radius: 999px;
+    height: 4px;
+    margin: 0 auto 10px;
+    width: 42px;
   }
 
   .mobile-toolbar {
@@ -1409,7 +1418,7 @@ button:focus-visible,
   }
 
   .sidebar {
-    width: min(calc(100vw - 20px), 390px);
+    width: min(calc(100vw - 12px), 430px);
     top: 10px;
     bottom: 10px;
   }
