@@ -15,20 +15,6 @@ export function App() {
   const { detailRef, view, auth, modsets, mods, admin, actions, openMod } = useAppController();
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const activeModsetName = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId)?.name ?? "Default";
-
-  if (!auth.authChecked) {
-    return <AuthFrame title="Checking session" subtitle="Please wait." />;
-  }
-
-  if (!auth.authUser) {
-    return (
-      <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
-        <LoginForm loginError={auth.loginError} loading={actions.loading} onSubmit={actions.login} />
-      </AuthFrame>
-    );
-  }
-
-  const authUser = auth.authUser;
   const openSidebar = React.useCallback(() => setMobileSidebarOpen(true), []);
   const closeSidebar = React.useCallback(() => setMobileSidebarOpen(false), []);
   const handleShowDashboard = React.useCallback(() => {
@@ -70,6 +56,20 @@ export function App() {
     document.body.classList.add("drawer-open");
     return () => document.body.classList.remove("drawer-open");
   }, [mobileSidebarOpen]);
+
+  if (!auth.authChecked) {
+    return <AuthFrame title="Checking session" subtitle="Please wait." />;
+  }
+
+  if (!auth.authUser) {
+    return (
+      <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
+        <LoginForm loginError={auth.loginError} loading={actions.loading} onSubmit={actions.login} />
+      </AuthFrame>
+    );
+  }
+
+  const authUser = auth.authUser;
 
   return (
     <main className={`app-shell ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
