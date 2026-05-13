@@ -5,6 +5,7 @@ import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, Modset, SortMode, ThemePreference } from "../types";
 
 export function Sidebar({
+  isMobileDrawerOpen,
   username,
   themePreference,
   loading,
@@ -29,6 +30,7 @@ export function Sidebar({
   onSortChange,
   onOpenMod,
 }: {
+  isMobileDrawerOpen: boolean;
   username: string;
   themePreference: ThemePreference;
   loading: boolean;
@@ -81,7 +83,7 @@ export function Sidebar({
   }, [selectedModId, showDashboard, showModsetAdmin, showUserAdmin, mods]);
 
   return (
-    <section className="sidebar" aria-label="Mod management">
+    <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management">
       <div className="brand">
         <div>
           <p>Arma Reforger Mod Manager</p>
