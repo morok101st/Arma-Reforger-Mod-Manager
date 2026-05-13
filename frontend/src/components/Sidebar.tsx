@@ -54,6 +54,7 @@ export function Sidebar({
   onOpenMod: (id: string) => void;
 }) {
   const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? modsets[0] ?? null;
+  const modRowRefs = React.useRef(new Map<string, HTMLButtonElement>());
   const deleteBlockedTitle = React.useCallback((mod: Mod) => {
     const names = mod.blocking_dependents.map((dependent) => dependent.name ?? dependent.id).filter(Boolean);
     return names.length > 0 ? `Required by: ${names.join(", ")}` : "Required by another tracked mod";
@@ -65,6 +66,19 @@ export function Sidebar({
     },
     [onActivateModset, onShowDashboard],
   );
+
+  React.useEffect(() => {
+    if (!selectedModId || showDashboard || showModsetAdmin || showUserAdmin) {
+      return;
+    }
+
+    const node = modRowRefs.current.get(selectedModId);
+    if (!node) {
+      return;
+    }
+
+    node.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [selectedModId, showDashboard, showModsetAdmin, showUserAdmin, mods]);
 
   return (
     <section className="sidebar" aria-label="Mod management">
@@ -151,6 +165,13 @@ export function Sidebar({
         {mods.map((mod) => (
           <button
             key={mod.id}
+            ref={(node) => {
+              if (node) {
+                modRowRefs.current.set(mod.id, node);
+              } else {
+                modRowRefs.current.delete(mod.id);
+              }
+            }}
             className={`mod-row ${!showDashboard && !showModsetAdmin && !showUserAdmin && selectedModId === mod.id ? "active" : ""}`}
             onClick={() => onOpenMod(mod.id)}
           >

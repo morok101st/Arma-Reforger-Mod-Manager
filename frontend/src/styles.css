@@ -566,6 +566,7 @@ button:disabled {
   padding: 12px;
   text-align: left;
   transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  scroll-margin-block: 12px;
 }
 
 .mod-row:hover {
