@@ -67,6 +67,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Modset ownership and `shared` state are persisted and enforced server-side.
 - Frontend Nginx adds security headers (including CSP, X-Frame-Options, Referrer-Policy, nosniff).
 - API documentation is protected and available only for authenticated users (`/api/docs`, `/api/openapi.json`).
+- The browser path `/api` redirects to `/api/docs` in the frontend container.
 
 ## API overview
 
@@ -86,6 +87,7 @@ Base path behind the frontend proxy: `/api`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET /api/audit` (admin)
 - `GET /api/scheduler/status`
+- `GET /api` (browser entry, redirects to `/api/docs`)
 - `GET /api/docs` (authenticated)
 
 ## Installation (Docker Compose)
@@ -112,6 +114,7 @@ At minimum, change these values:
 - `DATABASE_URL` (including the correct DB password)
 - `CORS_ORIGINS` for your domain
 - `ARMM_IMAGE_TAG` if you want to pin the example stack to a specific release tag
+- `FRONTEND_API_BASE_URL` is not needed for the GHCR release images; the frontend image is built with `/api` already.
 
 Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
@@ -125,6 +128,7 @@ docker compose up -d
 
 - Health: `https://<your-domain>/api/health`
 - Frontend login: `https://<your-domain>/`
+- Browser entry for authenticated API docs: `https://<your-domain>/api`
 - API docs (after login): `https://<your-domain>/api/docs`
 
 Note: On startup, an initial automatic crawl is scheduled/executed, then runs according to `SCRAPE_INTERVAL_MINUTES`.
