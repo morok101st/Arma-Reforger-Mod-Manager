@@ -1,12 +1,12 @@
 # Arma Reforger Mod Manager (ARMM)
 
 ARMM is a web application for managing and monitoring Arma Reforger Workshop mods.
-It stores mod data per modset, regularly crawls Workshop data, compares installed and latest versions, and centralizes updates, dependency relations, and audit events in one UI.
+It stores mod data per user-owned modset, regularly crawls Workshop data, compares installed and latest versions, and centralizes updates, dependency relations, sharing, and audit events in one UI.
 
 ## What the application does
 
 - Tracks Workshop mods by mod ID.
-- Supports multiple modsets (for example, one per server).
+- Supports multiple modsets per user. A modset is private by default and can be marked `shared` by its owner so other users can see and manage it.
 - Compares `Installed Version` vs. `Latest Version`.
 - Uses a dedicated `No installed version` state for tracked mods without an installed target version.
 - Runs an automatic crawl on startup and then at a configured interval.
@@ -36,7 +36,11 @@ It stores mod data per modset, regularly crawls Workshop data, compares installe
 
 ### Modsets
 
-- Create, rename, activate, and delete modsets (deleting non-empty modsets is allowed, but the last remaining modset is protected).
+- Create, rename, activate, share, and delete modsets.
+- Modsets are owned by the user who created them.
+- Private modsets are visible and editable only to their owner.
+- Shared modsets are visible and editable to other users.
+- Deleting non-empty modsets is allowed, but the last remaining modset is protected.
 - Export each modset as a JSON file.
 
 ### Security area
@@ -60,6 +64,7 @@ It stores mod data per modset, regularly crawls Workshop data, compares installe
 - Logout clears the session cookie.
 - Origin validation for unsafe HTTP methods (additional CSRF protection via origin allowlist).
 - Audit trail for login/logout, password actions, user changes, mod changes, and modset changes.
+- Modset ownership and `shared` state are persisted and enforced server-side.
 - Frontend Nginx adds security headers (including CSP, X-Frame-Options, Referrer-Policy, nosniff).
 - API documentation is protected and available only for authenticated users (`/api/docs`, `/api/openapi.json`).
 
@@ -127,6 +132,7 @@ Note: On startup, an initial automatic crawl is scheduled/executed, then runs ac
 
 - Configure scheduler interval with `SCRAPE_INTERVAL_MINUTES` in `.env`.
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
+- Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
 
 Only anonymized example files are meant for Git:
