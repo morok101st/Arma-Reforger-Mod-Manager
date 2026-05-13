@@ -15,8 +15,7 @@ services:
       retries: 5
 
   backend:
-    build:
-      context: ./backend
+    image: ghcr.io/morok101st/armm-backend:${ARMM_IMAGE_TAG:-0.1.0}
     container_name: armm-backend
     environment:
       ARMM_ENV: ${ARMM_ENV:-production}
@@ -32,10 +31,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_BASE_URL: ${FRONTEND_API_BASE_URL:-/api}
+    image: ghcr.io/morok101st/armm-frontend:${ARMM_IMAGE_TAG:-0.1.0}
     container_name: armm-frontend
     depends_on:
       - backend

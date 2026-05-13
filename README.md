@@ -111,13 +111,14 @@ At minimum, change these values:
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL` (including the correct DB password)
 - `CORS_ORIGINS` for your domain
+- `ARMM_IMAGE_TAG` if you want to pin the example stack to a specific release tag
 
 Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
 ### 3. Start the stack
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
 
 ### 4. Verify
@@ -134,6 +135,7 @@ Note: On startup, an initial automatic crawl is scheduled/executed, then runs ac
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
 - Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
+- The example compose file uses GHCR images from the latest tagged release and does not build locally.
 
 Only anonymized example files are meant for Git:
 
