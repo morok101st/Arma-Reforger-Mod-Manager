@@ -1311,7 +1311,7 @@ button:focus-visible,
     position: fixed;
     transform: translateX(-102%);
     transition: transform 180ms ease;
-    width: min(calc(100vw - 16px), 430px);
+    width: min(calc(100vw - 64px), 430px);
     z-index: 30;
   }
 
@@ -1418,7 +1418,7 @@ button:focus-visible,
   }
 
   .sidebar {
-    width: min(calc(100vw - 12px), 430px);
+    width: min(calc(100vw - 48px), 430px);
     top: 10px;
     bottom: 10px;
   }
