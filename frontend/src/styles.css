@@ -1302,15 +1302,16 @@ button:focus-visible,
     border-bottom: 0;
     border-right: 1px solid var(--md-sys-color-outline-variant);
     bottom: 0;
+    border-radius: 0 var(--shape-corner-lg) var(--shape-corner-lg) 0;
     box-shadow: var(--elevation-2);
     left: 0;
     overflow: auto;
     padding-bottom: 28px;
+    top: 16px;
     position: fixed;
-    top: 0;
     transform: translateX(-102%);
     transition: transform 180ms ease;
-    width: min(92vw, 390px);
+    width: min(calc(100vw - 28px), 390px);
     z-index: 30;
   }
 
@@ -1408,7 +1409,9 @@ button:focus-visible,
   }
 
   .sidebar {
-    width: min(100vw, 390px);
+    width: min(calc(100vw - 20px), 390px);
+    top: 10px;
+    bottom: 10px;
   }
 
   .detail-header {
