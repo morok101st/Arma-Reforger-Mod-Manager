@@ -1307,7 +1307,7 @@ button:focus-visible,
     left: 0;
     overflow: auto;
     padding: 14px 20px 28px 16px;
-    top: 16px;
+    top: 0;
     position: fixed;
     transform: translateX(-102%);
     transition: transform 180ms ease;
@@ -1419,8 +1419,8 @@ button:focus-visible,
 
   .sidebar {
     width: min(calc(100vw - 48px), 430px);
-    top: 10px;
-    bottom: 10px;
+    top: 0;
+    bottom: 0;
   }
 
   .detail-header {
