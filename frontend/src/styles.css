@@ -1332,7 +1332,7 @@ button:focus-visible,
   }
 
   .sidebar-backdrop {
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.28) 30%, rgba(0, 0, 0, 0.42) 100%);
+    background: rgba(0, 0, 0, 0.35);
     border: 0;
     display: block;
     inset: 0;
