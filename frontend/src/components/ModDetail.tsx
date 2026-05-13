@@ -429,7 +429,9 @@ function ChangelogItem({
             ))}
           </div>
         ) : (
-          <p className="muted">No notes for this version.</p>
+          <div className="changelog-lines">
+            <p className="muted">No notes for this version.</p>
+          </div>
         ))}
     </article>
   );
