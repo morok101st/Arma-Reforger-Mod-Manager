@@ -47,3 +47,31 @@ class AuthApiTestCase(ApiTestCase):
             session_response = client.get("/auth/me")
             self.assertEqual(session_response.status_code, 200, session_response.text)
             self.assertEqual(session_response.json()["theme_preference"], "dark")
+
+    def test_admin_password_reset_revokes_existing_session(self) -> None:
+        target = self._create_user("revoked.user", "very-secure-user-pass", role="user")
+
+        with TestClient(app_main.app) as admin_client, TestClient(app_main.app) as user_client:
+            self.login_admin(admin_client)
+            login_response = user_client.post("/auth/login", json={"username": "revoked.user", "password": "very-secure-user-pass"})
+            self.assertEqual(login_response.status_code, 200, login_response.text)
+
+            reset_response = admin_client.patch(f"/users/{target.id}/password", json={"password": "new-very-secure-user-pass"})
+            self.assertEqual(reset_response.status_code, 200, reset_response.text)
+
+            revoked_session = user_client.get("/auth/me")
+            self.assertEqual(revoked_session.status_code, 401, revoked_session.text)
+
+    def test_admin_role_change_revokes_existing_session(self) -> None:
+        target = self._create_user("role.revoked", "very-secure-user-pass", role="user")
+
+        with TestClient(app_main.app) as admin_client, TestClient(app_main.app) as user_client:
+            self.login_admin(admin_client)
+            login_response = user_client.post("/auth/login", json={"username": "role.revoked", "password": "very-secure-user-pass"})
+            self.assertEqual(login_response.status_code, 200, login_response.text)
+
+            update_response = admin_client.patch(f"/users/{target.id}", json={"role": "admin"})
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+
+            revoked_session = user_client.get("/auth/me")
+            self.assertEqual(revoked_session.status_code, 401, revoked_session.text)

@@ -75,9 +75,8 @@ export function useAppActions({
     async (currentPassword: string, newOwnPassword: string) => {
       await action.run(
         async () => {
-          const user = await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
-          auth.setAuthUser(user);
-          await admin.loadAuditLogs();
+          await auth.api.changeOwnPassword(currentPassword, newOwnPassword);
+          auth.setAuthUser(null);
         },
         { rethrow: true },
       );

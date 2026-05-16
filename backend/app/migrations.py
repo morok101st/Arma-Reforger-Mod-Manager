@@ -140,6 +140,12 @@ def _migrate_users(engine: Engine, inspector) -> None:
     elif engine.dialect.name == "postgresql":
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ALTER COLUMN theme_preference SET DEFAULT 'dark'"))
+    if "session_version" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0"))
+    elif engine.dialect.name == "postgresql":
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ALTER COLUMN session_version SET DEFAULT 0"))
 
     with engine.begin() as connection:
         default_modset_id = connection.execute(text("SELECT id FROM modsets ORDER BY id LIMIT 1")).scalar()

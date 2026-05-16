@@ -126,8 +126,10 @@ def api_change_password(
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
     current_user.password_hash = hash_password(payload.new_password)
+    current_user.session_version = int(getattr(current_user, "session_version", 0) or 0) + 1
     db.commit()
     db.refresh(current_user)
+    clear_session_cookie(response)
     audit_event(
         db,
         action="password_changed",

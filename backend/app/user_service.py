@@ -63,12 +63,18 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserRead | No
     if not user:
         return None
 
+    revoke_sessions = False
     if payload.password is not None:
         user.password_hash = hash_password(payload.password)
+        revoke_sessions = True
     if payload.role is not None:
         user.role = payload.role.value
+        revoke_sessions = True
     if payload.is_active is not None:
         user.is_active = payload.is_active
+        revoke_sessions = True
+    if revoke_sessions:
+        user.session_version = int(getattr(user, "session_version", 0) or 0) + 1
 
     db.commit()
     db.refresh(user)

@@ -26,6 +26,7 @@ def create_session_token(user: User) -> str:
         "sub": user.id,
         "username": user.username,
         "role": user.role,
+        "sv": int(getattr(user, "session_version", 0) or 0),
         "iat": issued_at,
         "exp": issued_at + SESSION_TTL_SECONDS,
     }
@@ -104,6 +105,9 @@ def require_current_user(
 
     user = db.get(User, user_id)
     if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    token_session_version = payload.get("sv") if payload else None
+    if not isinstance(token_session_version, int) or token_session_version != int(getattr(user, "session_version", 0) or 0):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     return user
 

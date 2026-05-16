@@ -147,6 +147,7 @@ def api_reset_user_password(
             audit_detail={"reason": "user_not_found"},
         )
     target.password_hash = hash_password(payload.password)
+    target.session_version = int(getattr(target, "session_version", 0) or 0) + 1
     db.commit()
     db.refresh(target)
     audit_event(
