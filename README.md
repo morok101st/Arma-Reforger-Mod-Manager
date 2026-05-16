@@ -60,6 +60,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Username login is case-insensitive.
 - Login rate limit: 8 failed attempts per 60 seconds (per IP + username).
 - Session stored in a signed HttpOnly cookie (`armm_session`, 7-day TTL).
+- Password changes, password resets, and role changes invalidate existing sessions immediately.
 - Cookie flags: `HttpOnly`, `SameSite=Lax`, and `Secure` in production.
 - Logout clears the session cookie.
 - Origin validation for unsafe HTTP methods (additional CSRF protection via origin allowlist).
