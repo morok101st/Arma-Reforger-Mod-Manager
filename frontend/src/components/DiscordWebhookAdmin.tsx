@@ -177,7 +177,16 @@ export function DiscordWebhookAdmin({
               <div className="webhook-row-main">
                 <div className="webhook-row-header">
                   <strong>{webhook.name}</strong>
-                  <span className={`webhook-status ${webhook.is_active ? "active" : "inactive"}`}>{webhook.is_active ? "Active" : "Disabled"}</span>
+                  <div className="webhook-row-badges">
+                    <span className={`webhook-status ${webhook.is_active ? "active" : "inactive"}`}>{webhook.is_active ? "Active" : "Disabled"}</span>
+                    <span className="webhook-scope-badge">
+                      {webhook.modset_ids.length === 0
+                        ? "0 modsets"
+                        : webhook.modset_ids.length === modsets.length
+                          ? `All ${modsets.length} modsets`
+                          : `${webhook.modset_ids.length} modsets`}
+                    </span>
+                  </div>
                 </div>
                 <small>{webhook.masked_webhook_url}</small>
               </div>

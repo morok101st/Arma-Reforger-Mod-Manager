@@ -750,6 +750,14 @@ button:disabled {
   justify-content: space-between;
 }
 
+.webhook-row-badges {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .webhook-row-actions {
   flex-wrap: wrap;
 }
@@ -865,12 +873,31 @@ button:disabled {
   color: var(--md-sys-color-on-surface-variant);
 }
 
+.webhook-scope-badge {
+  align-items: center;
+  background: var(--md-sys-color-surface-hover);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  color: var(--md-sys-color-on-surface-variant);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
 :root[data-theme="dark"] .webhook-status.active {
   background: rgba(255, 206, 58, 0.12);
   border-color: rgba(255, 206, 58, 0.24);
 }
 
 :root[data-theme="dark"] .webhook-status.inactive {
+  background: #202020;
+  border-color: #3a3a3a;
+}
+
+:root[data-theme="dark"] .webhook-scope-badge {
   background: #202020;
   border-color: #3a3a3a;
 }
