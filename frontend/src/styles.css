@@ -171,7 +171,6 @@ textarea {
 }
 
 .app-logo-sidebar {
-  background: color-mix(in srgb, var(--md-sys-color-surface-container) 82%, transparent);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 16px;
   box-shadow: var(--elevation-1);
@@ -181,7 +180,6 @@ textarea {
 }
 
 .app-logo-auth {
-  background: color-mix(in srgb, var(--md-sys-color-surface) 90%, transparent);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 18px;
   box-shadow: var(--elevation-1);
@@ -191,19 +189,12 @@ textarea {
 }
 
 .app-logo-mobile {
-  background: color-mix(in srgb, var(--md-sys-color-surface) 90%, transparent);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 12px;
   box-shadow: var(--elevation-1);
   height: 34px;
   padding: 4px;
   width: 34px;
-}
-
-:root[data-theme="dark"] .app-logo-sidebar,
-:root[data-theme="dark"] .app-logo-auth,
-:root[data-theme="dark"] .app-logo-mobile {
-  background: #1c1c1c;
 }
 
 .header-actions {
