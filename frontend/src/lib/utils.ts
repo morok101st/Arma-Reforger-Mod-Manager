@@ -29,6 +29,7 @@ export function auditFilterLabel(filter: AuditFilter) {
   if (filter === "auth") return "Auth";
   if (filter === "user") return "Users";
   if (filter === "mod") return "Mods";
+  if (filter === "integration") return "Integrations";
   if (filter === "failures") return "Failures";
   return "All";
 }

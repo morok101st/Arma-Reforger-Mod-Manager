@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 from app import main as app_main
 from app.models import User
@@ -71,3 +72,45 @@ class AdminApiTestCase(ApiTestCase):
             self.login_admin(client)
             delete_response = client.delete(f"/users/{second_admin.id}")
             self.assertEqual(delete_response.status_code, 204)
+
+    def test_admin_can_manage_discord_webhooks(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            created = client.post(
+                "/discord-webhooks",
+                json={
+                    "name": "Server Alerts",
+                    "webhook_url": "https://discord.com/api/webhooks/1234567890/abcdefghijklmnopqrstuvwxyz",
+                    "is_active": True,
+                },
+            )
+            self.assertEqual(created.status_code, 201, created.text)
+            webhook_id = created.json()["id"]
+            self.assertEqual(created.json()["masked_webhook_url"], "discord.com/api/webhooks/...")
+
+            listed = client.get("/discord-webhooks")
+            self.assertEqual(listed.status_code, 200, listed.text)
+            self.assertEqual(len(listed.json()), 1)
+            self.assertEqual(listed.json()[0]["name"], "Server Alerts")
+
+            updated = client.patch(
+                f"/discord-webhooks/{webhook_id}",
+                json={"name": "Server Alerts Updated", "is_active": False},
+            )
+            self.assertEqual(updated.status_code, 200, updated.text)
+            self.assertFalse(updated.json()["is_active"])
+            self.assertEqual(updated.json()["name"], "Server Alerts Updated")
+
+            with patch("app.discord_webhooks._post_discord_webhook", autospec=True, return_value=None) as send_mock:
+                test_response = client.post(f"/discord-webhooks/{webhook_id}/test")
+                self.assertEqual(test_response.status_code, 200, test_response.text)
+                self.assertTrue(test_response.json()["sent"])
+                self.assertEqual(send_mock.call_count, 1)
+
+            deleted = client.delete(f"/discord-webhooks/{webhook_id}")
+            self.assertEqual(deleted.status_code, 204, deleted.text)
+
+            after = client.get("/discord-webhooks")
+            self.assertEqual(after.status_code, 200, after.text)
+            self.assertEqual(after.json(), [])

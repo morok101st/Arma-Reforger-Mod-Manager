@@ -4,10 +4,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.audit import list_audit_logs
+from app.discord_webhooks import create_webhook, delete_webhook, list_webhooks, mask_webhook_url, test_webhook, update_webhook
 from app.router_helpers import audit_event, fail_with_audit
 from app.auth import hash_password, require_admin_user
-from app.models import User
+from app.models import DiscordWebhook, User
 from app.schemas_audit import AuditLogRead
+from app.schemas_discord import DiscordWebhookCreate, DiscordWebhookRead, DiscordWebhookTestResult, DiscordWebhookUpdate
 from app.schemas_users import PasswordReset, UserCreate, UserRead, UserUpdate
 from app.user_service import create_user, delete_user, list_users, update_user
 
@@ -20,6 +22,149 @@ def api_list_users(
     _: User = Depends(require_admin_user),
 ) -> list[UserRead]:
     return list_users(db)
+
+
+@router.get("/discord-webhooks", response_model=list[DiscordWebhookRead])
+def api_list_discord_webhooks(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin_user),
+) -> list[DiscordWebhookRead]:
+    return list_webhooks(db)
+
+
+@router.post("/discord-webhooks", response_model=DiscordWebhookRead, status_code=status.HTTP_201_CREATED)
+def api_create_discord_webhook(
+    payload: DiscordWebhookCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_user),
+) -> DiscordWebhookRead:
+    try:
+        created = create_webhook(db, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit_event(
+        db,
+        action="discord_webhook_created",
+        entity_type="integration",
+        entity_id=str(created.id),
+        actor=current_user,
+        request=request,
+        detail={"name": created.name, "is_active": created.is_active, "masked_webhook_url": created.masked_webhook_url},
+    )
+    return created
+
+
+@router.patch("/discord-webhooks/{webhook_id}", response_model=DiscordWebhookRead)
+def api_update_discord_webhook(
+    webhook_id: int,
+    payload: DiscordWebhookUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_user),
+) -> DiscordWebhookRead:
+    try:
+        updated = update_webhook(db, webhook_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not updated:
+        fail_with_audit(
+            db,
+            action="discord_webhook_update_failed",
+            entity_type="integration",
+            entity_id=str(webhook_id),
+            actor=current_user,
+            request=request,
+            status_code=404,
+            detail_message="Webhook not found",
+            audit_detail={"reason": "webhook_not_found"},
+        )
+    audit_event(
+        db,
+        action="discord_webhook_updated",
+        entity_type="integration",
+        entity_id=str(updated.id),
+        actor=current_user,
+        request=request,
+        detail={"name": updated.name, "is_active": updated.is_active, "masked_webhook_url": updated.masked_webhook_url},
+    )
+    return updated
+
+
+@router.delete("/discord-webhooks/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT)
+def api_delete_discord_webhook(
+    webhook_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_user),
+) -> None:
+    deleted = delete_webhook(db, webhook_id)
+    if not deleted:
+        fail_with_audit(
+            db,
+            action="discord_webhook_delete_failed",
+            entity_type="integration",
+            entity_id=str(webhook_id),
+            actor=current_user,
+            request=request,
+            status_code=404,
+            detail_message="Webhook not found",
+            audit_detail={"reason": "webhook_not_found"},
+        )
+    audit_event(
+        db,
+        action="discord_webhook_deleted",
+        entity_type="integration",
+        entity_id=str(webhook_id),
+        actor=current_user,
+        request=request,
+        detail={"name": deleted.name, "masked_webhook_url": deleted.masked_webhook_url},
+    )
+
+
+@router.post("/discord-webhooks/{webhook_id}/test", response_model=DiscordWebhookTestResult)
+async def api_test_discord_webhook(
+    webhook_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_user),
+) -> DiscordWebhookTestResult:
+    webhook = db.execute(select(DiscordWebhook).where(DiscordWebhook.id == webhook_id)).scalar_one_or_none()
+    if not webhook:
+        fail_with_audit(
+            db,
+            action="discord_webhook_test_failed",
+            entity_type="integration",
+            entity_id=str(webhook_id),
+            actor=current_user,
+            request=request,
+            status_code=404,
+            detail_message="Webhook not found",
+            audit_detail={"reason": "webhook_not_found"},
+        )
+    try:
+        await test_webhook(webhook.webhook_url, webhook.name)
+    except Exception as exc:
+        audit_event(
+            db,
+            action="discord_webhook_test_failed",
+            entity_type="integration",
+            entity_id=str(webhook_id),
+            actor=current_user,
+            request=request,
+            detail={"name": webhook.name, "masked_webhook_url": mask_webhook_url(webhook.webhook_url), "reason": str(exc)},
+        )
+        raise HTTPException(status_code=502, detail=f"Discord webhook test failed: {exc}") from exc
+    audit_event(
+        db,
+        action="discord_webhook_tested",
+        entity_type="integration",
+        entity_id=str(webhook_id),
+        actor=current_user,
+        request=request,
+        detail={"name": webhook.name, "masked_webhook_url": mask_webhook_url(webhook.webhook_url)},
+    )
+    return DiscordWebhookTestResult(sent=True)
 
 
 @router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)

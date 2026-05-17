@@ -1,4 +1,4 @@
-import type { AuditLog, AuthUser, Mod, Modset, ModsetExport, SchedulerStatus, ThemePreference, UserAccount, UserRole } from "../types";
+import type { AuditLog, AuthUser, DiscordWebhook, Mod, Modset, ModsetExport, SchedulerStatus, ThemePreference, UserAccount, UserRole } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -132,6 +132,32 @@ export function createApiClient(onUnauthorized?: () => void) {
     async listUsers() {
       const response = await request("/users");
       return readJsonOrThrow<UserAccount[]>(response, "Could not load users.");
+    },
+    async listDiscordWebhooks() {
+      const response = await request("/discord-webhooks");
+      return readJsonOrThrow<DiscordWebhook[]>(response, "Could not load Discord webhooks.");
+    },
+    async createDiscordWebhook(payload: { name: string; webhook_url: string; is_active: boolean }) {
+      const response = await request("/discord-webhooks", { method: "POST", json: payload });
+      return readJsonOrThrow<DiscordWebhook>(response, "Could not create Discord webhook.");
+    },
+    async updateDiscordWebhook(
+      webhookId: number,
+      payload: { name?: string; webhook_url?: string; is_active?: boolean },
+    ) {
+      const response = await request(`/discord-webhooks/${webhookId}`, { method: "PATCH", json: payload });
+      return readJsonOrThrow<DiscordWebhook>(response, "Could not update Discord webhook.");
+    },
+    async deleteDiscordWebhook(webhookId: number) {
+      const response = await request(`/discord-webhooks/${webhookId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail ?? "Could not delete Discord webhook.");
+      }
+    },
+    async testDiscordWebhook(webhookId: number) {
+      const response = await request(`/discord-webhooks/${webhookId}/test`, { method: "POST" });
+      return readJsonOrThrow<{ sent: boolean }>(response, "Could not test Discord webhook.");
     },
     async createUser(username: string, password: string, role: UserRole) {
       const response = await request("/users", { method: "POST", json: { username, password, role } });

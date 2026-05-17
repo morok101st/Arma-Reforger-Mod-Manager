@@ -4,7 +4,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app import main as app_main
-from app.models import AuditLog, Mod, UserMod
+from app.models import AuditLog, DiscordWebhookDelivery, Mod, UserMod
 from app.schema_enums import ModStatus, TrackingReason
 from app.schemas_mods import ModRead, RefreshResult
 from app.scraper import ScrapedMod
@@ -470,3 +470,59 @@ class ModsApiTestCase(ApiTestCase):
                 assert dependency_mapping is not None
                 self.assertIsNone(dependency_mapping.current_version)
                 self.assertTrue(dependency_mapping.dependency_origin)
+
+    def test_update_alert_is_sent_once_per_latest_version_and_webhook(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Alerts"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            webhook_response = client.post(
+                "/discord-webhooks",
+                json={
+                    "name": "Alerts",
+                    "webhook_url": "https://discord.com/api/webhooks/1234567890/abcdefghijklmnopqrstuvwxyz",
+                    "is_active": True,
+                },
+            )
+            self.assertEqual(webhook_response.status_code, 201, webhook_response.text)
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="UPDATEMOD001",
+                        name="Update Mod",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/UPDATEMOD001-Update-Mod",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="UPDATEMOD001", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            with (
+                patch(
+                    "app.services.WorkshopScraper.fetch_mod",
+                    autospec=True,
+                    return_value=ScrapedMod(
+                        id="UPDATEMOD001",
+                        name="Update Mod",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/UPDATEMOD001-Update-Mod",
+                    ),
+                ),
+                patch("app.discord_webhooks._post_discord_webhook", autospec=True, return_value=None) as webhook_mock,
+            ):
+                first_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={modset_id}")
+                self.assertEqual(first_refresh.status_code, 200, first_refresh.text)
+
+                second_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={modset_id}")
+                self.assertEqual(second_refresh.status_code, 200, second_refresh.text)
+
+            self.assertEqual(webhook_mock.call_count, 1)
+            with self.SessionLocal() as db:
+                deliveries = db.query(DiscordWebhookDelivery).all()
+                self.assertEqual(len(deliveries), 1)

@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { ModsetExport, ThemePreference, UserAccount } from "../types";
+import type { DiscordWebhook, ModsetExport, ThemePreference, UserAccount } from "../types";
 import { useAsyncAction } from "./useAsyncAction";
 
 export function useAppActions({
@@ -25,6 +25,10 @@ export function useAppActions({
   };
   admin: {
     createUser: (username: string, password: string, role: UserAccount["role"]) => Promise<unknown>;
+    createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean }) => Promise<DiscordWebhook>;
+    updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => Promise<DiscordWebhook>;
+    deleteDiscordWebhook: (webhookId: number) => Promise<void>;
+    testDiscordWebhook: (webhookId: number) => Promise<{ sent: boolean }>;
     updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<unknown>;
     deleteUser: (userId: number) => Promise<void>;
     resetUserPassword: (userId: number, password: string) => Promise<void>;
@@ -104,9 +108,23 @@ export function useAppActions({
     [action, admin],
   );
 
+  const createDiscordWebhook = React.useCallback(
+    async (payload: { name: string; webhook_url: string; is_active: boolean }) => {
+      await action.run(() => admin.createDiscordWebhook(payload), { rethrow: true });
+    },
+    [action, admin],
+  );
+
   const updateUserAccount = React.useCallback(
     async (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => {
       await action.run(() => admin.updateUserAccount(userId, payload), { rethrow: true });
+    },
+    [action, admin],
+  );
+
+  const updateDiscordWebhook = React.useCallback(
+    async (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => {
+      await action.run(() => admin.updateDiscordWebhook(webhookId, payload), { rethrow: true });
     },
     [action, admin],
   );
@@ -121,6 +139,20 @@ export function useAppActions({
   const deleteUser = React.useCallback(
     async (userId: number) => {
       await action.run(() => admin.deleteUser(userId), { rethrow: true });
+    },
+    [action, admin],
+  );
+
+  const deleteDiscordWebhook = React.useCallback(
+    async (webhookId: number) => {
+      await action.run(() => admin.deleteDiscordWebhook(webhookId), { rethrow: true });
+    },
+    [action, admin],
+  );
+
+  const testDiscordWebhook = React.useCallback(
+    async (webhookId: number) => {
+      await action.run(() => admin.testDiscordWebhook(webhookId), { rethrow: true });
     },
     [action, admin],
   );
@@ -202,9 +234,13 @@ export function useAppActions({
     changeOwnPassword,
     updateThemePreference,
     createUser,
+    createDiscordWebhook,
     updateUserAccount,
+    updateDiscordWebhook,
     deleteUser,
     resetUserPassword,
+    deleteDiscordWebhook,
+    testDiscordWebhook,
     addMod,
     refreshMod,
     removeMod,

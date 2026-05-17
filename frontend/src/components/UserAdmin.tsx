@@ -2,30 +2,41 @@ import React from "react";
 import { Pencil, Plus, RefreshCw, Save } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
-import type { AuditFilter, AuditLog, AuthUser, UserAccount, UserRole } from "../types";
+import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, UserAccount, UserRole } from "../types";
 import { CustomSelect, Dialog, Info } from "./common";
+import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
 
 export function UserAdmin({
   users,
+  webhooks,
   currentUser,
   loading,
   auditLogs,
   changeOwnPassword,
+  createDiscordWebhook,
   createUser,
+  updateDiscordWebhook,
   updateUserAccount,
   deleteUser,
+  deleteDiscordWebhook,
   resetUserPassword,
+  testDiscordWebhook,
   loadAuditLogs,
 }: {
   users: UserAccount[];
+  webhooks: DiscordWebhook[];
   currentUser: AuthUser;
   loading: boolean;
   auditLogs: AuditLog[];
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean }) => Promise<unknown>;
   createUser: (username: string, password: string, role: UserRole) => Promise<void>;
+  updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => Promise<unknown>;
   updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<void>;
   deleteUser: (userId: number) => Promise<void>;
+  deleteDiscordWebhook: (webhookId: number) => Promise<void>;
   resetUserPassword: (userId: number, password: string) => Promise<void>;
+  testDiscordWebhook: (webhookId: number) => Promise<void>;
   loadAuditLogs: () => Promise<void>;
 }) {
   const [currentPassword, setCurrentPassword] = React.useState("");
@@ -154,6 +165,15 @@ export function UserAdmin({
               </article>
             ))}
           </div>
+
+          <DiscordWebhookAdmin
+            webhooks={webhooks}
+            loading={loading}
+            createDiscordWebhook={createDiscordWebhook}
+            updateDiscordWebhook={updateDiscordWebhook}
+            deleteDiscordWebhook={deleteDiscordWebhook}
+            testDiscordWebhook={testDiscordWebhook}
+          />
 
           {showCreateUserDialog && (
             <Dialog title="Create user" onClose={() => setShowCreateUserDialog(false)}>
@@ -286,7 +306,7 @@ export function UserAdmin({
               </button>
             </div>
             <div className="audit-filters" aria-label="Audit filters">
-              {(["all", "auth", "user", "mod", "failures"] as AuditFilter[]).map((filter) => (
+              {(["all", "auth", "user", "mod", "integration", "failures"] as AuditFilter[]).map((filter) => (
                 <button className={auditFilter === filter ? "active" : ""} key={filter} onClick={() => setAuditFilter(filter)} type="button">
                   {auditFilterLabel(filter)}
                 </button>

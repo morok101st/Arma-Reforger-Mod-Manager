@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.discord_webhooks import notify_update_available
 from app.mod_dependencies import (
     dependency_mod_id,
     synchronize_dependency_tracking_for_modset_state,
@@ -99,12 +100,18 @@ async def update_user_mod(
             refreshed = get_mod_or_none(db, mod_id, modset_id)
             if refreshed:
                 await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
-            return get_mod_read(db, mod_id, modset_id)
+            read = get_mod_read(db, mod_id, modset_id)
+            if read:
+                await notify_update_available(db, modset_id, read)
+            return read
 
     refreshed = get_mod_or_none(db, mod_id, modset_id)
     if refreshed:
         await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
-    return get_mod_read(db, mod_id, modset_id)
+    read = get_mod_read(db, mod_id, modset_id)
+    if read:
+        await notify_update_available(db, modset_id, read)
+    return read
 
 
 async def refresh_mod(db: Session, mod_id: str, modset_id: int) -> ModRead:
@@ -116,6 +123,7 @@ async def refresh_mod(db: Session, mod_id: str, modset_id: int) -> ModRead:
     await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
     read = get_mod_read(db, mod_id, modset_id)
     assert read is not None
+    await notify_update_available(db, modset_id, read)
     return read
 
 
@@ -144,6 +152,9 @@ async def refresh_mod_for_all_modsets(db: Session, mod_id: str) -> None:
         if not refreshed:
             continue
         await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
+        read = get_mod_read(db, mod_id, modset_id)
+        if read:
+            await notify_update_available(db, modset_id, read)
 
 
 def delete_mod(db: Session, mod_id: str, modset_id: int, deactivate_orphan_dependencies: bool = False) -> bool:

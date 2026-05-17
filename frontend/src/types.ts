@@ -2,7 +2,7 @@ export type ModStatus = "NOT_INSTALLED" | "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVA
 export type SortMode = "name" | "status" | "last_checked" | "updates";
 export type TrackingReason = "manual" | "dependency";
 export type UserRole = "admin" | "user";
-export type AuditFilter = "all" | "auth" | "user" | "mod" | "failures";
+export type AuditFilter = "all" | "auth" | "user" | "mod" | "integration" | "failures";
 export type ThemePreference = "light" | "dark";
 
 export type AuthUser = {
@@ -22,6 +22,15 @@ export type UserAccount = {
   is_active: boolean;
   created_at: string;
   last_login_at: string | null;
+};
+
+export type DiscordWebhook = {
+  id: number;
+  name: string;
+  masked_webhook_url: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type AuditLog = {

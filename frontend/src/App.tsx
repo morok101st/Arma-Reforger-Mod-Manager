@@ -138,14 +138,19 @@ export function App() {
         ) : view.showUserAdmin ? (
           <UserAdmin
             users={admin.users}
+            webhooks={admin.discordWebhooks}
             currentUser={authUser}
             loading={actions.loading}
             auditLogs={admin.auditLogs}
             changeOwnPassword={actions.changeOwnPassword}
+            createDiscordWebhook={actions.createDiscordWebhook}
             createUser={actions.createUser}
+            updateDiscordWebhook={actions.updateDiscordWebhook}
             updateUserAccount={actions.updateUserAccount}
             deleteUser={actions.deleteUser}
+            deleteDiscordWebhook={actions.deleteDiscordWebhook}
             resetUserPassword={actions.resetUserPassword}
+            testDiscordWebhook={actions.testDiscordWebhook}
             loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}
           />
         ) : mods.selected ? (

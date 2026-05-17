@@ -97,6 +97,33 @@ class ModSet(Base):
     owner: Mapped["User | None"] = relationship(back_populates="owned_modsets", foreign_keys="ModSet.owner_user_id")
 
 
+class DiscordWebhook(Base):
+    __tablename__ = "discord_webhooks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(120), index=True)
+    webhook_url: Mapped[str] = mapped_column(String(1024))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    deliveries: Mapped[list["DiscordWebhookDelivery"]] = relationship(back_populates="webhook", cascade="all, delete-orphan")
+
+
+class DiscordWebhookDelivery(Base):
+    __tablename__ = "discord_webhook_deliveries"
+    __table_args__ = (UniqueConstraint("webhook_id", "modset_id", "mod_id", "latest_version", name="uq_discord_webhook_delivery"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    webhook_id: Mapped[int] = mapped_column(ForeignKey("discord_webhooks.id", ondelete="CASCADE"), index=True)
+    modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), index=True)
+    mod_id: Mapped[str] = mapped_column(ForeignKey("mods.id", ondelete="CASCADE"), index=True)
+    latest_version: Mapped[str] = mapped_column(String(80), index=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    webhook: Mapped["DiscordWebhook"] = relationship(back_populates="deliveries")
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
