@@ -16,10 +16,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Derive version
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        id: notes
+        shell: bash
+        run: |
+          current_tag="${GITHUB_REF_NAME}"
+          previous_tag="$(git tag --sort=-creatordate | grep -vx "$current_tag" | head -n 1)"
+
+          {
+            echo "## Changelog since ${previous_tag:-the previous release}"
+            echo
+            if [ -n "$previous_tag" ]; then
+              git log --reverse --no-merges --pretty=format:'- %s' "${previous_tag}..${current_tag}"
+            else
+              git log --reverse --no-merges --pretty=format:'- %s' --max-count=20 "${current_tag}"
+            fi
+            echo
+            echo
+            echo "## Published images"
+            echo
+            echo "- \`ghcr.io/${{ github.repository_owner }}/armm-backend:${{ steps.version.outputs.version }}\`"
+            echo "- \`ghcr.io/${{ github.repository_owner }}/armm-frontend:${{ steps.version.outputs.version }}\`"
+          } > release-notes.md
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -55,9 +80,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-          body: |
-            Container images published with this release:
-
-            - `ghcr.io/${{ github.repository_owner }}/armm-backend:${{ steps.version.outputs.version }}`
-            - `ghcr.io/${{ github.repository_owner }}/armm-frontend:${{ steps.version.outputs.version }}`
+          body_path: release-notes.md
