@@ -63,6 +63,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Login rate limit: 8 failed attempts per 60 seconds (per IP + username).
 - Session stored in a signed HttpOnly cookie (`armm_session`, 7-day TTL).
 - Password changes, password resets, and role changes invalidate existing sessions immediately.
+- Production startup fails fast if `ARMM_SECRET_KEY` is missing or left at a placeholder value.
 - Cookie flags: `HttpOnly`, `SameSite=Lax`, and `Secure` in production.
 - Logout clears the session cookie.
 - Origin validation for unsafe HTTP methods (additional CSRF protection via origin allowlist).
@@ -121,6 +122,7 @@ At minimum, change these values:
 - `CORS_ORIGINS` for your domain
 - `ARMM_IMAGE_TAG` if you want to pin the example stack to a specific release tag
 - `FRONTEND_API_BASE_URL` is not needed for the GHCR release images; the frontend image is built with `/api` already.
+- `ARMM_SECRET_KEY` must be set to a unique strong value in production. There is no fallback secret anymore.
 
 Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
