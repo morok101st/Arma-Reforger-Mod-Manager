@@ -86,8 +86,11 @@ export function Sidebar({
     <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management">
       <div className="sidebar-handle" aria-hidden="true" />
       <div className="brand">
-        <div>
-          <p>Arma Reforger Mod Manager</p>
+        <div className="brand-title">
+          <img className="app-logo app-logo-sidebar" src="/icon.png" alt="ARMM" />
+          <div className="brand-copy">
+            <p>Arma Reforger Mod Manager</p>
+          </div>
         </div>
         <div className="header-actions">
           <button

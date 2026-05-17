@@ -158,6 +158,43 @@ textarea {
   justify-content: space-between;
 }
 
+.brand-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-logo {
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.app-logo-sidebar {
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 82%, transparent);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 16px;
+  box-shadow: var(--elevation-1);
+  height: 52px;
+  padding: 6px;
+  width: 52px;
+}
+
+.app-logo-auth {
+  background: color-mix(in srgb, var(--md-sys-color-surface) 90%, transparent);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 18px;
+  box-shadow: var(--elevation-1);
+  height: 72px;
+  padding: 8px;
+  width: 72px;
+}
+
+:root[data-theme="dark"] .app-logo-sidebar,
+:root[data-theme="dark"] .app-logo-auth {
+  background: #1c1c1c;
+}
+
 .header-actions {
   align-items: center;
   display: flex;
