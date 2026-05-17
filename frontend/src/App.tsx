@@ -116,6 +116,7 @@ export function App() {
           <button className="icon-button mobile-drawer-button" onClick={openSidebar} type="button" aria-label="Open mod list">
             <Menu size={18} />
           </button>
+          <img className="app-logo app-logo-mobile" src="/icon.png" alt="ARMM" />
           <div className="mobile-toolbar-title">
             <p>{view.showDashboard ? "Overview" : view.showModsetAdmin ? "Modsets" : view.showUserAdmin ? "Security" : "Mods"}</p>
             <strong>{activeModsetName}</strong>
