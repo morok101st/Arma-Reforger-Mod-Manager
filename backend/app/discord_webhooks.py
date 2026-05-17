@@ -13,12 +13,13 @@ from app.models import DiscordWebhook, DiscordWebhookDelivery, ModSet
 from app.schema_enums import ModStatus
 from app.schemas_discord import DiscordWebhookCreate, DiscordWebhookRead, DiscordWebhookUpdate
 from app.schemas_mods import ModRead
+from app.webhook_crypto import decrypt_webhook_url, encrypt_webhook_url
 
 logger = logging.getLogger(__name__)
 
 
 def mask_webhook_url(webhook_url: str) -> str:
-    parsed = urlparse(webhook_url)
+    parsed = urlparse(decrypt_webhook_url(webhook_url))
     host = parsed.netloc or "discord.com"
     return f"{host}/api/webhooks/..."
 
@@ -37,7 +38,7 @@ def create_webhook(db: Session, payload: DiscordWebhookCreate) -> DiscordWebhook
         raise ValueError("Webhook URL is required")
     webhook = DiscordWebhook(
         name=name,
-        webhook_url=webhook_url,
+        webhook_url=encrypt_webhook_url(webhook_url),
         is_active=payload.is_active,
     )
     db.add(webhook)
@@ -59,7 +60,7 @@ def update_webhook(db: Session, webhook_id: int, payload: DiscordWebhookUpdate) 
         webhook_url = payload.webhook_url.strip()
         if not webhook_url:
             raise ValueError("Webhook URL is required")
-        webhook.webhook_url = webhook_url
+        webhook.webhook_url = encrypt_webhook_url(webhook_url)
     if payload.is_active is not None:
         webhook.is_active = payload.is_active
     db.commit()
@@ -102,7 +103,7 @@ async def notify_update_available(db: Session, modset_id: int, mod: ModRead) -> 
             continue
 
         try:
-            await _post_discord_webhook(webhook.webhook_url, _build_update_payload(modset.name, mod))
+            await _post_discord_webhook(decrypt_webhook_url(webhook.webhook_url), _build_update_payload(modset.name, mod))
         except Exception as exc:
             logger.warning(
                 "Discord webhook delivery failed for webhook_id=%s modset_id=%s mod_id=%s: %s",

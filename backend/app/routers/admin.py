@@ -12,6 +12,7 @@ from app.schemas_audit import AuditLogRead
 from app.schemas_discord import DiscordWebhookCreate, DiscordWebhookRead, DiscordWebhookTestResult, DiscordWebhookUpdate
 from app.schemas_users import PasswordReset, UserCreate, UserRead, UserUpdate
 from app.user_service import create_user, delete_user, list_users, update_user
+from app.webhook_crypto import decrypt_webhook_url
 
 router = APIRouter(tags=["admin"])
 
@@ -143,7 +144,7 @@ async def api_test_discord_webhook(
             audit_detail={"reason": "webhook_not_found"},
         )
     try:
-        await test_webhook(webhook.webhook_url, webhook.name)
+        await test_webhook(decrypt_webhook_url(webhook.webhook_url), webhook.name)
     except Exception as exc:
         audit_event(
             db,

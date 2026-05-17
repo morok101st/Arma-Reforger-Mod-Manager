@@ -2,7 +2,8 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 
 from app import main as app_main
-from app.models import User
+from app.models import DiscordWebhook, User
+from app.webhook_crypto import decrypt_webhook_url, is_encrypted_webhook_url
 from tests.support import ApiTestCase
 
 
@@ -88,6 +89,16 @@ class AdminApiTestCase(ApiTestCase):
             self.assertEqual(created.status_code, 201, created.text)
             webhook_id = created.json()["id"]
             self.assertEqual(created.json()["masked_webhook_url"], "discord.com/api/webhooks/...")
+
+            with self.SessionLocal() as db:
+                stored = db.get(DiscordWebhook, webhook_id)
+                self.assertIsNotNone(stored)
+                assert stored is not None
+                self.assertTrue(is_encrypted_webhook_url(stored.webhook_url))
+                self.assertEqual(
+                    decrypt_webhook_url(stored.webhook_url),
+                    "https://discord.com/api/webhooks/1234567890/abcdefghijklmnopqrstuvwxyz",
+                )
 
             listed = client.get("/discord-webhooks")
             self.assertEqual(listed.status_code, 200, listed.text)

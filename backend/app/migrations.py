@@ -3,6 +3,8 @@ import json
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
+from app.webhook_crypto import encrypt_webhook_url, is_encrypted_webhook_url
+
 
 def migrate_schema(engine: Engine) -> None:
     inspector = inspect(engine)
@@ -61,6 +63,7 @@ def migrate_schema(engine: Engine) -> None:
 
     inspector = inspect(engine)
     _backfill_dependency_origin(engine)
+    _migrate_discord_webhooks(engine, inspector)
     _migrate_mod_versions(engine, inspector)
     _migrate_users(engine, inspector)
 
@@ -125,6 +128,21 @@ def _migrate_mod_versions(engine: Engine, inspector) -> None:
     if "last_modified_at" not in mod_version_columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE mod_versions ADD COLUMN last_modified_at TIMESTAMP WITH TIME ZONE"))
+
+
+def _migrate_discord_webhooks(engine: Engine, inspector) -> None:
+    if "discord_webhooks" not in inspector.get_table_names():
+        return
+    with engine.begin() as connection:
+        rows = connection.execute(text("SELECT id, webhook_url FROM discord_webhooks")).all()
+        for row in rows:
+            webhook_url = str(row.webhook_url or "")
+            if not webhook_url or is_encrypted_webhook_url(webhook_url):
+                continue
+            connection.execute(
+                text("UPDATE discord_webhooks SET webhook_url = :webhook_url WHERE id = :id"),
+                {"id": int(row.id), "webhook_url": encrypt_webhook_url(webhook_url)},
+            )
 
 
 def _migrate_users(engine: Engine, inspector) -> None:

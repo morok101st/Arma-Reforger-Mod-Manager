@@ -70,6 +70,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Audit trail for login/logout, password actions, user changes, mod changes, modset changes, and webhook changes.
 - Modset ownership and `shared` state are persisted and enforced server-side.
 - Discord webhook targets are stored server-side and alerts are deduplicated per webhook, modset, mod, and latest version.
+- Discord webhook URLs are stored encrypted server-side and only shown in masked form in the UI.
 - Frontend Nginx adds security headers (including CSP, X-Frame-Options, Referrer-Policy, nosniff).
 - API documentation is protected and available only for authenticated users (`/api/docs`, `/api/openapi.json`).
 - The browser path `/api` redirects to `/api/docs` in the frontend container.
