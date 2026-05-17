@@ -89,6 +89,7 @@ class AdminApiTestCase(ApiTestCase):
             self.assertEqual(created.status_code, 201, created.text)
             webhook_id = created.json()["id"]
             self.assertEqual(created.json()["masked_webhook_url"], "discord.com/api/webhooks/...")
+            self.assertGreaterEqual(len(created.json()["modset_ids"]), 1)
 
             with self.SessionLocal() as db:
                 stored = db.get(DiscordWebhook, webhook_id)

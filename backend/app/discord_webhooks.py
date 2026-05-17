@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
 from app.models import DiscordWebhook, DiscordWebhookDelivery, ModSet
@@ -25,7 +26,11 @@ def mask_webhook_url(webhook_url: str) -> str:
 
 
 def list_webhooks(db: Session) -> list[DiscordWebhookRead]:
-    rows = db.scalars(select(DiscordWebhook).order_by(func.lower(DiscordWebhook.name), DiscordWebhook.id)).all()
+    rows = db.scalars(
+        select(DiscordWebhook)
+        .options(selectinload(DiscordWebhook.modsets))
+        .order_by(func.lower(DiscordWebhook.name), DiscordWebhook.id)
+    ).all()
     return [to_read(row) for row in rows]
 
 
@@ -41,6 +46,7 @@ def create_webhook(db: Session, payload: DiscordWebhookCreate) -> DiscordWebhook
         webhook_url=encrypt_webhook_url(webhook_url),
         is_active=payload.is_active,
     )
+    webhook.modsets = _resolve_modsets(db, payload.modset_ids)
     db.add(webhook)
     db.commit()
     db.refresh(webhook)
@@ -51,6 +57,9 @@ def update_webhook(db: Session, webhook_id: int, payload: DiscordWebhookUpdate) 
     webhook = db.get(DiscordWebhook, webhook_id)
     if not webhook:
         return None
+    selected_modsets = None
+    if payload.modset_ids is not None:
+        selected_modsets = _resolve_modsets(db, payload.modset_ids)
     if payload.name is not None:
         name = payload.name.strip()
         if not name:
@@ -63,6 +72,8 @@ def update_webhook(db: Session, webhook_id: int, payload: DiscordWebhookUpdate) 
         webhook.webhook_url = encrypt_webhook_url(webhook_url)
     if payload.is_active is not None:
         webhook.is_active = payload.is_active
+    if selected_modsets is not None:
+        webhook.modsets = selected_modsets
     db.commit()
     db.refresh(webhook)
     return to_read(webhook)
@@ -94,11 +105,18 @@ async def notify_update_available(db: Session, modset_id: int, mod: ModRead) -> 
     if not modset:
         return
 
-    webhooks = db.scalars(select(DiscordWebhook).where(DiscordWebhook.is_active.is_(True)).order_by(func.lower(DiscordWebhook.name), DiscordWebhook.id)).all()
+    webhooks = db.scalars(
+        select(DiscordWebhook)
+        .options(selectinload(DiscordWebhook.modsets))
+        .where(DiscordWebhook.is_active.is_(True))
+        .order_by(func.lower(DiscordWebhook.name), DiscordWebhook.id)
+    ).all()
     if not webhooks:
         return
 
     for webhook in webhooks:
+        if not _webhook_targets_modset(webhook, modset_id):
+            continue
         if _delivery_exists(db, webhook.id, modset_id, mod.id, mod.latest_version):
             continue
 
@@ -141,9 +159,27 @@ def to_read(webhook: DiscordWebhook) -> DiscordWebhookRead:
         name=webhook.name,
         masked_webhook_url=mask_webhook_url(webhook.webhook_url),
         is_active=bool(webhook.is_active),
+        modset_ids=[modset.id for modset in webhook.modsets],
         created_at=webhook.created_at,
         updated_at=webhook.updated_at,
     )
+
+
+def _resolve_modsets(db: Session, modset_ids: list[int] | None) -> list[ModSet]:
+    if modset_ids is None:
+        return db.scalars(select(ModSet).order_by(func.lower(ModSet.name), ModSet.id)).all()
+    normalized_ids = list(dict.fromkeys(int(modset_id) for modset_id in modset_ids))
+    if not normalized_ids:
+        return []
+    rows = db.scalars(select(ModSet).where(ModSet.id.in_(normalized_ids))).all()
+    if len(rows) != len(normalized_ids):
+        raise ValueError("One or more selected modsets do not exist")
+    by_id = {row.id: row for row in rows}
+    return [by_id[modset_id] for modset_id in normalized_ids]
+
+
+def _webhook_targets_modset(webhook: DiscordWebhook, modset_id: int) -> bool:
+    return any(modset.id == modset_id for modset in webhook.modsets)
 
 
 def _delivery_exists(db: Session, webhook_id: int, modset_id: int, mod_id: str, latest_version: str) -> bool:

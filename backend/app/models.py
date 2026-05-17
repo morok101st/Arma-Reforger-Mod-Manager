@@ -1,9 +1,17 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Table, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+
+discord_webhook_modsets = Table(
+    "discord_webhook_modsets",
+    Base.metadata,
+    Column("webhook_id", ForeignKey("discord_webhooks.id", ondelete="CASCADE"), primary_key=True),
+    Column("modset_id", ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Mod(Base):
@@ -108,6 +116,7 @@ class DiscordWebhook(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     deliveries: Mapped[list["DiscordWebhookDelivery"]] = relationship(back_populates="webhook", cascade="all, delete-orphan")
+    modsets: Mapped[list["ModSet"]] = relationship(secondary=discord_webhook_modsets)
 
 
 class DiscordWebhookDelivery(Base):

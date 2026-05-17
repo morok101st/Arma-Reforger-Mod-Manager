@@ -20,6 +20,8 @@ class MigrationTestCase(unittest.TestCase):
             Base.metadata.create_all(engine)
 
             with engine.begin() as connection:
+                connection.execute(text("INSERT INTO modsets (name, shared) VALUES ('Alpha', 1)"))
+                connection.execute(text("INSERT INTO modsets (name, shared) VALUES ('Bravo', 1)"))
                 connection.execute(
                     text(
                         "INSERT INTO discord_webhooks (name, webhook_url, is_active) "
@@ -41,5 +43,7 @@ class MigrationTestCase(unittest.TestCase):
                     decrypt_webhook_url(webhook.webhook_url),
                     "https://discord.com/api/webhooks/1234567890/abcdefghijklmnopqrstuvwxyz",
                 )
+                association_count = db.execute(text("SELECT COUNT(*) FROM discord_webhook_modsets")).scalar()
+                self.assertEqual(int(association_count or 0), 2)
 
             engine.dispose()

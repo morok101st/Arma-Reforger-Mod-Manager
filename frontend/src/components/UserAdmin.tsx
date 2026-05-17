@@ -2,13 +2,14 @@ import React from "react";
 import { Pencil, Plus, RefreshCw, Save } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
-import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, UserAccount, UserRole } from "../types";
+import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
 import { CustomSelect, Dialog, Info } from "./common";
 import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
 
 export function UserAdmin({
   users,
   webhooks,
+  modsets,
   currentUser,
   loading,
   auditLogs,
@@ -25,13 +26,14 @@ export function UserAdmin({
 }: {
   users: UserAccount[];
   webhooks: DiscordWebhook[];
+  modsets: Modset[];
   currentUser: AuthUser;
   loading: boolean;
   auditLogs: AuditLog[];
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean }) => Promise<unknown>;
+  createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) => Promise<unknown>;
   createUser: (username: string, password: string, role: UserRole) => Promise<void>;
-  updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => Promise<unknown>;
+  updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => Promise<unknown>;
   updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<void>;
   deleteUser: (userId: number) => Promise<void>;
   deleteDiscordWebhook: (webhookId: number) => Promise<void>;
@@ -168,6 +170,7 @@ export function UserAdmin({
 
           <DiscordWebhookAdmin
             webhooks={webhooks}
+            modsets={modsets}
             loading={loading}
             createDiscordWebhook={createDiscordWebhook}
             updateDiscordWebhook={updateDiscordWebhook}

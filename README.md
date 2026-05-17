@@ -17,6 +17,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Stores changelog history per version including `Last modified`.
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
 - Can send Discord update alerts through admin-managed webhooks without code changes.
+- Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
 
 ## Functional scope (UI)
 
@@ -49,6 +50,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Change your own password.
 - Admin features: create users, change roles, enable/disable users, reset passwords.
 - Admin-managed Discord webhooks for update alerts: create, edit, disable, delete, and test webhooks in the UI.
+- Discord webhooks can be limited to specific modsets directly in the webhook dialog.
 - Audit log with filters (Auth, User, Mod, Failures).
 
 ## Security features
@@ -71,6 +73,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Modset ownership and `shared` state are persisted and enforced server-side.
 - Discord webhook targets are stored server-side and alerts are deduplicated per webhook, modset, mod, and latest version.
 - Discord webhook URLs are stored encrypted server-side and only shown in masked form in the UI.
+- Each Discord webhook can be assigned to one or more modsets; if no explicit scope is chosen on creation, it defaults to all current modsets.
 - Frontend Nginx adds security headers (including CSP, X-Frame-Options, Referrer-Policy, nosniff).
 - API documentation is protected and available only for authenticated users (`/api/docs`, `/api/openapi.json`).
 - The browser path `/api` redirects to `/api/docs` in the frontend container.
@@ -92,6 +95,7 @@ Base path behind the frontend proxy: `/api`
 - `GET /api/modsets/{modset_id}/export`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET/POST/PATCH/DELETE /api/discord-webhooks...` (admin)
+- `GET /api/admin/modsets` (admin, used for webhook modset selection)
 - `POST /api/discord-webhooks/{webhook_id}/test` (admin)
 - `GET /api/audit` (admin)
 - `GET /api/scheduler/status`

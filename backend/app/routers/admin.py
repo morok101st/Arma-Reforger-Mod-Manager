@@ -10,7 +10,9 @@ from app.auth import hash_password, require_admin_user
 from app.models import DiscordWebhook, User
 from app.schemas_audit import AuditLogRead
 from app.schemas_discord import DiscordWebhookCreate, DiscordWebhookRead, DiscordWebhookTestResult, DiscordWebhookUpdate
+from app.schemas_modsets import ModSetRead
 from app.schemas_users import PasswordReset, UserCreate, UserRead, UserUpdate
+from app.modset_service import list_modsets_for_admin
 from app.user_service import create_user, delete_user, list_users, update_user
 from app.webhook_crypto import decrypt_webhook_url
 
@@ -33,6 +35,14 @@ def api_list_discord_webhooks(
     return list_webhooks(db)
 
 
+@router.get("/admin/modsets", response_model=list[ModSetRead])
+def api_list_all_modsets(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin_user),
+) -> list[ModSetRead]:
+    return list_modsets_for_admin(db)
+
+
 @router.post("/discord-webhooks", response_model=DiscordWebhookRead, status_code=status.HTTP_201_CREATED)
 def api_create_discord_webhook(
     payload: DiscordWebhookCreate,
@@ -51,7 +61,12 @@ def api_create_discord_webhook(
         entity_id=str(created.id),
         actor=current_user,
         request=request,
-        detail={"name": created.name, "is_active": created.is_active, "masked_webhook_url": created.masked_webhook_url},
+        detail={
+            "name": created.name,
+            "is_active": created.is_active,
+            "modset_ids": created.modset_ids,
+            "masked_webhook_url": created.masked_webhook_url,
+        },
     )
     return created
 
@@ -87,7 +102,12 @@ def api_update_discord_webhook(
         entity_id=str(updated.id),
         actor=current_user,
         request=request,
-        detail={"name": updated.name, "is_active": updated.is_active, "masked_webhook_url": updated.masked_webhook_url},
+        detail={
+            "name": updated.name,
+            "is_active": updated.is_active,
+            "modset_ids": updated.modset_ids,
+            "masked_webhook_url": updated.masked_webhook_url,
+        },
     )
     return updated
 

@@ -137,13 +137,17 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request("/discord-webhooks");
       return readJsonOrThrow<DiscordWebhook[]>(response, "Could not load Discord webhooks.");
     },
-    async createDiscordWebhook(payload: { name: string; webhook_url: string; is_active: boolean }) {
+    async listAdminModsets() {
+      const response = await request("/admin/modsets");
+      return readJsonOrThrow<Modset[]>(response, "Could not load modsets.");
+    },
+    async createDiscordWebhook(payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) {
       const response = await request("/discord-webhooks", { method: "POST", json: payload });
       return readJsonOrThrow<DiscordWebhook>(response, "Could not create Discord webhook.");
     },
     async updateDiscordWebhook(
       webhookId: number,
-      payload: { name?: string; webhook_url?: string; is_active?: boolean },
+      payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] },
     ) {
       const response = await request(`/discord-webhooks/${webhookId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<DiscordWebhook>(response, "Could not update Discord webhook.");

@@ -479,12 +479,17 @@ class ModsApiTestCase(ApiTestCase):
             self.assertEqual(modset_response.status_code, 201)
             modset_id = modset_response.json()["id"]
 
+            other_modset_response = client.post("/modsets", json={"name": "Server Alerts Off"})
+            self.assertEqual(other_modset_response.status_code, 201)
+            other_modset_id = other_modset_response.json()["id"]
+
             webhook_response = client.post(
                 "/discord-webhooks",
                 json={
                     "name": "Alerts",
                     "webhook_url": "https://discord.com/api/webhooks/1234567890/abcdefghijklmnopqrstuvwxyz",
                     "is_active": True,
+                    "modset_ids": [modset_id],
                 },
             )
             self.assertEqual(webhook_response.status_code, 201, webhook_response.text)
@@ -500,6 +505,7 @@ class ModsApiTestCase(ApiTestCase):
                     )
                 )
                 db.add(UserMod(modset_id=modset_id, mod_id="UPDATEMOD001", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=other_modset_id, mod_id="UPDATEMOD001", current_version="1.0.0", pinned=False, tracking_reason="manual"))
                 db.commit()
 
             with (
@@ -521,6 +527,9 @@ class ModsApiTestCase(ApiTestCase):
 
                 second_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={modset_id}")
                 self.assertEqual(second_refresh.status_code, 200, second_refresh.text)
+
+                other_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={other_modset_id}")
+                self.assertEqual(other_refresh.status_code, 200, other_refresh.text)
 
             self.assertEqual(webhook_mock.call_count, 1)
             with self.SessionLocal() as db:

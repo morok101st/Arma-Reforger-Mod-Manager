@@ -29,6 +29,7 @@ export type DiscordWebhook = {
   name: string;
   masked_webhook_url: string;
   is_active: boolean;
+  modset_ids: number[];
   created_at: string;
   updated_at: string;
 };

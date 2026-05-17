@@ -139,6 +139,7 @@ export function App() {
           <UserAdmin
             users={admin.users}
             webhooks={admin.discordWebhooks}
+            modsets={admin.modsets}
             currentUser={authUser}
             loading={actions.loading}
             auditLogs={admin.auditLogs}

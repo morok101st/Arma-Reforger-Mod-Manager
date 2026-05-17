@@ -64,6 +64,7 @@ def migrate_schema(engine: Engine) -> None:
     inspector = inspect(engine)
     _backfill_dependency_origin(engine)
     _migrate_discord_webhooks(engine, inspector)
+    _migrate_discord_webhook_modsets(engine, inspector)
     _migrate_mod_versions(engine, inspector)
     _migrate_users(engine, inspector)
 
@@ -143,6 +144,59 @@ def _migrate_discord_webhooks(engine: Engine, inspector) -> None:
                 text("UPDATE discord_webhooks SET webhook_url = :webhook_url WHERE id = :id"),
                 {"id": int(row.id), "webhook_url": encrypt_webhook_url(webhook_url)},
             )
+
+
+def _migrate_discord_webhook_modsets(engine: Engine, inspector) -> None:
+    table_names = set(inspector.get_table_names())
+    if "discord_webhooks" not in table_names or "modsets" not in table_names:
+        return
+    if "discord_webhook_modsets" not in table_names:
+        with engine.begin() as connection:
+            if engine.dialect.name == "postgresql":
+                connection.execute(
+                    text(
+                        "CREATE TABLE IF NOT EXISTS discord_webhook_modsets ("
+                        "webhook_id INTEGER NOT NULL REFERENCES discord_webhooks(id) ON DELETE CASCADE, "
+                        "modset_id INTEGER NOT NULL REFERENCES modsets(id) ON DELETE CASCADE, "
+                        "PRIMARY KEY (webhook_id, modset_id))"
+                    )
+                )
+            else:
+                connection.execute(
+                    text(
+                        "CREATE TABLE IF NOT EXISTS discord_webhook_modsets ("
+                        "webhook_id INTEGER NOT NULL, "
+                        "modset_id INTEGER NOT NULL, "
+                        "PRIMARY KEY (webhook_id, modset_id), "
+                        "FOREIGN KEY(webhook_id) REFERENCES discord_webhooks(id) ON DELETE CASCADE, "
+                        "FOREIGN KEY(modset_id) REFERENCES modsets(id) ON DELETE CASCADE)"
+                    )
+                )
+    with engine.begin() as connection:
+        webhook_ids = [int(row.id) for row in connection.execute(text("SELECT id FROM discord_webhooks")).all()]
+        modset_ids = [int(row.id) for row in connection.execute(text("SELECT id FROM modsets")).all()]
+        if not webhook_ids or not modset_ids:
+            return
+        if engine.dialect.name == "postgresql":
+            for webhook_id in webhook_ids:
+                for modset_id in modset_ids:
+                    connection.execute(
+                        text(
+                            "INSERT INTO discord_webhook_modsets (webhook_id, modset_id) "
+                            "VALUES (:webhook_id, :modset_id) ON CONFLICT DO NOTHING"
+                        ),
+                        {"webhook_id": webhook_id, "modset_id": modset_id},
+                    )
+        else:
+            for webhook_id in webhook_ids:
+                for modset_id in modset_ids:
+                    connection.execute(
+                        text(
+                            "INSERT OR IGNORE INTO discord_webhook_modsets (webhook_id, modset_id) "
+                            "VALUES (:webhook_id, :modset_id)"
+                        ),
+                        {"webhook_id": webhook_id, "modset_id": modset_id},
+                    )
 
 
 def _migrate_users(engine: Engine, inspector) -> None:

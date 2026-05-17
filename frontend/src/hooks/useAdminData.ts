@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { AuditLog, AuthUser, DiscordWebhook, UserAccount, UserRole } from "../types";
+import type { AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
 
 export function useAdminData({
   api,
@@ -8,11 +8,12 @@ export function useAdminData({
 }: {
   api: {
     listUsers: () => Promise<UserAccount[]>;
+    listAdminModsets: () => Promise<Modset[]>;
     listDiscordWebhooks: () => Promise<DiscordWebhook[]>;
     listAuditLogs: (limit?: number) => Promise<AuditLog[]>;
     createUser: (username: string, password: string, role: UserRole) => Promise<UserAccount>;
-    createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean }) => Promise<DiscordWebhook>;
-    updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => Promise<DiscordWebhook>;
+    createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) => Promise<DiscordWebhook>;
+    updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => Promise<DiscordWebhook>;
     deleteDiscordWebhook: (webhookId: number) => Promise<void>;
     testDiscordWebhook: (webhookId: number) => Promise<{ sent: boolean }>;
     updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<UserAccount>;
@@ -22,6 +23,7 @@ export function useAdminData({
   authUser: AuthUser | null;
 }) {
   const [users, setUsers] = React.useState<UserAccount[]>([]);
+  const [modsets, setModsets] = React.useState<Modset[]>([]);
   const [discordWebhooks, setDiscordWebhooks] = React.useState<DiscordWebhook[]>([]);
   const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
 
@@ -37,6 +39,12 @@ export function useAdminData({
     return data;
   }, [api]);
 
+  const loadModsets = React.useCallback(async () => {
+    const data = await api.listAdminModsets();
+    setModsets(data);
+    return data;
+  }, [api]);
+
   const loadDiscordWebhooks = React.useCallback(async () => {
     const data = await api.listDiscordWebhooks();
     setDiscordWebhooks(data);
@@ -46,18 +54,20 @@ export function useAdminData({
   React.useEffect(() => {
     if (authUser?.role !== "admin") {
       setUsers([]);
+      setModsets([]);
       setDiscordWebhooks([]);
       setAuditLogs([]);
       return;
     }
     loadUsers().catch(() => null);
+    loadModsets().catch(() => null);
     loadDiscordWebhooks().catch(() => null);
     loadAuditLogs().catch(() => null);
-  }, [authUser, loadUsers, loadDiscordWebhooks, loadAuditLogs]);
+  }, [authUser, loadUsers, loadModsets, loadDiscordWebhooks, loadAuditLogs]);
 
   const refreshAdminData = React.useCallback(async () => {
-    await Promise.all([loadUsers(), loadDiscordWebhooks(), loadAuditLogs()]);
-  }, [loadAuditLogs, loadDiscordWebhooks, loadUsers]);
+    await Promise.all([loadUsers(), loadModsets(), loadDiscordWebhooks(), loadAuditLogs()]);
+  }, [loadAuditLogs, loadDiscordWebhooks, loadModsets, loadUsers]);
 
   const createUser = React.useCallback(
     async (username: string, password: string, role: UserRole) => {
@@ -69,7 +79,7 @@ export function useAdminData({
   );
 
   const createDiscordWebhook = React.useCallback(
-    async (payload: { name: string; webhook_url: string; is_active: boolean }) => {
+    async (payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) => {
       const created = await api.createDiscordWebhook(payload);
       await refreshAdminData();
       return created;
@@ -87,7 +97,7 @@ export function useAdminData({
   );
 
   const updateDiscordWebhook = React.useCallback(
-    async (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => {
+    async (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => {
       const updated = await api.updateDiscordWebhook(webhookId, payload);
       await refreshAdminData();
       return updated;
@@ -130,9 +140,11 @@ export function useAdminData({
 
   return {
     users,
+    modsets,
     discordWebhooks,
     auditLogs,
     loadUsers,
+    loadModsets,
     loadDiscordWebhooks,
     loadAuditLogs,
     createUser,

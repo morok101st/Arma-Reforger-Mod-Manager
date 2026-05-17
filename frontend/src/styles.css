@@ -754,6 +754,94 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.webhook-modset-selection {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.webhook-modset-selection-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.webhook-modset-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.webhook-modset-checkboxes {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.webhook-modset-row {
+  align-items: center;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.webhook-modset-row:hover {
+  background: var(--md-sys-color-surface-hover);
+  border-color: var(--md-sys-color-outline);
+}
+
+.webhook-modset-row input {
+  margin: 0;
+}
+
+.webhook-modset-label {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.webhook-modset-shared {
+  align-items: center;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 26%, transparent);
+  border-radius: 999px;
+  color: var(--md-sys-color-primary);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  gap: 4px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+:root[data-theme="dark"] .webhook-modset-selection,
+:root[data-theme="dark"] .webhook-modset-row {
+  background: #1c1c1c;
+}
+
+:root[data-theme="dark"] .webhook-modset-row:hover {
+  background: #242424;
+}
+
+:root[data-theme="dark"] .webhook-modset-shared {
+  background: rgba(255, 206, 58, 0.12);
+  border-color: rgba(255, 206, 58, 0.24);
+}
+
 .webhook-status {
   align-items: center;
   border-radius: 999px;

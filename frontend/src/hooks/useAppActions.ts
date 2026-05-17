@@ -25,8 +25,8 @@ export function useAppActions({
   };
   admin: {
     createUser: (username: string, password: string, role: UserAccount["role"]) => Promise<unknown>;
-    createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean }) => Promise<DiscordWebhook>;
-    updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => Promise<DiscordWebhook>;
+    createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) => Promise<DiscordWebhook>;
+    updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => Promise<DiscordWebhook>;
     deleteDiscordWebhook: (webhookId: number) => Promise<void>;
     testDiscordWebhook: (webhookId: number) => Promise<{ sent: boolean }>;
     updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<unknown>;
@@ -109,7 +109,7 @@ export function useAppActions({
   );
 
   const createDiscordWebhook = React.useCallback(
-    async (payload: { name: string; webhook_url: string; is_active: boolean }) => {
+    async (payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) => {
       await action.run(() => admin.createDiscordWebhook(payload), { rethrow: true });
     },
     [action, admin],
@@ -123,7 +123,7 @@ export function useAppActions({
   );
 
   const updateDiscordWebhook = React.useCallback(
-    async (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean }) => {
+    async (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => {
       await action.run(() => admin.updateDiscordWebhook(webhookId, payload), { rethrow: true });
     },
     [action, admin],

@@ -65,6 +65,39 @@ def list_modsets(db: Session, user: User) -> list[ModSetRead]:
     ]
 
 
+def list_modsets_for_admin(db: Session) -> list[ModSetRead]:
+    rows = db.execute(
+        select(
+            ModSet.id,
+            ModSet.name,
+            ModSet.shared,
+            ModSet.owner_user_id,
+            User.username.label("owner_username"),
+            ModSet.created_at,
+            ModSet.updated_at,
+            func.count(UserMod.mod_id).label("tracked_mods_count"),
+        )
+        .outerjoin(UserMod, UserMod.modset_id == ModSet.id)
+        .outerjoin(User, User.id == ModSet.owner_user_id)
+        .group_by(ModSet.id, ModSet.name, ModSet.created_at, ModSet.updated_at)
+        .group_by(ModSet.shared, ModSet.owner_user_id, User.username)
+        .order_by(func.lower(ModSet.name), ModSet.id)
+    ).all()
+    return [
+        ModSetRead(
+            id=row.id,
+            name=row.name,
+            tracked_mods_count=int(row.tracked_mods_count or 0),
+            shared=bool(row.shared),
+            owner_username=row.owner_username,
+            is_owner=False,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
 def ensure_default_modset(db: Session) -> ModSet:
     existing = db.scalar(select(ModSet).where(func.lower(ModSet.name) == "default").order_by(ModSet.id).limit(1))
     if existing:
