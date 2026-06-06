@@ -11,6 +11,7 @@ from app.modset_service import (
     activate_modset,
     create_modset,
     delete_modset,
+    duplicate_modset,
     ensure_user_active_modset,
     export_modset,
     list_modsets,
@@ -79,6 +80,29 @@ def api_update_modset(
         detail={"modset_name": updated.name},
     )
     return updated
+
+
+@router.post("/modsets/{modset_id}/duplicate", response_model=ModSetRead, status_code=status.HTTP_201_CREATED)
+def api_duplicate_modset(
+    modset_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_current_user),
+) -> ModSetRead:
+    try:
+        duplicated = duplicate_modset(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    audit_event(
+        db,
+        action="modset_duplicated",
+        entity_type="modset",
+        entity_id=str(duplicated.id),
+        actor=current_user,
+        request=request,
+        detail={"modset_name": duplicated.name, "source_modset_id": modset_id},
+    )
+    return duplicated
 
 
 @router.delete("/modsets/{modset_id}", response_model=AuthUserRead)

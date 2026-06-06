@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
+import { Copy, Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
 
 import type { Modset } from "../types";
 import { Dialog } from "./common";
@@ -11,6 +11,7 @@ export function ModsetManagement({
   error,
   createModset,
   updateModset,
+  duplicateModset,
   deleteModset,
   activateModset,
   exportModset,
@@ -21,6 +22,7 @@ export function ModsetManagement({
   error: string | null;
   createModset: (name: string, shared?: boolean) => Promise<void>;
   updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<void>;
+  duplicateModset: (modsetId: number) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
   activateModset: (modsetId: number) => Promise<void>;
   exportModset: (modsetId: number, modsetName: string) => Promise<void>;
@@ -142,6 +144,18 @@ export function ModsetManagement({
               >
                 <Pencil size={16} />
                 Edit
+              </button>
+              <button
+                className="secondary-button compact"
+                disabled={loading}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  duplicateModset(modset.id).catch(() => null);
+                }}
+                type="button"
+              >
+                <Copy size={16} />
+                Duplicate
               </button>
               <button
                 className="secondary-button compact danger-button"

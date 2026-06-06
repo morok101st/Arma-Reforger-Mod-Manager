@@ -132,6 +132,7 @@ export function App() {
             error={actions.error}
             createModset={actions.createModset}
             updateModset={actions.updateModset}
+            duplicateModset={actions.duplicateModset}
             deleteModset={actions.deleteModset}
             activateModset={actions.activateModset}
             exportModset={actions.exportModset}

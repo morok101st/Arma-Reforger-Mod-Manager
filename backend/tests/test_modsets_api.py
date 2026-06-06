@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app import main as app_main
-from app.models import Mod, UserMod
+from app.models import DiscordWebhook, Mod, ModSet, UserMod
+from app.discord_webhooks import encrypt_webhook_url
 from app.scraper import ScrapedMod
 from tests.support import ApiTestCase
 from unittest.mock import patch
@@ -164,3 +165,56 @@ class ModsetsApiTestCase(ApiTestCase):
                 create_shared = user_client.post(f"/mods?modset_id={modset_id}", json={"id": "MODSHARED001", "current_version": "1.0.0"})
 
             self.assertEqual(create_shared.status_code, 201, create_shared.text)
+
+    def test_duplicate_modset_copies_content_as_private_without_webhook_scope(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            created = client.post("/modsets", json={"name": "Training Shared", "shared": True})
+            self.assertEqual(created.status_code, 201, created.text)
+            source_id = created.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="MODCOPY001", name="Copy Source"))
+                db.add(
+                    UserMod(
+                        modset_id=source_id,
+                        mod_id="MODCOPY001",
+                        current_version="1.2.3",
+                        pinned=True,
+                        is_core=True,
+                        dependency_origin=True,
+                        tracking_reason="dependency",
+                    )
+                )
+                webhook = DiscordWebhook(
+                    name="Discord Alerts",
+                    webhook_url=encrypt_webhook_url("https://discord.com/api/webhooks/test/test"),
+                    is_active=True,
+                )
+                source_modset = db.get(ModSet, source_id)
+                webhook.modsets = [source_modset]
+                db.add(webhook)
+                db.commit()
+
+            duplicate = client.post(f"/modsets/{source_id}/duplicate")
+            self.assertEqual(duplicate.status_code, 201, duplicate.text)
+            payload = duplicate.json()
+            duplicate_id = payload["id"]
+
+            self.assertEqual(payload["name"], "Training Shared (copy)")
+            self.assertFalse(payload["shared"])
+
+            with self.SessionLocal() as db:
+                duplicate_row = db.query(UserMod).filter_by(modset_id=duplicate_id, mod_id="MODCOPY001").one_or_none()
+                self.assertIsNotNone(duplicate_row)
+                self.assertEqual(duplicate_row.current_version, "1.2.3")
+                self.assertTrue(duplicate_row.pinned)
+                self.assertTrue(duplicate_row.is_core)
+                self.assertTrue(duplicate_row.dependency_origin)
+                self.assertEqual(duplicate_row.tracking_reason, "dependency")
+
+                webhook = db.query(DiscordWebhook).filter_by(name="Discord Alerts").one()
+                webhook_modset_ids = sorted(modset.id for modset in webhook.modsets)
+                self.assertIn(source_id, webhook_modset_ids)
+                self.assertNotIn(duplicate_id, webhook_modset_ids)

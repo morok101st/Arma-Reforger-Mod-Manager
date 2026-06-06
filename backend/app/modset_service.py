@@ -153,6 +153,40 @@ def create_modset(db: Session, user: User, payload: ModSetCreate) -> ModSetRead:
     return _modset_to_read(db, modset, user)
 
 
+def duplicate_modset(db: Session, user: User, modset_id: int) -> ModSetRead:
+    source = _get_accessible_modset(db, user, modset_id)
+    if not source:
+        raise ModSetNotFoundError("Modset not found")
+
+    duplicate = ModSet(
+        name=_build_copy_name(db, source.name),
+        owner_user_id=user.id,
+        shared=False,
+    )
+    db.add(duplicate)
+    db.flush()
+
+    source_rows = db.scalars(
+        select(UserMod).where(UserMod.modset_id == source.id).order_by(UserMod.id)
+    ).all()
+    for row in source_rows:
+        db.add(
+            UserMod(
+                modset_id=duplicate.id,
+                mod_id=row.mod_id,
+                current_version=row.current_version,
+                pinned=row.pinned,
+                is_core=row.is_core,
+                dependency_origin=row.dependency_origin,
+                tracking_reason=row.tracking_reason,
+            )
+        )
+
+    db.commit()
+    db.refresh(duplicate)
+    return _modset_to_read(db, duplicate, user)
+
+
 def update_modset(db: Session, user: User, modset_id: int, payload: ModSetUpdate) -> ModSetRead:
     modset = _get_accessible_modset(db, user, modset_id)
     if not modset:
@@ -233,6 +267,19 @@ def _get_accessible_modset(db: Session, user: User, modset_id: int) -> ModSet | 
 
 def _is_modset_accessible(user: User, modset: ModSet) -> bool:
     return bool(modset.shared or modset.owner_user_id == user.id)
+
+
+def _build_copy_name(db: Session, base_name: str) -> str:
+    candidate = f"{base_name} (copy)"
+    if not db.scalar(select(ModSet.id).where(func.lower(ModSet.name) == candidate.casefold())):
+        return candidate
+
+    index = 2
+    while True:
+        candidate = f"{base_name} (copy {index})"
+        if not db.scalar(select(ModSet.id).where(func.lower(ModSet.name) == candidate.casefold())):
+            return candidate
+        index += 1
 
 
 def _modset_to_read(db: Session, modset: ModSet, user: User) -> ModSetRead:

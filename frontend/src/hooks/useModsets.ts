@@ -11,6 +11,7 @@ export function useModsets({
     listModsets: () => Promise<Modset[]>;
     createModset: (name: string, shared?: boolean) => Promise<Modset>;
     updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<Modset>;
+    duplicateModset: (modsetId: number) => Promise<Modset>;
     deleteModset: (modsetId: number) => Promise<AuthUser>;
     activateModset: (modsetId: number) => Promise<AuthUser>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
@@ -88,6 +89,15 @@ export function useModsets({
     [api, loadModsets, setAuthUser],
   );
 
+  const duplicateModset = React.useCallback(
+    async (modsetId: number) => {
+      const duplicated = await api.duplicateModset(modsetId);
+      await loadModsets();
+      return duplicated;
+    },
+    [api, loadModsets],
+  );
+
   return {
     modsets,
     activeModsetId,
@@ -95,6 +105,7 @@ export function useModsets({
     activateModset,
     createModset,
     updateModset,
+    duplicateModset,
     deleteModset,
     exportModset: api.exportModset,
   };

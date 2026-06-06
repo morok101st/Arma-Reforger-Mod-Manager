@@ -44,6 +44,7 @@ export function useAppActions({
     activateModset: (modsetId: number) => Promise<unknown>;
     createModset: (name: string, shared?: boolean) => Promise<unknown>;
     updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<unknown>;
+    duplicateModset: (modsetId: number) => Promise<unknown>;
     deleteModset: (modsetId: number) => Promise<unknown>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
   };
@@ -199,6 +200,10 @@ export function useAppActions({
     await action.run(() => modsets.deleteModset(modsetId), { rethrow: true });
   }, [action, modsets]);
 
+  const duplicateModset = React.useCallback(async (modsetId: number) => {
+    await action.run(() => modsets.duplicateModset(modsetId), { rethrow: true });
+  }, [action, modsets]);
+
   const exportModset = React.useCallback(
     async (modsetId: number, modsetName: string) => {
       await action.run(
@@ -248,6 +253,7 @@ export function useAppActions({
     activateModset,
     createModset,
     updateModset,
+    duplicateModset,
     deleteModset,
     exportModset,
   };

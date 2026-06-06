@@ -117,6 +117,10 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(`/modsets/${modsetId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<Modset>(response, "Could not rename modset.");
     },
+    async duplicateModset(modsetId: number) {
+      const response = await request(`/modsets/${modsetId}/duplicate`, { method: "POST" });
+      return readJsonOrThrow<Modset>(response, "Could not duplicate modset.");
+    },
     async deleteModset(modsetId: number) {
       const response = await request(`/modsets/${modsetId}`, { method: "DELETE" });
       return readJsonOrThrow<AuthUser>(response, "Could not delete modset.");
