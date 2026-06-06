@@ -28,6 +28,15 @@ export function useAppController() {
     detailRef.current?.scrollTo({ top: 0 });
   }, [mods.selected?.id, view.showDashboard, view.showModsetAdmin, view.showUserAdmin]);
 
+  React.useEffect(() => {
+    if (auth.authUser?.role !== "admin") {
+      return;
+    }
+
+    admin.loadModsets().catch(() => null);
+    admin.loadDiscordWebhooks().catch(() => null);
+  }, [admin.loadDiscordWebhooks, admin.loadModsets, auth.authUser?.role, modsets.modsets]);
+
   const openMod = React.useCallback(
     (id: string) => {
       mods.openMod(id);
