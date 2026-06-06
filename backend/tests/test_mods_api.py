@@ -532,6 +532,14 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertEqual(other_refresh.status_code, 200, other_refresh.text)
 
             self.assertEqual(webhook_mock.call_count, 1)
+            _, payload = webhook_mock.call_args.args
+            fields = {entry["name"]: entry["value"] for entry in payload["embeds"][0]["fields"]}
+            self.assertIn("Workshop", fields)
+            self.assertIn("ARMM", fields)
+            self.assertNotIn("Changelog", fields)
+            self.assertIn(f"modset={modset_id}", fields["ARMM"])
+            self.assertIn("mod=UPDATEMOD001", fields["ARMM"])
+            self.assertTrue(fields["ARMM"].startswith("[Open in ARMM]("))
             with self.SessionLocal() as db:
                 deliveries = db.query(DiscordWebhookDelivery).all()
                 self.assertEqual(len(deliveries), 1)

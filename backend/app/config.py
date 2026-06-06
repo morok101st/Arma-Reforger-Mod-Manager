@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     armm_secret_key: str = "development-only-change-me"
     armm_admin_username: str | None = None
     armm_admin_password: str | None = None
+    armm_public_url: str | None = None
     database_url: str = "sqlite:///./armm.db"
     workshop_base_url: str = "https://reforger.armaplatform.com/workshop"
     scrape_interval_minutes: int = 60

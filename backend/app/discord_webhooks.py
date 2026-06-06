@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import DiscordWebhook, DiscordWebhookDelivery, ModSet
 from app.schema_enums import ModStatus
 from app.schemas_discord import DiscordWebhookCreate, DiscordWebhookRead, DiscordWebhookUpdate
@@ -121,7 +122,7 @@ async def notify_update_available(db: Session, modset_id: int, mod: ModRead) -> 
             continue
 
         try:
-            await _post_discord_webhook(decrypt_webhook_url(webhook.webhook_url), _build_update_payload(modset.name, mod))
+            await _post_discord_webhook(decrypt_webhook_url(webhook.webhook_url), _build_update_payload(modset.name, modset_id, mod))
         except Exception as exc:
             logger.warning(
                 "Discord webhook delivery failed for webhook_id=%s modset_id=%s mod_id=%s: %s",
@@ -200,7 +201,7 @@ async def _post_discord_webhook(webhook_url: str, payload: dict[str, Any]) -> No
         response.raise_for_status()
 
 
-def _build_update_payload(modset_name: str, mod: ModRead) -> dict[str, Any]:
+def _build_update_payload(modset_name: str, modset_id: int, mod: ModRead) -> dict[str, Any]:
     mod_name = mod.name or mod.id
     status = _coerce_mod_status(mod.status)
     status_label = {
@@ -210,7 +211,7 @@ def _build_update_payload(modset_name: str, mod: ModRead) -> dict[str, Any]:
         ModStatus.update_available: "Update available",
     }.get(status, "Unknown")
     workshop_url = mod.source_url or ""
-    changelog_url = f"{workshop_url.rstrip('/')}/changelog" if workshop_url else ""
+    app_url = _build_app_mod_url(modset_id, mod.id)
 
     fields: list[dict[str, Any]] = [
         {"name": "Modset", "value": modset_name, "inline": True},
@@ -221,8 +222,8 @@ def _build_update_payload(modset_name: str, mod: ModRead) -> dict[str, Any]:
     ]
     if workshop_url:
         fields.append({"name": "Workshop", "value": f"[Open workshop]({workshop_url})", "inline": True})
-    if changelog_url:
-        fields.append({"name": "Changelog", "value": f"[Open changelog]({changelog_url})", "inline": True})
+    if app_url:
+        fields.append({"name": "ARMM", "value": f"[Open in ARMM]({app_url})", "inline": True})
 
     return {
         "username": "ARMM",
@@ -254,6 +255,16 @@ def _build_test_payload(webhook_name: str) -> dict[str, Any]:
             }
         ],
     }
+
+
+def _build_app_mod_url(modset_id: int, mod_id: str) -> str | None:
+    settings = get_settings()
+    base_url = (settings.armm_public_url or "").strip()
+    if not base_url:
+        base_url = settings.cors_origin_list[0] if settings.cors_origin_list else ""
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/?{urlencode({'modset': modset_id, 'mod': mod_id})}"
 
 
 def _coerce_mod_status(value: object) -> ModStatus | None:

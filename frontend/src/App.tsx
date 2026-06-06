@@ -14,6 +14,16 @@ import { useAppController } from "./hooks/useAppController";
 export function App() {
   const { detailRef, view, auth, modsets, mods, admin, actions, openMod } = useAppController();
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  const deepLinkRef = React.useRef(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modsetParam = params.get("modset");
+    const modParam = params.get("mod");
+    const modsetId = modsetParam ? Number(modsetParam) : null;
+    return {
+      modsetId: Number.isInteger(modsetId) && modsetId ? modsetId : null,
+      modId: modParam?.trim() || null,
+    };
+  });
   const activeModsetName = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId)?.name ?? "Default";
   const openSidebar = React.useCallback(() => setMobileSidebarOpen(true), []);
   const closeSidebar = React.useCallback(() => setMobileSidebarOpen(false), []);
@@ -56,6 +66,25 @@ export function App() {
     document.body.classList.add("drawer-open");
     return () => document.body.classList.remove("drawer-open");
   }, [mobileSidebarOpen]);
+
+  React.useEffect(() => {
+    const deepLink = deepLinkRef.current();
+    if (!auth.authUser || (!deepLink.modsetId && !deepLink.modId)) {
+      return;
+    }
+
+    if (deepLink.modsetId && modsets.activeModsetId !== deepLink.modsetId && modsets.modsets.some((modset) => modset.id === deepLink.modsetId)) {
+      actions.activateModset(deepLink.modsetId).catch(() => null);
+      return;
+    }
+
+    if (deepLink.modId && mods.mods.some((mod) => mod.id === deepLink.modId)) {
+      openMod(deepLink.modId);
+      view.openModView();
+      deepLinkRef.current = () => ({ modsetId: null, modId: null });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [actions, auth.authUser, modsets.activeModsetId, modsets.modsets, mods.mods, openMod, view]);
 
   if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
