@@ -18,6 +18,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
 - Can send Discord update alerts through admin-managed webhooks without code changes.
 - Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
+- Discord update alerts can link directly back into ARMM for the affected mod and modset.
 
 ## Functional scope (UI)
 
@@ -39,6 +40,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 ### Modsets
 
 - Create, rename, activate, share, and delete modsets.
+- Duplicate modsets including their tracked mod entries. Duplicates are created as private copies and are not automatically added to existing webhook scopes.
 - Modsets are owned by the user who created them.
 - Private modsets are visible and editable only to their owner.
 - Shared modsets are visible and editable to other users.
@@ -51,6 +53,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Admin features: create users, change roles, enable/disable users, reset passwords.
 - Admin-managed Discord webhooks for update alerts: create, edit, disable, delete, and test webhooks in the UI.
 - Discord webhooks can be limited to specific modsets directly in the webhook dialog.
+- Discord update notifications can open the affected mod directly inside ARMM when `ARMM_PUBLIC_URL` is configured.
 - Audit log with filters (Auth, User, Mod, Failures).
 
 ## Security features
@@ -74,6 +77,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Discord webhook targets are stored server-side and alerts are deduplicated per webhook, modset, mod, and latest version.
 - Discord webhook URLs are stored encrypted server-side and only shown in masked form in the UI.
 - Each Discord webhook can be assigned to one or more modsets; if no explicit scope is chosen on creation, it defaults to all current modsets.
+- Discord notification links use `ARMM_PUBLIC_URL` when configured, otherwise they fall back to the first `CORS_ORIGINS` entry.
 - Frontend Nginx adds security headers (including CSP, X-Frame-Options, Referrer-Policy, nosniff).
 - API documentation is protected and available only for authenticated users (`/api/docs`, `/api/openapi.json`).
 - The browser path `/api` redirects to `/api/docs` in the frontend container.
@@ -92,6 +96,7 @@ Base path behind the frontend proxy: `/api`
 - `DELETE /api/mods/{mod_id}?deactivate_orphan_dependencies=true`
 - `POST /api/mods/{mod_id}/refresh`
 - `GET/POST/PATCH/DELETE /api/modsets...`
+- `POST /api/modsets/{modset_id}/duplicate`
 - `GET /api/modsets/{modset_id}/export`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET/POST/PATCH/DELETE /api/discord-webhooks...` (admin)
@@ -122,12 +127,14 @@ At minimum, change these values:
 
 - `ARMM_SECRET_KEY`
 - `ARMM_ADMIN_PASSWORD`
+- `ARMM_PUBLIC_URL`
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL` (including the correct DB password)
 - `CORS_ORIGINS` for your domain
 - `ARMM_IMAGE_TAG` if you want to pin the example stack to a specific release tag
-- `FRONTEND_API_BASE_URL` is not needed for the GHCR release images; the frontend image is built with `/api` already.
 - `ARMM_SECRET_KEY` must be set to a unique strong value in production. There is no fallback secret anymore.
+
+`ARMM_PUBLIC_URL` should point to the externally reachable ARMM URL, for example `https://armm.example.com`. It is used for Discord notifications that link directly back to the affected mod inside ARMM.
 
 Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
