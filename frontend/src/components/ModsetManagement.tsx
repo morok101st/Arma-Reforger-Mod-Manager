@@ -133,53 +133,55 @@ export function ModsetManagement({
                   · {modset.is_owner ? "Owner: you" : `Owner: ${modset.owner_username ?? "unknown"}`}
                 </small>
               </div>
-              <button
-                className="secondary-button compact"
-                disabled={loading}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openEditDialog(modset);
-                }}
-                type="button"
-              >
-                <Pencil size={16} />
-                Edit
-              </button>
-              <button
-                className="secondary-button compact"
-                disabled={loading}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  duplicateModset(modset.id).catch(() => null);
-                }}
-                type="button"
-              >
-                <Copy size={16} />
-                Duplicate
-              </button>
-              <button
-                className="secondary-button compact danger-button"
-                disabled={loading || modsets.length <= 1}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setDeleteModsetId(modset.id);
-                }}
-                type="button"
-              >
-                Delete
-              </button>
-              <button
-                className="secondary-button compact"
-                disabled={loading}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  exportModset(modset.id, modset.name).catch(() => null);
-                }}
-                type="button"
-              >
-                <Download size={16} />
-                Export
-              </button>
+              <div className="row-actions modset-row-actions">
+                <button
+                  className="secondary-button compact"
+                  disabled={loading}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEditDialog(modset);
+                  }}
+                  type="button"
+                >
+                  <Pencil size={16} />
+                  Edit
+                </button>
+                <button
+                  className="secondary-button compact"
+                  disabled={loading}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    duplicateModset(modset.id).catch(() => null);
+                  }}
+                  type="button"
+                >
+                  <Copy size={16} />
+                  Duplicate
+                </button>
+                <button
+                  className="secondary-button compact danger-button"
+                  disabled={loading || modsets.length <= 1}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setDeleteModsetId(modset.id);
+                  }}
+                  type="button"
+                >
+                  Delete
+                </button>
+                <button
+                  className="secondary-button compact"
+                  disabled={loading}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    exportModset(modset.id, modset.name).catch(() => null);
+                  }}
+                  type="button"
+                >
+                  <Download size={16} />
+                  Export
+                </button>
+              </div>
             </article>
           );
         })}

@@ -786,7 +786,11 @@ button:disabled {
 }
 
 .webhook-row-actions {
-  flex-wrap: wrap;
+  display: grid;
+  gap: 8px;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  max-width: 100%;
 }
 
 .webhook-modset-selection {
@@ -956,7 +960,7 @@ button:disabled {
 
 .modset-edit-row {
   cursor: pointer;
-  grid-template-columns: minmax(200px, 1fr) auto auto auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(360px, auto);
 }
 
 .modset-edit-row.active {
@@ -1314,9 +1318,13 @@ button:disabled {
 }
 
 .modset-row-actions {
-  display: flex;
+  display: grid;
   gap: 8px;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
   justify-content: flex-end;
+  justify-self: end;
+  max-width: 100%;
 }
 
 .checkbox-row {
@@ -1677,6 +1685,56 @@ button:focus-visible,
   .user-row,
   .webhook-row {
     grid-template-columns: 1fr;
+  }
+
+  .modset-edit-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modset-row-actions {
+    gap: 8px;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: row;
+    justify-self: start;
+    width: 100%;
+  }
+
+  .modset-row-actions .secondary-button.compact {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1120px) {
+  .modset-edit-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modset-row-actions {
+    gap: 8px;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: row;
+    justify-self: start;
+    width: 100%;
+  }
+
+  .modset-row-actions .secondary-button.compact {
+    width: 100%;
+  }
+
+  .webhook-row {
+    grid-template-columns: 1fr;
+  }
+
+  .webhook-row-actions {
+    gap: 8px;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: row;
+    justify-self: start;
+    width: 100%;
+  }
+
+  .webhook-row-actions .secondary-button.compact {
+    width: 100%;
   }
 }
 
