@@ -46,6 +46,15 @@ export type AuditLog = {
   created_at: string;
 };
 
+export type ModsetActivity = {
+  id: number;
+  actor_username: string | null;
+  action: string;
+  entity_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+};
+
 export type ModVersion = {
   id: number;
   version: string;

@@ -27,6 +27,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Metrics: tracked mods, updates, missing installed versions, dependency links.
 - “Needs attention” card with clear OK/Warning state.
 - Last automatic crawl and next scheduled crawl.
+- Recent modset changes showing the latest user actions such as adding mods, removing mods, or changing installed versions.
 
 ### Mod management
 
@@ -97,6 +98,7 @@ Base path behind the frontend proxy: `/api`
 - `POST /api/mods/{mod_id}/refresh`
 - `GET/POST/PATCH/DELETE /api/modsets...`
 - `POST /api/modsets/{modset_id}/duplicate`
+- `GET /api/modsets/{modset_id}/activity`
 - `GET /api/modsets/{modset_id}/export`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET/POST/PATCH/DELETE /api/discord-webhooks...` (admin)

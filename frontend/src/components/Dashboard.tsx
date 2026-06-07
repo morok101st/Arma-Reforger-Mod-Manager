@@ -1,22 +1,25 @@
 import React from "react";
-import { Activity, BarChart3, CheckCircle2, Clock, TriangleAlert } from "lucide-react";
+import { Activity, BarChart3, CheckCircle2, Clock, History, TriangleAlert } from "lucide-react";
 
-import { formatDate, getDashboardStats, UNKNOWN_VALUE } from "../lib/utils";
-import type { Mod, SchedulerStatus } from "../types";
+import { formatDate, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
+import type { Mod, ModsetActivity, SchedulerStatus } from "../types";
 import { Info, StatusIcon } from "./common";
 
 export function Dashboard({
   mods,
+  modsetActivity,
   schedulerStatus,
   openMod,
   activeModsetName,
 }: {
   mods: Mod[];
+  modsetActivity: ModsetActivity[];
   schedulerStatus: SchedulerStatus | null;
   openMod: (id: string) => void;
   activeModsetName: string;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
+  const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
 
   return (
     <>
@@ -92,6 +95,42 @@ export function Dashboard({
           )}
         </section>
       </div>
+
+      <section className="dashboard-card activity-card">
+        <div className="section-title-row">
+          <h3>Recent modset changes</h3>
+          <History size={20} />
+        </div>
+        {modsetActivity.length > 0 ? (
+          <div className="compact-list activity-list">
+            {modsetActivity.map((entry) => {
+              const canOpen = !!entry.entity_id && trackedModIds.has(entry.entity_id);
+              const content = (
+                <>
+                  <Activity size={20} />
+                  <span>
+                    <strong>{modsetActivityTitle(entry)}</strong>
+                    <small>{modsetActivitySummary(entry)}</small>
+                    <small>{formatDate(entry.created_at)}</small>
+                  </span>
+                </>
+              );
+
+              return canOpen ? (
+                <button key={entry.id} onClick={() => openMod(entry.entity_id!)} type="button">
+                  {content}
+                </button>
+              ) : (
+                <div key={entry.id} className="compact-list-entry static">
+                  {content}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted">No recent mod changes recorded for this modset.</p>
+        )}
+      </section>
     </>
   );
 }

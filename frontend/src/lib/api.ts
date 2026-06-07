@@ -1,4 +1,4 @@
-import type { AuditLog, AuthUser, DiscordWebhook, Mod, Modset, ModsetExport, SchedulerStatus, ThemePreference, UserAccount, UserRole } from "../types";
+import type { AuditLog, AuthUser, DiscordWebhook, Mod, Modset, ModsetActivity, ModsetExport, SchedulerStatus, ThemePreference, UserAccount, UserRole } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -132,6 +132,10 @@ export function createApiClient(onUnauthorized?: () => void) {
     async exportModset(modsetId: number) {
       const response = await request(`/modsets/${modsetId}/export`);
       return readJsonOrThrow<ModsetExport>(response, "Could not export modset.");
+    },
+    async listModsetActivity(modsetId: number, limit = 10) {
+      const response = await request(`/modsets/${modsetId}/activity?limit=${limit}`);
+      return readJsonOrThrow<ModsetActivity[]>(response, "Could not load modset activity.");
     },
     async listUsers() {
       const response = await request("/users");

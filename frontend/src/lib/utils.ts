@@ -1,4 +1,4 @@
-import type { AuditFilter, AuditLog, ChangelogEntry, Dependency, Mod, ModStatus, ModVersion, SortMode } from "../types";
+import type { AuditFilter, AuditLog, ChangelogEntry, Dependency, Mod, ModStatus, ModVersion, ModsetActivity, SortMode } from "../types";
 
 export const UNKNOWN_VALUE = "unknown";
 
@@ -63,6 +63,45 @@ export function auditDetailText(detail: Record<string, unknown>) {
     .slice(0, 6)
     .map(([key, value]) => `${auditDetailLabel(key)}: ${auditDetailValue(value)}`);
   return values.join(" · ");
+}
+
+export function modsetActivityTitle(entry: ModsetActivity) {
+  if (entry.action === "mod_created") return "Added mod";
+  if (entry.action === "mod_deleted") return "Removed mod";
+  if (entry.action === "mod_updated") {
+    if (entry.detail.current_version_changed) return "Changed installed version";
+    if (entry.detail.pinned_changed) return "Changed pin state";
+    return "Updated mod";
+  }
+  return auditActionLabel(entry.action);
+}
+
+export function modsetActivitySummary(entry: ModsetActivity) {
+  const modName = typeof entry.detail.mod_name === "string" && entry.detail.mod_name ? entry.detail.mod_name : entry.entity_id ?? "Unknown mod";
+  const actor = entry.actor_username ?? "system";
+
+  if (entry.action === "mod_created") {
+    const version = typeof entry.detail.current_version === "string" && entry.detail.current_version ? entry.detail.current_version : "No installed version";
+    return `${actor} added ${modName} · ${version}`;
+  }
+
+  if (entry.action === "mod_deleted") {
+    return `${actor} removed ${modName}`;
+  }
+
+  if (entry.action === "mod_updated") {
+    if (entry.detail.current_version_changed) {
+      const version = typeof entry.detail.current_version === "string" && entry.detail.current_version ? entry.detail.current_version : "No installed version";
+      return `${actor} set ${modName} to ${version}`;
+    }
+    if (entry.detail.pinned_changed) {
+      const pinned = entry.detail.pinned === true ? "pinned" : "unpinned";
+      return `${actor} ${pinned} ${modName}`;
+    }
+    return `${actor} updated ${modName}`;
+  }
+
+  return `${actor} · ${modName}`;
 }
 
 function auditDetailLabel(value: string) {

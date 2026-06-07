@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.audit import list_modset_activity
 from app.auth import require_current_user
 from app.database import get_db
 from app.modset_service import (
@@ -12,6 +13,7 @@ from app.modset_service import (
     create_modset,
     delete_modset,
     duplicate_modset,
+    ensure_accessible_modset,
     ensure_user_active_modset,
     export_modset,
     list_modsets,
@@ -19,6 +21,7 @@ from app.modset_service import (
 )
 from app.models import User
 from app.router_helpers import audit_event
+from app.schemas_audit import ModsetActivityRead
 from app.schemas_auth import AuthUserRead
 from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetRead, ModSetUpdate
 from app.user_service import auth_user_to_read
@@ -164,5 +167,19 @@ def api_export_modset(
 ) -> list[ModSetExportEntry]:
     try:
         return export_modset(db, current_user, modset_id)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/modsets/{modset_id}/activity", response_model=list[ModsetActivityRead])
+def api_modset_activity(
+    modset_id: int,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_current_user),
+) -> list[ModsetActivityRead]:
+    try:
+        ensure_accessible_modset(db, current_user, modset_id)
+        return list_modset_activity(db, modset_id, limit=limit)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

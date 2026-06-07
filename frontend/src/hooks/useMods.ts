@@ -1,7 +1,7 @@
 import React from "react";
 
 import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "../lib/utils";
-import type { AuthUser, Mod, SchedulerStatus, SortMode } from "../types";
+import type { AuthUser, Mod, ModsetActivity, SchedulerStatus, SortMode } from "../types";
 
 export function useMods({
   api,
@@ -10,6 +10,7 @@ export function useMods({
 }: {
   api: {
     listMods: (modsetId?: number | null) => Promise<Mod[]>;
+    listModsetActivity: (modsetId: number, limit?: number) => Promise<ModsetActivity[]>;
     getSchedulerStatus: () => Promise<SchedulerStatus>;
     createMod: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
     refreshMod: (id: string, modsetId?: number | null) => Promise<Mod>;
@@ -25,6 +26,7 @@ export function useMods({
   activeModsetId: number | null;
 }) {
   const [mods, setMods] = React.useState<Mod[]>([]);
+  const [modsetActivity, setModsetActivity] = React.useState<ModsetActivity[]>([]);
   const [schedulerStatus, setSchedulerStatus] = React.useState<SchedulerStatus | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [installedVersionEdit, setInstalledVersionEdit] = React.useState("");
@@ -45,12 +47,23 @@ export function useMods({
   const loadMods = React.useCallback(async () => {
     if (!activeModsetId) {
       setMods([]);
+      setModsetActivity([]);
       setSelectedId(null);
       return [];
     }
     const data = await api.listMods(activeModsetId);
     setMods(data);
     setSelectedId((current) => (current && data.some((mod) => mod.id === current) ? current : data[0]?.id ?? null));
+    return data;
+  }, [activeModsetId, api]);
+
+  const loadModsetActivity = React.useCallback(async () => {
+    if (!activeModsetId) {
+      setModsetActivity([]);
+      return [];
+    }
+    const data = await api.listModsetActivity(activeModsetId);
+    setModsetActivity(data);
     return data;
   }, [activeModsetId, api]);
 
@@ -63,13 +76,15 @@ export function useMods({
   React.useEffect(() => {
     if (!authUser) {
       setMods([]);
+      setModsetActivity([]);
       setSchedulerStatus(null);
       setSelectedId(null);
       return;
     }
     loadMods().catch(() => null);
+    loadModsetActivity().catch(() => null);
     loadSchedulerStatus().catch(() => null);
-  }, [activeModsetId, authUser, loadMods, loadSchedulerStatus]);
+  }, [activeModsetId, authUser, loadModsetActivity, loadMods, loadSchedulerStatus]);
 
   React.useEffect(() => {
     setInstalledVersionEdit(selected?.current_version ?? "");
@@ -93,21 +108,21 @@ export function useMods({
       if (!modsetId) throw new Error("No active modset selected.");
       const created = await api.createMod(id, currentVersion, modsetId);
       if (modsetId === activeModsetId) {
-        await loadMods();
+        await Promise.all([loadMods(), loadModsetActivity()]);
         setSelectedId(created.id);
       }
       return created;
     },
-    [activeModsetId, api, loadMods],
+    [activeModsetId, api, loadModsetActivity, loadMods],
   );
 
   const refreshMod = React.useCallback(
     async (id: string) => {
       if (!activeModsetId) return;
       await api.refreshMod(id, activeModsetId);
-      await loadMods();
+      await Promise.all([loadMods(), loadModsetActivity()]);
     },
-    [activeModsetId, api, loadMods],
+    [activeModsetId, api, loadModsetActivity, loadMods],
   );
 
   const removeMod = React.useCallback(
@@ -115,9 +130,9 @@ export function useMods({
       if (!activeModsetId) return;
       await api.deleteMod(id, activeModsetId, options);
       setSelectedId(null);
-      await loadMods();
+      await Promise.all([loadMods(), loadModsetActivity()]);
     },
-    [activeModsetId, api, loadMods],
+    [activeModsetId, api, loadModsetActivity, loadMods],
   );
 
   const updateInstalledVersion = React.useCallback(
@@ -126,14 +141,14 @@ export function useMods({
       const normalizedVersion = nextVersion.trim();
       if (!activeModsetId) return null;
       const updated = await api.updateMod(selected.id, { current_version: normalizedVersion || null }, activeModsetId, options);
-      await loadMods();
+      await Promise.all([loadMods(), loadModsetActivity()]);
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");
       setSaveState("saved");
       window.setTimeout(() => setSaveState("idle"), 3000);
       return updated;
     },
-    [activeModsetId, api, installedVersionEdit, loadMods, selected],
+    [activeModsetId, api, installedVersionEdit, loadModsetActivity, loadMods, selected],
   );
 
   const toggleChangelogVersion = React.useCallback((version: string) => {
@@ -147,6 +162,7 @@ export function useMods({
 
   return {
     mods,
+    modsetActivity,
     schedulerStatus,
     selected,
     selectedId,
@@ -163,6 +179,7 @@ export function useMods({
     setSearchQuery,
     setSelectedId,
     loadMods,
+    loadModsetActivity,
     loadSchedulerStatus,
     openMod,
     addMod,

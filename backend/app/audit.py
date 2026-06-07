@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import AuditLog, User
-from app.schemas_audit import AuditLogRead
+from app.schemas_audit import AuditLogRead, ModsetActivityRead
 
 
 def record_audit(
@@ -35,6 +35,21 @@ def list_audit_logs(db: Session, limit: int = 100) -> list[AuditLogRead]:
     limit = max(1, min(limit, 500))
     logs = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)).all()
     return [AuditLogRead.model_validate(log) for log in logs]
+
+
+def list_modset_activity(db: Session, modset_id: int, limit: int = 20) -> list[ModsetActivityRead]:
+    limit = max(1, min(limit, 100))
+    logs = db.scalars(
+        select(AuditLog)
+        .where(
+            AuditLog.entity_type == "mod",
+            AuditLog.action.in_(("mod_created", "mod_updated", "mod_deleted")),
+            AuditLog.detail["modset_id"].as_integer() == modset_id,
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [ModsetActivityRead.model_validate(log) for log in logs]
 
 
 def _client_ip(request: Request | None) -> str | None:

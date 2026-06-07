@@ -152,7 +152,13 @@ export function App() {
           </div>
         </div>
         {view.showDashboard ? (
-          <Dashboard mods={mods.mods} schedulerStatus={mods.schedulerStatus} openMod={handleOpenMod} activeModsetName={activeModsetName} />
+          <Dashboard
+            mods={mods.mods}
+            modsetActivity={mods.modsetActivity}
+            schedulerStatus={mods.schedulerStatus}
+            openMod={handleOpenMod}
+            activeModsetName={activeModsetName}
+          />
         ) : view.showModsetAdmin ? (
           <ModsetManagement
             modsets={modsets.modsets}

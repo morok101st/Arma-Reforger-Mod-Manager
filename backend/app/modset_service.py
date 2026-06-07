@@ -261,6 +261,13 @@ def export_modset(db: Session, user: User, modset_id: int) -> list[ModSetExportE
     ]
 
 
+def ensure_accessible_modset(db: Session, user: User, modset_id: int) -> ModSet:
+    modset = _get_accessible_modset(db, user, modset_id)
+    if not modset:
+        raise ModSetNotFoundError("Modset not found")
+    return modset
+
+
 def _get_accessible_modset(db: Session, user: User, modset_id: int) -> ModSet | None:
     return db.scalar(select(ModSet).where(ModSet.id == modset_id, _accessible_modset_filter(user)))
 
