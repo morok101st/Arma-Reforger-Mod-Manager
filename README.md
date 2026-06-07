@@ -161,6 +161,30 @@ Note: On startup, an initial automatic crawl is scheduled/executed, then runs ac
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
 - The example compose file uses GHCR images from the latest tagged release and does not build locally.
 
+## Deployment checklist
+
+Before exposing ARMM to other users, verify these points:
+
+- Replace all placeholder secrets in `.env`, especially:
+  - `ARMM_SECRET_KEY`
+  - `ARMM_ADMIN_PASSWORD`
+  - `POSTGRES_PASSWORD`
+- Keep `.env` and the productive `docker-compose.yml` local only. Do not commit them.
+- Set `ARMM_PUBLIC_URL` to the exact externally reachable URL of the application.
+- Set `CORS_ORIGINS` to the exact frontend origins that should be allowed.
+- Adjust Traefik host/domain labels in `docker-compose.yml` to your real domain.
+- Use HTTPS only at the reverse proxy layer.
+- Make sure `/api`, `/api/docs`, and `/api/openapi.json` are only reachable through the intended public domain/proxy path.
+- After the first production start, log in with the bootstrap admin and verify that no default credentials remain in use.
+- If Discord webhooks are configured, treat them as secrets and rotate them if they were ever exposed.
+
+## Backup and recovery
+
+- Back up the PostgreSQL volume regularly. It contains users, sessions, modsets, tracked mods, audit logs, changelog data, and encrypted Discord webhook targets.
+- Keep a backup of your production `.env` outside the server, because it contains required runtime secrets.
+- If `ARMM_SECRET_KEY` is changed later, existing sessions become invalid and encrypted Discord webhook URLs must be re-entered.
+- Test restore procedures, not only backups. A backup is only useful if you have verified that the database and `.env` can be restored together.
+
 Only anonymized example files are meant for Git:
 
 - `.env.example`
