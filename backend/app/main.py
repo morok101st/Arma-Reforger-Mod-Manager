@@ -3,6 +3,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
 from app.auth import bootstrap_admin, enforce_origin_for_unsafe_methods
@@ -62,6 +63,16 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(modsets_router)
     app.include_router(mods_router)
+
+    def custom_openapi() -> dict[str, object]:
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+        schema["servers"] = [{"url": "/api"}]
+        app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi
     return app
 
 
