@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy.exc import OperationalError
 from sqlalchemy import select
 
 from app.config import get_settings
@@ -99,9 +100,12 @@ def _update_next_run_at() -> None:
 
 def _last_completed_scheduler_run() -> SchedulerRun | None:
     with SessionLocal() as db:
-        return db.scalar(
-            select(SchedulerRun)
-            .where(SchedulerRun.completed_at.is_not(None))
-            .order_by(SchedulerRun.completed_at.desc())
-            .limit(1)
-        )
+        try:
+            return db.scalar(
+                select(SchedulerRun)
+                .where(SchedulerRun.completed_at.is_not(None))
+                .order_by(SchedulerRun.completed_at.desc())
+                .limit(1)
+            )
+        except OperationalError:
+            return None
