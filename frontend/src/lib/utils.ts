@@ -7,7 +7,7 @@ export function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     hour: "2-digit",
-    hour12: false,
+    hour12: true,
     minute: "2-digit",
     month: "2-digit",
     year: "numeric",
