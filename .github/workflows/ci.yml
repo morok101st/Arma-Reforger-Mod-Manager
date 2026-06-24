@@ -20,7 +20,7 @@ jobs:
       ARMM_ADMIN_USERNAME: admin
       ARMM_ADMIN_PASSWORD: very-secure-admin-pass
       WORKSHOP_BASE_URL: https://example.invalid/workshop
-      SCRAPE_INTERVAL_MINUTES: 60
+      ARMM_SCHEDULER_TIMEZONE: Europe/Berlin
       CORS_ORIGINS: http://localhost:5173
     steps:
       - name: Checkout
