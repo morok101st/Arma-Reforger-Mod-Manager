@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import asyncio
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from app.models import AuditLog, DiscordWebhookDelivery, Mod, UserMod
 from app.schema_enums import ModStatus, TrackingReason
 from app.schemas_mods import ModRead, RefreshResult
 from app.scraper import ScrapedMod
+from app.services import refresh_all_mods
 from tests.support import ApiTestCase
 
 
@@ -471,6 +473,60 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertIsNone(dependency_mapping.current_version)
                 self.assertTrue(dependency_mapping.dependency_origin)
 
+    def test_manual_refresh_does_not_send_update_alert(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Alerts"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            webhook_response = client.post(
+                "/discord-webhooks",
+                json={
+                    "name": "Alerts",
+                    "webhook_url": "https://discord.com/api/webhooks/1234567890/abcdefghijklmnopqrstuvwxyz",
+                    "is_active": True,
+                    "modset_ids": [modset_id],
+                },
+            )
+            self.assertEqual(webhook_response.status_code, 201, webhook_response.text)
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="UPDATEMOD001",
+                        name="Update Mod",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/UPDATEMOD001-Update-Mod",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="UPDATEMOD001", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            with (
+                patch(
+                    "app.services.WorkshopScraper.fetch_mod",
+                    autospec=True,
+                    return_value=ScrapedMod(
+                        id="UPDATEMOD001",
+                        name="Update Mod",
+                        latest_version="2.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/UPDATEMOD001-Update-Mod",
+                    ),
+                ),
+                patch("app.discord_webhooks._post_discord_webhook", autospec=True, return_value=None) as webhook_mock,
+            ):
+                refresh_response = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={modset_id}")
+                self.assertEqual(refresh_response.status_code, 200, refresh_response.text)
+
+            self.assertEqual(webhook_mock.call_count, 0)
+            with self.SessionLocal() as db:
+                deliveries = db.query(DiscordWebhookDelivery).all()
+                self.assertEqual(len(deliveries), 0)
+
     def test_update_alert_is_sent_once_per_latest_version_and_webhook(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
@@ -522,14 +578,9 @@ class ModsApiTestCase(ApiTestCase):
                 ),
                 patch("app.discord_webhooks._post_discord_webhook", autospec=True, return_value=None) as webhook_mock,
             ):
-                first_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={modset_id}")
-                self.assertEqual(first_refresh.status_code, 200, first_refresh.text)
-
-                second_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={modset_id}")
-                self.assertEqual(second_refresh.status_code, 200, second_refresh.text)
-
-                other_refresh = client.post(f"/mods/UPDATEMOD001/refresh?modset_id={other_modset_id}")
-                self.assertEqual(other_refresh.status_code, 200, other_refresh.text)
+                with self.SessionLocal() as db:
+                    asyncio.run(refresh_all_mods(db, send_update_notifications=True))
+                    asyncio.run(refresh_all_mods(db, send_update_notifications=True))
 
             self.assertEqual(webhook_mock.call_count, 1)
             _, payload = webhook_mock.call_args.args

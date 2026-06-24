@@ -9,7 +9,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Supports multiple modsets per user. A modset is private by default and can be marked `shared` by its owner so other users can see and manage it.
 - Compares `Installed Version` vs. `Latest Version`.
 - Uses a dedicated `No installed version` state for tracked mods without an installed target version.
-- Runs an automatic crawl on startup and then at a configured interval.
+- Runs an automatic crawl twice per day at fixed times.
 - Shows dependency and `Required by` relations between tracked mods.
 - Automatically adds dependencies to tracking when an installed version is set.
 - Preserves dependency origin information even when a dependency mod is later edited manually.
@@ -19,12 +19,14 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Can send Discord update alerts through admin-managed webhooks without code changes.
 - Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
 - Discord update alerts can link directly back into ARMM for the affected mod and modset.
+- Discord update alerts are emitted only during the scheduled automatic runs.
 
 ## Functional scope (UI)
 
 ### Dashboard
 
 - Metrics: tracked mods, updates, missing installed versions, dependency links.
+- Auto schedule summary showing the configured timezone and daily run times.
 - “Needs attention” card with clear OK/Warning state.
 - Last automatic crawl and next scheduled crawl.
 - Recent modset changes showing the latest user actions such as adding mods, removing mods, or changing installed versions.
@@ -76,6 +78,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Audit trail for login/logout, password actions, user changes, mod changes, modset changes, and webhook changes.
 - Modset ownership and `shared` state are persisted and enforced server-side.
 - Discord webhook targets are stored server-side and alerts are deduplicated per webhook, modset, mod, and latest version.
+- Discord update alerts are only sent from the scheduled automatic runs at `10:00` and `19:00` in the configured deployment timezone.
 - Discord webhook URLs are stored encrypted server-side and only shown in masked form in the UI.
 - Each Discord webhook can be assigned to one or more modsets; if no explicit scope is chosen on creation, it defaults to all current modsets.
 - Discord notification links use `ARMM_PUBLIC_URL` when configured, otherwise they fall back to the first `CORS_ORIGINS` entry.
@@ -130,6 +133,7 @@ At minimum, change these values:
 - `ARMM_SECRET_KEY`
 - `ARMM_ADMIN_PASSWORD`
 - `ARMM_PUBLIC_URL`
+- `ARMM_SCHEDULER_TIMEZONE`
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL` (including the correct DB password)
 - `CORS_ORIGINS` for your domain
@@ -137,6 +141,8 @@ At minimum, change these values:
 - `ARMM_SECRET_KEY` must be set to a unique strong value in production. There is no fallback secret anymore.
 
 `ARMM_PUBLIC_URL` should point to the externally reachable ARMM URL, for example `https://armm.example.com`. It is used for Discord notifications that link directly back to the affected mod inside ARMM.
+
+`ARMM_SCHEDULER_TIMEZONE` defines the deployment timezone used for the automatic runs. ARMM checks for updates twice per day at `10:00` and `19:00` in that timezone.
 
 Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
@@ -153,11 +159,11 @@ docker compose up -d
 - Browser entry for authenticated API docs: `https://<your-domain>/api`
 - API docs (after login): `https://<your-domain>/api/docs`
 
-Note: On startup, an initial automatic crawl is scheduled/executed, then runs according to `SCRAPE_INTERVAL_MINUTES`.
+Note: The automatic crawl runs twice per day at `10:00` and `19:00` in `ARMM_SCHEDULER_TIMEZONE`. Discord update alerts are emitted only from those automatic runs, not from manual refreshes or manual version edits.
 
 ## Operations
 
-- Configure scheduler interval with `SCRAPE_INTERVAL_MINUTES` in `.env`.
+- Configure the deployment timezone for automatic runs with `ARMM_SCHEDULER_TIMEZONE` in `.env`.
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
 - Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.

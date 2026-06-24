@@ -34,6 +34,14 @@ export function Dashboard({
         <Info label="Updates" value={String(stats.updateAvailable)} />
         <Info label="No installed version" value={String(stats.notInstalled)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
+        <Info
+          label="Auto schedule"
+          value={
+            schedulerStatus
+              ? `${schedulerStatus.automatic_run_times.join(" / ")} (${schedulerStatus.scheduler_timezone})`
+              : null
+          }
+        />
         <Info label="Last auto crawl" value={formatDate(schedulerStatus?.last_automatic_completed_at ?? null)} />
         <Info label="Next auto crawl" value={formatDate(schedulerStatus?.next_automatic_run_at ?? null)} />
       </div>

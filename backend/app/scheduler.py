@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import select
@@ -8,6 +9,9 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.models import SchedulerRun
 from app.services import refresh_all_mods
+
+AUTOMATIC_RUN_TIMES = ["10:00", "19:00"]
+SCHEDULER_JOB_ID = "refresh-workshop-mods"
 
 _scheduler: BackgroundScheduler | None = None
 _last_automatic_started_at: datetime | None = None
@@ -22,13 +26,13 @@ def start_scheduler() -> BackgroundScheduler:
     global _scheduler
 
     settings = get_settings()
-    scheduler = BackgroundScheduler(timezone="UTC")
+    scheduler = BackgroundScheduler(timezone=ZoneInfo(settings.armm_scheduler_timezone))
     scheduler.add_job(
         _refresh_job,
-        "interval",
-        minutes=settings.scrape_interval_minutes,
-        id="refresh-workshop-mods",
-        next_run_time=datetime.now(timezone.utc),
+        "cron",
+        hour="10,19",
+        minute=0,
+        id=SCHEDULER_JOB_ID,
         replace_existing=True,
         max_instances=1,
     )
@@ -43,7 +47,8 @@ def get_scheduler_status() -> dict[str, object]:
     _update_next_run_at()
     last_run = _last_completed_scheduler_run()
     return {
-        "scrape_interval_minutes": settings.scrape_interval_minutes,
+        "scheduler_timezone": settings.armm_scheduler_timezone,
+        "automatic_run_times": AUTOMATIC_RUN_TIMES,
         "last_automatic_started_at": _last_automatic_started_at or (last_run.started_at if last_run else None),
         "last_automatic_completed_at": _last_automatic_completed_at or (last_run.completed_at if last_run else None),
         "next_automatic_run_at": _next_automatic_run_at,
@@ -63,7 +68,7 @@ def _refresh_job() -> None:
     db.add(run)
     db.commit()
     try:
-        result = asyncio.run(refresh_all_mods(db))
+        result = asyncio.run(refresh_all_mods(db, send_update_notifications=True))
         _last_refreshed = result.refreshed
         _last_failed = result.failed
         _last_automatic_completed_at = datetime.now(timezone.utc)
@@ -88,7 +93,7 @@ def _update_next_run_at() -> None:
         _next_automatic_run_at = None
         return
 
-    job = _scheduler.get_job("refresh-workshop-mods")
+    job = _scheduler.get_job(SCHEDULER_JOB_ID)
     _next_automatic_run_at = job.next_run_time if job else None
 
 

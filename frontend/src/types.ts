@@ -107,7 +107,8 @@ export type ChangelogEntry = {
 };
 
 export type SchedulerStatus = {
-  scrape_interval_minutes: number;
+  scheduler_timezone: string;
+  automatic_run_times: string[];
   last_automatic_started_at: string | null;
   last_automatic_completed_at: string | null;
   next_automatic_run_at: string | null;

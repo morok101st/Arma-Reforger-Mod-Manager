@@ -18,6 +18,9 @@ from app.models import User
 
 
 class DummyScheduler:
+    def get_job(self, job_id: str):
+        return None
+
     def shutdown(self, wait: bool = False) -> None:
         return None
 

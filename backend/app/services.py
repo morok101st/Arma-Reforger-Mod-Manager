@@ -51,7 +51,7 @@ async def create_mod(db: Session, payload: ModCreate, modset_id: int) -> ModRead
         user_mod.tracking_reason = "manual"
 
     db.commit()
-    await refresh_mod(db, payload.id, modset_id)
+    await refresh_mod(db, payload.id, modset_id, send_update_notifications=False)
     read = get_mod_read(db, payload.id, modset_id)
     assert read is not None
     return read
@@ -64,6 +64,7 @@ async def update_user_mod(
     modset_id: int,
     provided_fields: set[str] | None = None,
     deactivate_orphan_dependencies: bool = False,
+    send_update_notifications: bool = False,
 ) -> ModRead | None:
     mod = db.get(Mod, mod_id)
     if not mod:
@@ -95,13 +96,13 @@ async def update_user_mod(
     # tracking is still applied for the active modset.
     if not previous_current_version and current_version:
         try:
-            return await refresh_mod(db, mod_id, modset_id)
+            return await refresh_mod(db, mod_id, modset_id, send_update_notifications=send_update_notifications)
         except Exception:
             refreshed = get_mod_or_none(db, mod_id, modset_id)
             if refreshed:
                 await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
             read = get_mod_read(db, mod_id, modset_id)
-            if read:
+            if read and send_update_notifications:
                 await notify_update_available(db, modset_id, read)
             return read
 
@@ -109,12 +110,12 @@ async def update_user_mod(
     if refreshed:
         await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
     read = get_mod_read(db, mod_id, modset_id)
-    if read:
+    if read and send_update_notifications:
         await notify_update_available(db, modset_id, read)
     return read
 
 
-async def refresh_mod(db: Session, mod_id: str, modset_id: int) -> ModRead:
+async def refresh_mod(db: Session, mod_id: str, modset_id: int, send_update_notifications: bool = False) -> ModRead:
     scraper = WorkshopScraper(get_settings().workshop_base_url)
     scraped = await scraper.fetch_mod(mod_id)
     upsert_scraped_mod(db, scraped)
@@ -123,24 +124,25 @@ async def refresh_mod(db: Session, mod_id: str, modset_id: int) -> ModRead:
     await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
     read = get_mod_read(db, mod_id, modset_id)
     assert read is not None
-    await notify_update_available(db, modset_id, read)
+    if send_update_notifications:
+        await notify_update_available(db, modset_id, read)
     return read
 
 
-async def refresh_all_mods(db: Session) -> RefreshResult:
+async def refresh_all_mods(db: Session, send_update_notifications: bool = False) -> RefreshResult:
     mod_ids = list(db.scalars(select(UserMod.mod_id).distinct().order_by(UserMod.mod_id)).all())
     failed: dict[str, str] = {}
     refreshed = 0
     for mod_id in mod_ids:
         try:
-            await refresh_mod_for_all_modsets(db, mod_id)
+            await refresh_mod_for_all_modsets(db, mod_id, send_update_notifications=send_update_notifications)
             refreshed += 1
         except Exception as exc:
             failed[mod_id] = str(exc)
     return RefreshResult(refreshed=refreshed, failed=failed)
 
 
-async def refresh_mod_for_all_modsets(db: Session, mod_id: str) -> None:
+async def refresh_mod_for_all_modsets(db: Session, mod_id: str, send_update_notifications: bool = False) -> None:
     # Refreshes global workshop data once, then updates dependency tracking in each modset that tracks the mod.
     scraper = WorkshopScraper(get_settings().workshop_base_url)
     scraped = await scraper.fetch_mod(mod_id)
@@ -153,7 +155,7 @@ async def refresh_mod_for_all_modsets(db: Session, mod_id: str) -> None:
             continue
         await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
         read = get_mod_read(db, mod_id, modset_id)
-        if read:
+        if read and send_update_notifications:
             await notify_update_available(db, modset_id, read)
 
 
