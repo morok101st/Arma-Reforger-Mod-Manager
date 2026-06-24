@@ -1,7 +1,7 @@
 import React from "react";
 import { Activity, BarChart3, CheckCircle2, Clock, History, TriangleAlert } from "lucide-react";
 
-import { formatDate, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
+import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
 import type { Mod, ModsetActivity, SchedulerStatus } from "../types";
 import { Info, StatusIcon } from "./common";
 
@@ -11,12 +11,22 @@ export function Dashboard({
   schedulerStatus,
   openMod,
   activeModsetName,
+  modsetActivityPage,
+  canPageBackModsetActivity,
+  canPageForwardModsetActivity,
+  previousModsetActivityPage,
+  nextModsetActivityPage,
 }: {
   mods: Mod[];
   modsetActivity: ModsetActivity[];
   schedulerStatus: SchedulerStatus | null;
   openMod: (id: string) => void;
   activeModsetName: string;
+  modsetActivityPage: number;
+  canPageBackModsetActivity: boolean;
+  canPageForwardModsetActivity: boolean;
+  previousModsetActivityPage: () => void;
+  nextModsetActivityPage: () => void;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
   const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
@@ -31,19 +41,15 @@ export function Dashboard({
 
       <div className="dashboard-stats">
         <Info label="Tracked mods" value={String(stats.total)} />
-        <Info label="Updates" value={String(stats.updateAvailable)} />
-        <Info label="No installed version" value={String(stats.notInstalled)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
         <Info
           label="Auto schedule"
           value={
             schedulerStatus
-              ? `${schedulerStatus.automatic_run_times.join(" / ")} (${schedulerStatus.scheduler_timezone})`
+              ? `${schedulerStatus.automatic_run_times.map(formatScheduleTime).join(" / ")} (${schedulerStatus.scheduler_timezone})`
               : null
           }
         />
-        <Info label="Last auto crawl" value={formatDate(schedulerStatus?.last_automatic_completed_at ?? null)} />
-        <Info label="Next auto crawl" value={formatDate(schedulerStatus?.next_automatic_run_at ?? null)} />
       </div>
 
       <section className="dashboard-card version-health-card">
@@ -138,6 +144,17 @@ export function Dashboard({
         ) : (
           <p className="muted">No recent mod changes recorded for this modset.</p>
         )}
+        <div className="list-pagination">
+          <span className="muted">{`Page ${modsetActivityPage + 1}`}</span>
+          <div className="dialog-actions">
+            <button className="secondary-button compact" disabled={!canPageBackModsetActivity} onClick={previousModsetActivityPage} type="button">
+              Previous
+            </button>
+            <button className="secondary-button compact" disabled={!canPageForwardModsetActivity} onClick={nextModsetActivityPage} type="button">
+              Next
+            </button>
+          </div>
+        </div>
       </section>
     </>
   );

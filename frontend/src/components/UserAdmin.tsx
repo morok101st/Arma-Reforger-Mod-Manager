@@ -23,6 +23,11 @@ export function UserAdmin({
   resetUserPassword,
   testDiscordWebhook,
   loadAuditLogs,
+  auditLogPage,
+  canPageBackAuditLogs,
+  canPageForwardAuditLogs,
+  previousAuditLogPage,
+  nextAuditLogPage,
 }: {
   users: UserAccount[];
   webhooks: DiscordWebhook[];
@@ -40,6 +45,11 @@ export function UserAdmin({
   resetUserPassword: (userId: number, password: string) => Promise<void>;
   testDiscordWebhook: (webhookId: number) => Promise<void>;
   loadAuditLogs: () => Promise<void>;
+  auditLogPage: number;
+  canPageBackAuditLogs: boolean;
+  canPageForwardAuditLogs: boolean;
+  previousAuditLogPage: () => void;
+  nextAuditLogPage: () => void;
 }) {
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newOwnPassword, setNewOwnPassword] = React.useState("");
@@ -331,6 +341,17 @@ export function UserAdmin({
               ))}
               {auditLogs.length === 0 && <p className="muted">No audit entries stored.</p>}
               {auditLogs.length > 0 && filteredAuditLogs.length === 0 && <p className="muted">No audit entries match this filter.</p>}
+            </div>
+            <div className="list-pagination">
+              <span className="muted">{`Page ${auditLogPage + 1}`}</span>
+              <div className="dialog-actions">
+                <button className="secondary-button compact" disabled={!canPageBackAuditLogs} onClick={previousAuditLogPage} type="button">
+                  Previous
+                </button>
+                <button className="secondary-button compact" disabled={!canPageForwardAuditLogs} onClick={nextAuditLogPage} type="button">
+                  Next
+                </button>
+              </div>
             </div>
           </section>
         </>

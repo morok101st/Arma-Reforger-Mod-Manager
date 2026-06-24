@@ -3,6 +3,8 @@ import React from "react";
 import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "../lib/utils";
 import type { AuthUser, Mod, ModsetActivity, SchedulerStatus, SortMode } from "../types";
 
+const MODSET_ACTIVITY_PAGE_SIZE = 10;
+
 export function useMods({
   api,
   authUser,
@@ -10,7 +12,7 @@ export function useMods({
 }: {
   api: {
     listMods: (modsetId?: number | null) => Promise<Mod[]>;
-    listModsetActivity: (modsetId: number, limit?: number) => Promise<ModsetActivity[]>;
+    listModsetActivity: (modsetId: number, limit?: number, offset?: number) => Promise<ModsetActivity[]>;
     getSchedulerStatus: () => Promise<SchedulerStatus>;
     createMod: (id: string, currentVersion: string | null, modsetId?: number | null) => Promise<Mod>;
     refreshMod: (id: string, modsetId?: number | null) => Promise<Mod>;
@@ -34,6 +36,8 @@ export function useMods({
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
+  const [modsetActivityPage, setModsetActivityPage] = React.useState(0);
+  const [canPageForwardModsetActivity, setCanPageForwardModsetActivity] = React.useState(false);
 
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
@@ -57,14 +61,20 @@ export function useMods({
     return data;
   }, [activeModsetId, api]);
 
-  const loadModsetActivity = React.useCallback(async () => {
+  const loadModsetActivity = React.useCallback(async (page = 0) => {
     if (!activeModsetId) {
       setModsetActivity([]);
+      setCanPageForwardModsetActivity(false);
+      setModsetActivityPage(0);
       return [];
     }
-    const data = await api.listModsetActivity(activeModsetId);
-    setModsetActivity(data);
-    return data;
+    const offset = page * MODSET_ACTIVITY_PAGE_SIZE;
+    const data = await api.listModsetActivity(activeModsetId, MODSET_ACTIVITY_PAGE_SIZE + 1, offset);
+    const visible = data.slice(0, MODSET_ACTIVITY_PAGE_SIZE);
+    setModsetActivity(visible);
+    setCanPageForwardModsetActivity(data.length > MODSET_ACTIVITY_PAGE_SIZE);
+    setModsetActivityPage(page);
+    return visible;
   }, [activeModsetId, api]);
 
   const loadSchedulerStatus = React.useCallback(async () => {
@@ -79,10 +89,12 @@ export function useMods({
       setModsetActivity([]);
       setSchedulerStatus(null);
       setSelectedId(null);
+      setModsetActivityPage(0);
+      setCanPageForwardModsetActivity(false);
       return;
     }
     loadMods().catch(() => null);
-    loadModsetActivity().catch(() => null);
+    loadModsetActivity(0).catch(() => null);
     loadSchedulerStatus().catch(() => null);
   }, [activeModsetId, authUser, loadModsetActivity, loadMods, loadSchedulerStatus]);
 
@@ -108,21 +120,21 @@ export function useMods({
       if (!modsetId) throw new Error("No active modset selected.");
       const created = await api.createMod(id, currentVersion, modsetId);
       if (modsetId === activeModsetId) {
-        await Promise.all([loadMods(), loadModsetActivity()]);
+        await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
         setSelectedId(created.id);
       }
       return created;
     },
-    [activeModsetId, api, loadModsetActivity, loadMods],
+    [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage],
   );
 
   const refreshMod = React.useCallback(
     async (id: string) => {
       if (!activeModsetId) return;
       await api.refreshMod(id, activeModsetId);
-      await Promise.all([loadMods(), loadModsetActivity()]);
+      await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
     },
-    [activeModsetId, api, loadModsetActivity, loadMods],
+    [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage],
   );
 
   const removeMod = React.useCallback(
@@ -130,9 +142,9 @@ export function useMods({
       if (!activeModsetId) return;
       await api.deleteMod(id, activeModsetId, options);
       setSelectedId(null);
-      await Promise.all([loadMods(), loadModsetActivity()]);
+      await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
     },
-    [activeModsetId, api, loadModsetActivity, loadMods],
+    [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage],
   );
 
   const updateInstalledVersion = React.useCallback(
@@ -141,15 +153,25 @@ export function useMods({
       const normalizedVersion = nextVersion.trim();
       if (!activeModsetId) return null;
       const updated = await api.updateMod(selected.id, { current_version: normalizedVersion || null }, activeModsetId, options);
-      await Promise.all([loadMods(), loadModsetActivity()]);
+      await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");
       setSaveState("saved");
       window.setTimeout(() => setSaveState("idle"), 3000);
       return updated;
     },
-    [activeModsetId, api, installedVersionEdit, loadModsetActivity, loadMods, selected],
+    [activeModsetId, api, installedVersionEdit, loadModsetActivity, loadMods, modsetActivityPage, selected],
   );
+
+  const previousModsetActivityPage = React.useCallback(() => {
+    if (modsetActivityPage <= 0) return;
+    loadModsetActivity(modsetActivityPage - 1).catch(() => null);
+  }, [loadModsetActivity, modsetActivityPage]);
+
+  const nextModsetActivityPage = React.useCallback(() => {
+    if (!canPageForwardModsetActivity) return;
+    loadModsetActivity(modsetActivityPage + 1).catch(() => null);
+  }, [canPageForwardModsetActivity, loadModsetActivity, modsetActivityPage]);
 
   const toggleChangelogVersion = React.useCallback((version: string) => {
     setExpandedChangelogVersions((previous) => {
@@ -163,6 +185,8 @@ export function useMods({
   return {
     mods,
     modsetActivity,
+    modsetActivityPage,
+    canPageForwardModsetActivity,
     schedulerStatus,
     selected,
     selectedId,
@@ -181,11 +205,14 @@ export function useMods({
     loadMods,
     loadModsetActivity,
     loadSchedulerStatus,
+    previousModsetActivityPage,
+    nextModsetActivityPage,
     openMod,
     addMod,
     refreshMod,
     removeMod,
     updateInstalledVersion,
     toggleChangelogVersion,
+    canPageBackModsetActivity: modsetActivityPage > 0,
   };
 }

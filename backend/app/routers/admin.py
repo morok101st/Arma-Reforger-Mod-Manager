@@ -398,10 +398,11 @@ def api_delete_user(
 @router.get("/audit", response_model=list[AuditLogRead])
 def api_list_audit_logs(
     limit: int = 100,
+    offset: int = 0,
     db: Session = Depends(get_db),
     _: User = Depends(require_admin_user),
 ) -> list[AuditLogRead]:
-    return list_audit_logs(db, limit=limit)
+    return list_audit_logs(db, limit=limit, offset=offset)
 
 
 def _ensure_admin_change_is_safe(db: Session, user_id: int, payload: UserUpdate) -> None:

@@ -1144,6 +1144,14 @@ button:disabled {
   margin-top: 14px;
 }
 
+.list-pagination {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
 .health-summary-grid {
   display: grid;
   gap: 14px;

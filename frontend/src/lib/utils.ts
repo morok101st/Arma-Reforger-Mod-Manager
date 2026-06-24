@@ -14,6 +14,16 @@ export function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+export function formatScheduleTime(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!match) return value;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
 export function statusLabel(status: ModStatus) {
   if (status === "NOT_INSTALLED") return "No installed version";
   if (status === "UPDATE_AVAILABLE") return "Update available";

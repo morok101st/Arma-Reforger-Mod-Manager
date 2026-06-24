@@ -31,14 +31,16 @@ def record_audit(
     db.commit()
 
 
-def list_audit_logs(db: Session, limit: int = 100) -> list[AuditLogRead]:
+def list_audit_logs(db: Session, limit: int = 100, offset: int = 0) -> list[AuditLogRead]:
     limit = max(1, min(limit, 500))
-    logs = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)).all()
+    offset = max(0, offset)
+    logs = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).offset(offset).limit(limit)).all()
     return [AuditLogRead.model_validate(log) for log in logs]
 
 
-def list_modset_activity(db: Session, modset_id: int, limit: int = 20) -> list[ModsetActivityRead]:
+def list_modset_activity(db: Session, modset_id: int, limit: int = 20, offset: int = 0) -> list[ModsetActivityRead]:
     limit = max(1, min(limit, 100))
+    offset = max(0, offset)
     logs = db.scalars(
         select(AuditLog)
         .where(
@@ -47,6 +49,7 @@ def list_modset_activity(db: Session, modset_id: int, limit: int = 20) -> list[M
             AuditLog.detail["modset_id"].as_integer() == modset_id,
         )
         .order_by(AuditLog.created_at.desc())
+        .offset(offset)
         .limit(limit)
     ).all()
     return [ModsetActivityRead.model_validate(log) for log in logs]

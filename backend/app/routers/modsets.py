@@ -175,11 +175,12 @@ def api_export_modset(
 def api_modset_activity(
     modset_id: int,
     limit: int = 10,
+    offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
 ) -> list[ModsetActivityRead]:
     try:
         ensure_accessible_modset(db, current_user, modset_id)
-        return list_modset_activity(db, modset_id, limit=limit)
+        return list_modset_activity(db, modset_id, limit=limit, offset=offset)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

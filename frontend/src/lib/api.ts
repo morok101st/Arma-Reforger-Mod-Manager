@@ -133,8 +133,8 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(`/modsets/${modsetId}/export`);
       return readJsonOrThrow<ModsetExport>(response, "Could not export modset.");
     },
-    async listModsetActivity(modsetId: number, limit = 10) {
-      const response = await request(`/modsets/${modsetId}/activity?limit=${limit}`);
+    async listModsetActivity(modsetId: number, limit = 10, offset = 0) {
+      const response = await request(`/modsets/${modsetId}/activity?limit=${limit}&offset=${offset}`);
       return readJsonOrThrow<ModsetActivity[]>(response, "Could not load modset activity.");
     },
     async listUsers() {
@@ -193,8 +193,8 @@ export function createApiClient(onUnauthorized?: () => void) {
         throw new Error(payload?.detail ?? "Could not reset password.");
       }
     },
-    async listAuditLogs(limit = 25) {
-      const response = await request(`/audit?limit=${limit}`);
+    async listAuditLogs(limit = 25, offset = 0) {
+      const response = await request(`/audit?limit=${limit}&offset=${offset}`);
       return readJsonOrThrow<AuditLog[]>(response, "Could not load audit log.");
     },
     async getSchedulerStatus() {

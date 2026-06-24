@@ -158,6 +158,11 @@ export function App() {
             schedulerStatus={mods.schedulerStatus}
             openMod={handleOpenMod}
             activeModsetName={activeModsetName}
+            modsetActivityPage={mods.modsetActivityPage}
+            canPageBackModsetActivity={mods.canPageBackModsetActivity}
+            canPageForwardModsetActivity={mods.canPageForwardModsetActivity}
+            previousModsetActivityPage={mods.previousModsetActivityPage}
+            nextModsetActivityPage={mods.nextModsetActivityPage}
           />
         ) : view.showModsetAdmin ? (
           <ModsetManagement
@@ -189,7 +194,12 @@ export function App() {
             deleteDiscordWebhook={actions.deleteDiscordWebhook}
             resetUserPassword={actions.resetUserPassword}
             testDiscordWebhook={actions.testDiscordWebhook}
-            loadAuditLogs={() => admin.loadAuditLogs().then(() => undefined)}
+            loadAuditLogs={() => admin.loadAuditLogs(admin.auditLogPage).then(() => undefined)}
+            auditLogPage={admin.auditLogPage}
+            canPageBackAuditLogs={admin.canPageBackAuditLogs}
+            canPageForwardAuditLogs={admin.canPageForwardAuditLogs}
+            previousAuditLogPage={admin.previousAuditLogPage}
+            nextAuditLogPage={admin.nextAuditLogPage}
           />
         ) : mods.selected ? (
           <ModDetail
