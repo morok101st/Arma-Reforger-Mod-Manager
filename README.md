@@ -25,11 +25,11 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 
 ### Dashboard
 
-- Metrics: tracked mods, updates, missing installed versions, dependency links.
+- Metrics: tracked mods, dependency links, and the configured auto schedule.
 - Auto schedule summary showing the configured timezone and daily run times.
 - “Needs attention” card with clear OK/Warning state.
-- Last automatic crawl and next scheduled crawl.
 - Recent modset changes showing the latest user actions such as adding mods, removing mods, or changing installed versions.
+- Recent modset changes can be paged through directly in the overview.
 
 ### Mod management
 
@@ -57,7 +57,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Admin-managed Discord webhooks for update alerts: create, edit, disable, delete, and test webhooks in the UI.
 - Discord webhooks can be limited to specific modsets directly in the webhook dialog.
 - Discord update notifications can open the affected mod directly inside ARMM when `ARMM_PUBLIC_URL` is configured.
-- Audit log with filters (Auth, User, Mod, Failures).
+- Audit log with filters (Auth, User, Mod, Failures) and paging through older entries.
 
 ## Security features
 
@@ -101,13 +101,13 @@ Base path behind the frontend proxy: `/api`
 - `POST /api/mods/{mod_id}/refresh`
 - `GET/POST/PATCH/DELETE /api/modsets...`
 - `POST /api/modsets/{modset_id}/duplicate`
-- `GET /api/modsets/{modset_id}/activity`
+- `GET /api/modsets/{modset_id}/activity` (`limit`, `offset`)
 - `GET /api/modsets/{modset_id}/export`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET/POST/PATCH/DELETE /api/discord-webhooks...` (admin)
 - `GET /api/admin/modsets` (admin, used for webhook modset selection)
 - `POST /api/discord-webhooks/{webhook_id}/test` (admin)
-- `GET /api/audit` (admin)
+- `GET /api/audit` (admin, `limit`, `offset`)
 - `GET /api/scheduler/status`
 - `GET /api` (browser entry, redirects to `/api/docs`)
 - `GET /api/docs` (authenticated)
