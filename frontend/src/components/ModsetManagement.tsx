@@ -1,12 +1,13 @@
 import React from "react";
 import { Copy, Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
 
-import type { Modset } from "../types";
+import type { Mod, Modset } from "../types";
 import { Dialog } from "./common";
 
 export function ModsetManagement({
   modsets,
   activeModsetId,
+  mods,
   loading,
   error,
   createModset,
@@ -18,6 +19,7 @@ export function ModsetManagement({
 }: {
   modsets: Modset[];
   activeModsetId: number | null;
+  mods: Mod[];
   loading: boolean;
   error: string | null;
   createModset: (name: string, shared?: boolean) => Promise<void>;
@@ -37,6 +39,14 @@ export function ModsetManagement({
 
   const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
   const deleteModsetTarget = modsets.find((modset) => modset.id === deleteModsetId) ?? null;
+  const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? null;
+  const exportOrderMods = React.useMemo(
+    () =>
+      mods
+        .filter((mod) => Boolean((mod.current_version ?? "").trim()))
+        .sort((left, right) => left.load_order - right.load_order || compareModName(left, right)),
+    [mods],
+  );
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -187,6 +197,35 @@ export function ModsetManagement({
         })}
       </div>
 
+      <section className="content-section">
+        <div className="section-heading">
+          <div>
+            <p>Selected modset</p>
+            <h3>Export order{activeModset ? ` - ${activeModset.name}` : ""}</h3>
+          </div>
+        </div>
+        {exportOrderMods.length > 0 ? (
+          <div className="export-order-table" role="table" aria-label="Export order">
+            <div className="export-order-row export-order-header" role="row">
+              <span role="columnheader">Order</span>
+              <span role="columnheader">Mod name</span>
+              <span role="columnheader">Mod ID</span>
+              <span role="columnheader">Installed version</span>
+            </div>
+            {exportOrderMods.map((mod) => (
+              <div className="export-order-row" role="row" key={mod.id}>
+                <span role="cell">{mod.load_order}</span>
+                <strong role="cell">{mod.name ?? "Unnamed mod"}</strong>
+                <code role="cell">{mod.id}</code>
+                <span role="cell">{mod.current_version}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No mods with an installed version are included in the export for this modset.</p>
+        )}
+      </section>
+
       {showCreateDialog && (
         <Dialog title="Create modset" onClose={closeCreateDialog}>
           <form className="dialog-form" onSubmit={handleCreate}>
@@ -280,4 +319,10 @@ export function ModsetManagement({
       )}
     </>
   );
+}
+
+function compareModName(left: Mod, right: Mod): number {
+  const leftName = left.name ?? left.id;
+  const rightName = right.name ?? right.id;
+  return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
 }

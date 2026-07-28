@@ -168,6 +168,7 @@ export function App() {
           <ModsetManagement
             modsets={modsets.modsets}
             activeModsetId={modsets.activeModsetId}
+            mods={mods.mods}
             loading={actions.loading}
             error={actions.error}
             createModset={actions.createModset}
