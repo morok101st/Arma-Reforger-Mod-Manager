@@ -51,6 +51,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Shared modsets are visible and editable to other users.
 - Deleting non-empty modsets is allowed, but the last remaining modset is protected.
 - Export each modset as a JSON file.
+- The Modsets page shows an export-order preview for the selected modset below the modset list, including order value, mod name, mod ID, and installed version.
 
 ### Security area
 
@@ -173,6 +174,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Higher values load later.
 - Equal values are allowed and fall back to mod name and mod ID for stable ordering.
 - The normal sidebar sort modes are for browsing; the exported file always uses the stored export load order.
+- The Modsets page includes an export-order preview for the selected modset so the final export order can be checked before downloading the JSON.
 
 ## Operations
 
