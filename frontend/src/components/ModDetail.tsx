@@ -337,7 +337,7 @@ export function ModDetail({
         )}
       </div>
 
-      <div className="version-editor">
+      <div className="version-editor load-order-editor">
         <label>
           Export load order
           <input
@@ -348,7 +348,6 @@ export function ModDetail({
             onChange={(event) => setLoadOrderEdit(event.target.value)}
             disabled={loading}
           />
-          <small className="muted">Lower values load earlier. Higher values load later. Default: 500.</small>
         </label>
         <button
           className="primary-button compact"
@@ -359,6 +358,7 @@ export function ModDetail({
           <Save size={18} />
           Save
         </button>
+        <small className="muted load-order-hint">Lower values load earlier. Higher values load later. Default: 500.</small>
       </div>
 
       {saveState === "saved" && (
