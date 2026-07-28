@@ -15,6 +15,7 @@ class UserModUpdate(BaseModel):
     current_version: str | None = Field(default=None, max_length=80)
     pinned: bool | None = None
     is_core: bool | None = None
+    load_order: int | None = Field(default=None, ge=0, le=999999)
 
 
 class DependencyRead(BaseModel):
@@ -55,6 +56,7 @@ class ModRead(BaseModel):
     pinned: bool
     is_core: bool
     dependency_origin: bool
+    load_order: int
     is_dependency: bool
     tracking_reason: TrackingReason
     blocking_dependents: list[ModReferenceRead] = Field(default_factory=list)

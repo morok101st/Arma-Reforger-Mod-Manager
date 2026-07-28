@@ -179,6 +179,7 @@ def duplicate_modset(db: Session, user: User, modset_id: int) -> ModSetRead:
                 is_core=row.is_core,
                 dependency_origin=row.dependency_origin,
                 tracking_reason=row.tracking_reason,
+                load_order=row.load_order,
             )
         )
 
@@ -248,7 +249,7 @@ def export_modset(db: Session, user: User, modset_id: int) -> list[ModSetExportE
             UserMod.current_version.is_not(None),
             UserMod.current_version != "",
         )
-        .order_by(func.lower(func.coalesce(Mod.name, UserMod.mod_id)), UserMod.mod_id)
+        .order_by(UserMod.load_order, func.lower(func.coalesce(Mod.name, UserMod.mod_id)), UserMod.mod_id)
     ).all()
 
     return [

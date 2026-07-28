@@ -16,6 +16,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Can optionally set orphaned dependency mods to `No installed version` when a parent mod is deleted or deactivated.
 - Stores changelog history per version including `Last modified`.
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
+- Supports per-modset export load order through a numeric `load_order` value. Lower values load earlier, higher values load later, and the default is `500`.
 - Can send Discord update alerts through admin-managed webhooks without code changes.
 - Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
 - Discord update alerts can link directly back into ARMM for the affected mod and modset.
@@ -35,6 +36,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 
 - Add mod (dialog), optionally directly into another modset.
 - Mod detail view with status, metadata, installed-version selection from known changelog versions, “Set to latest”, refresh, and delete confirmation.
+- Mod detail view includes `Export load order` for controlling the exported Arma Reforger `mods` array order.
 - Dedicated `No installed version` / `NOT_INSTALLED` handling instead of overloading the generic unknown state.
 - Follow-up confirmation dialogs when deleting a mod or changing it to `No installed version` would orphan dependency-origin mods.
 - Compact `deps` and `req` indicators in the mod list.
@@ -49,6 +51,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Shared modsets are visible and editable to other users.
 - Deleting non-empty modsets is allowed, but the last remaining modset is protected.
 - Export each modset as a JSON file.
+- The Modsets page shows an export-order preview for the selected modset below the modset list, including order value, mod name, mod ID, and installed version.
 
 ### Security area
 
@@ -160,6 +163,18 @@ docker compose up -d
 - API docs (after login): `https://<your-domain>/api/docs`
 
 Note: The automatic crawl runs twice per day at `10:00` and `19:00` in `ARMM_SCHEDULER_TIMEZONE`. Discord update alerts are emitted only from those automatic runs, not from manual refreshes or manual version edits.
+
+## Export load order
+
+Arma Reforger uses the order of entries in the exported `mods` array as the server load order.
+ARMM stores a numeric export load order per tracked mod inside each modset.
+
+- Default value: `500`
+- Lower values load earlier.
+- Higher values load later.
+- Equal values are allowed and fall back to mod name and mod ID for stable ordering.
+- The normal sidebar sort modes are for browsing; the exported file always uses the stored export load order.
+- The Modsets page includes an export-order preview for the selected modset so the final export order can be checked before downloading the JSON.
 
 ## Operations
 

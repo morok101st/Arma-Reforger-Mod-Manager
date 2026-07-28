@@ -1,5 +1,5 @@
 export type ModStatus = "NOT_INSTALLED" | "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
-export type SortMode = "name" | "status" | "last_checked" | "updates";
+export type SortMode = "name" | "status" | "last_checked" | "updates" | "load_order";
 export type TrackingReason = "manual" | "dependency";
 export type UserRole = "admin" | "user";
 export type AuditFilter = "all" | "auth" | "user" | "mod" | "integration" | "failures";
@@ -91,6 +91,7 @@ export type Mod = {
   pinned: boolean;
   is_core: boolean;
   dependency_origin: boolean;
+  load_order: number;
   is_dependency: boolean;
   tracking_reason: TrackingReason;
   blocking_dependents: ModReference[];

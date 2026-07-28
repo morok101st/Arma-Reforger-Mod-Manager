@@ -687,6 +687,15 @@ button:disabled {
   max-width: 650px;
 }
 
+.load-order-editor {
+  grid-template-columns: minmax(180px, 320px) auto;
+}
+
+.load-order-hint {
+  grid-column: 1 / -1;
+  margin-top: -6px;
+}
+
 .user-form {
   align-items: end;
   grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) minmax(140px, 180px) auto;
@@ -1351,6 +1360,40 @@ button:disabled {
   max-width: 100%;
 }
 
+.export-order-table {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-sm);
+  overflow: hidden;
+}
+
+.export-order-row {
+  align-items: center;
+  background: var(--md-sys-color-surface);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 90px minmax(180px, 1fr) minmax(180px, 220px) minmax(140px, 180px);
+  padding: 11px 14px;
+}
+
+.export-order-row:first-child {
+  border-top: 0;
+}
+
+.export-order-header {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.export-order-row code {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
 .checkbox-row {
   align-items: center;
   color: var(--md-sys-color-on-surface);
@@ -1759,6 +1802,21 @@ button:focus-visible,
 
   .webhook-row-actions .secondary-button.compact {
     width: 100%;
+  }
+
+  .export-order-row {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .export-order-header {
+    display: none;
+  }
+
+  .export-order-row span:first-child::before {
+    color: var(--md-sys-color-on-surface-variant);
+    content: "Order ";
+    font-weight: 800;
   }
 }
 

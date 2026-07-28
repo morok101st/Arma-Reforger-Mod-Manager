@@ -168,6 +168,7 @@ export function App() {
           <ModsetManagement
             modsets={modsets.modsets}
             activeModsetId={modsets.activeModsetId}
+            mods={mods.mods}
             loading={actions.loading}
             error={actions.error}
             createModset={actions.createModset}
@@ -207,10 +208,13 @@ export function App() {
             loading={actions.loading}
             saveState={mods.saveState}
             installedVersionEdit={mods.installedVersionEdit}
+            loadOrderEdit={mods.loadOrderEdit}
             setInstalledVersionEdit={mods.setInstalledVersionEdit}
+            setLoadOrderEdit={mods.setLoadOrderEdit}
             refreshMod={actions.refreshMod}
             removeMod={actions.removeMod}
             updateInstalledVersion={actions.updateInstalledVersion}
+            updateLoadOrder={actions.updateLoadOrder}
             changelogEntries={mods.changelogEntries}
             expandedChangelogVersions={mods.expandedChangelogVersions}
             toggleChangelogVersion={mods.toggleChangelogVersion}

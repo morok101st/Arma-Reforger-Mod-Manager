@@ -100,6 +100,8 @@ def audit_mod_updated(
             "current_version": mod.current_version,
             "pinned_changed": "pinned" in provided_fields,
             "pinned": mod.pinned,
+            "load_order_changed": "load_order" in provided_fields,
+            "load_order": mod.load_order,
             "modset_id": modset_id,
         },
     )

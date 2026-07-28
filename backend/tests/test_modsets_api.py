@@ -76,8 +76,8 @@ class ModsetsApiTestCase(ApiTestCase):
             with self.SessionLocal() as db:
                 db.add(Mod(id="664AFDC993C9CE1A", name="ACE Cook-Off Dev"))
                 db.add(Mod(id="65EB440190E0B2DF", name="COE2 Ruha"))
-                db.add(UserMod(modset_id=modset_id, mod_id="664AFDC993C9CE1A", current_version="1.2.3", pinned=False, tracking_reason="manual"))
-                db.add(UserMod(modset_id=modset_id, mod_id="65EB440190E0B2DF", current_version=None, pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="664AFDC993C9CE1A", current_version="1.2.3", pinned=False, tracking_reason="manual", load_order=500))
+                db.add(UserMod(modset_id=modset_id, mod_id="65EB440190E0B2DF", current_version=None, pinned=False, tracking_reason="manual", load_order=100))
                 db.commit()
 
             response = client.get(f"/modsets/{modset_id}/export")
@@ -89,6 +89,34 @@ class ModsetsApiTestCase(ApiTestCase):
                     {"modId": "664AFDC993C9CE1A", "name": "ACE Cook-Off Dev", "version": "1.2.3"},
                 ],
             )
+
+    def test_export_modset_uses_load_order_before_name_fallback(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            created = client.post("/modsets", json={"name": "Server Ordered Export"})
+            self.assertEqual(created.status_code, 201)
+            modset_id = created.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="ORDERALPHA001", name="Alpha"))
+                db.add(Mod(id="ORDERZULU001", name="Zulu"))
+                db.add(Mod(id="ORDEROVERRIDE", name="Override"))
+                db.add(UserMod(modset_id=modset_id, mod_id="ORDERALPHA001", current_version="1.0.0", pinned=False, tracking_reason="manual", load_order=500))
+                db.add(UserMod(modset_id=modset_id, mod_id="ORDERZULU001", current_version="1.0.0", pinned=False, tracking_reason="manual", load_order=500))
+                db.add(UserMod(modset_id=modset_id, mod_id="ORDEROVERRIDE", current_version="1.0.0", pinned=False, tracking_reason="manual", load_order=510))
+                db.commit()
+
+            response = client.get(f"/modsets/{modset_id}/export")
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([entry["modId"] for entry in response.json()], ["ORDERALPHA001", "ORDERZULU001", "ORDEROVERRIDE"])
+
+            update_response = client.patch(f"/mods/ORDERZULU001?modset_id={modset_id}", json={"load_order": 100})
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+
+            reordered_response = client.get(f"/modsets/{modset_id}/export")
+            self.assertEqual(reordered_response.status_code, 200, reordered_response.text)
+            self.assertEqual([entry["modId"] for entry in reordered_response.json()], ["ORDERZULU001", "ORDERALPHA001", "ORDEROVERRIDE"])
 
     def test_same_mod_can_be_tracked_in_multiple_modsets(self) -> None:
         with TestClient(app_main.app) as client:
@@ -185,6 +213,7 @@ class ModsetsApiTestCase(ApiTestCase):
                         is_core=True,
                         dependency_origin=True,
                         tracking_reason="dependency",
+                        load_order=750,
                     )
                 )
                 webhook = DiscordWebhook(
@@ -213,6 +242,7 @@ class ModsetsApiTestCase(ApiTestCase):
                 self.assertTrue(duplicate_row.is_core)
                 self.assertTrue(duplicate_row.dependency_origin)
                 self.assertEqual(duplicate_row.tracking_reason, "dependency")
+                self.assertEqual(duplicate_row.load_order, 750)
 
                 webhook = db.query(DiscordWebhook).filter_by(name="Discord Alerts").one()
                 webhook_modset_ids = sorted(modset.id for modset in webhook.modsets)

@@ -10,10 +10,13 @@ export function ModDetail({
   loading,
   saveState,
   installedVersionEdit,
+  loadOrderEdit,
   setInstalledVersionEdit,
+  setLoadOrderEdit,
   refreshMod,
   removeMod,
   updateInstalledVersion,
+  updateLoadOrder,
   changelogEntries,
   expandedChangelogVersions,
   toggleChangelogVersion,
@@ -25,10 +28,13 @@ export function ModDetail({
   loading: boolean;
   saveState: "idle" | "saved";
   installedVersionEdit: string;
+  loadOrderEdit: string;
   setInstalledVersionEdit: (value: string) => void;
+  setLoadOrderEdit: (value: string) => void;
   refreshMod: (id: string) => void;
   removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
   updateInstalledVersion: (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
+  updateLoadOrder: () => void;
   changelogEntries: ChangelogEntry[];
   expandedChangelogVersions: Set<string>;
   toggleChangelogVersion: (version: string) => void;
@@ -41,6 +47,9 @@ export function ModDetail({
   const normalizedInstalledVersionEdit = installedVersionEdit.trim();
   const currentInstalledVersion = (selected.current_version ?? "").trim();
   const hasInstalledVersionChange = normalizedInstalledVersionEdit !== currentInstalledVersion;
+  const normalizedLoadOrderEdit = Number.parseInt(loadOrderEdit.trim(), 10);
+  const isLoadOrderValid = Number.isFinite(normalizedLoadOrderEdit) && normalizedLoadOrderEdit >= 0 && normalizedLoadOrderEdit <= 999999;
+  const hasLoadOrderChange = isLoadOrderValid && normalizedLoadOrderEdit !== selected.load_order;
   const installedVersionOptions = React.useMemo(() => {
     const seen = new Set<string>();
     const versions: string[] = [];
@@ -328,11 +337,35 @@ export function ModDetail({
         )}
       </div>
 
+      <div className="version-editor load-order-editor">
+        <label>
+          Export load order
+          <input
+            min={0}
+            max={999999}
+            type="number"
+            value={loadOrderEdit}
+            onChange={(event) => setLoadOrderEdit(event.target.value)}
+            disabled={loading}
+          />
+        </label>
+        <button
+          className="primary-button compact"
+          disabled={loading || !hasLoadOrderChange}
+          onClick={() => updateLoadOrder()}
+          type="button"
+        >
+          <Save size={18} />
+          Save
+        </button>
+        <small className="muted load-order-hint">Lower values load earlier. Higher values load later. Default: 500.</small>
+      </div>
+
       {saveState === "saved" && (
         <div className="status-band save-band">
           <CheckCircle2 size={20} />
           <strong>Saved</strong>
-          <span>Installed version updated.</span>
+          <span>Mod settings updated.</span>
         </div>
       )}
 

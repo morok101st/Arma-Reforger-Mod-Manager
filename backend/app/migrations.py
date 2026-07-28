@@ -31,6 +31,9 @@ def migrate_schema(engine: Engine) -> None:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE user_mods ADD COLUMN dependency_origin BOOLEAN NOT NULL DEFAULT false"))
             connection.execute(text("UPDATE user_mods SET dependency_origin = true WHERE tracking_reason = 'dependency'"))
+    if "load_order" not in user_mod_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE user_mods ADD COLUMN load_order INTEGER NOT NULL DEFAULT 500"))
 
     if "modset_id" not in user_mod_columns:
         with engine.begin() as connection:
@@ -60,6 +63,7 @@ def migrate_schema(engine: Engine) -> None:
 
     if dialect == "postgresql":
         _migrate_user_mods_postgres(engine)
+    _migrate_user_mod_load_order(engine)
 
     inspector = inspect(engine)
     _backfill_dependency_origin(engine)
@@ -119,6 +123,23 @@ def _migrate_user_mods_postgres(engine: Engine) -> None:
                 "END $$;"
             )
         )
+
+
+def _migrate_user_mod_load_order(engine: Engine) -> None:
+    inspector = inspect(engine)
+    if "user_mods" not in inspector.get_table_names():
+        return
+    user_mod_columns = {column["name"] for column in inspector.get_columns("user_mods")}
+    if "load_order" not in user_mod_columns:
+        return
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE user_mods SET load_order = 500 WHERE load_order IS NULL"))
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("ALTER TABLE user_mods ALTER COLUMN load_order SET DEFAULT 500"))
+            connection.execute(text("ALTER TABLE user_mods ALTER COLUMN load_order SET NOT NULL"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_user_mods_modset_load_order ON user_mods (modset_id, load_order)"))
+        else:
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_user_mods_modset_load_order ON user_mods (modset_id, load_order)"))
 
 
 def _migrate_mod_versions(engine: Engine, inspector) -> None:
