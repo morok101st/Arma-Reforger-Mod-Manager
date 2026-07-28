@@ -64,6 +64,7 @@ class UserMod(Base):
     is_core: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     dependency_origin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     tracking_reason: Mapped[str] = mapped_column(String(24), default="manual", server_default="manual")
+    load_order: Mapped[int] = mapped_column(Integer, default=500, server_default="500")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

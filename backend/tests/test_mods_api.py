@@ -31,6 +31,7 @@ class ModsApiTestCase(ApiTestCase):
             pinned=False,
             is_core=False,
             dependency_origin=False,
+            load_order=500,
             is_dependency=False,
             tracking_reason=TrackingReason.manual,
             blocking_dependents=[],
@@ -135,12 +136,43 @@ class ModsApiTestCase(ApiTestCase):
                 self.assertIsNotNone(dependency_mapping)
                 self.assertEqual(dependency_mapping.tracking_reason, "dependency")
                 self.assertIsNone(dependency_mapping.current_version)
+                self.assertEqual(dependency_mapping.load_order, 500)
 
             list_response = client.get(f"/mods?modset_id={modset_id}")
             self.assertEqual(list_response.status_code, 200, list_response.text)
             mods = {entry["id"]: entry for entry in list_response.json()}
             self.assertFalse(mods["PARENTMOD001"]["is_dependency"])
             self.assertTrue(mods["DEPMOD001"]["is_dependency"])
+            self.assertEqual(mods["DEPMOD001"]["load_order"], 500)
+
+    def test_load_order_can_be_updated_and_duplicate_values_are_allowed(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Load Order"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="LOADORDER001", name="Alpha Mod", latest_version="1.0.0", dependencies=[]))
+                db.add(Mod(id="LOADORDER002", name="Zulu Mod", latest_version="1.0.0", dependencies=[]))
+                db.add(UserMod(modset_id=modset_id, mod_id="LOADORDER001", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.add(UserMod(modset_id=modset_id, mod_id="LOADORDER002", current_version="1.0.0", pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            update_first = client.patch(f"/mods/LOADORDER001?modset_id={modset_id}", json={"load_order": 510})
+            self.assertEqual(update_first.status_code, 200, update_first.text)
+            self.assertEqual(update_first.json()["load_order"], 510)
+
+            update_second = client.patch(f"/mods/LOADORDER002?modset_id={modset_id}", json={"load_order": 510})
+            self.assertEqual(update_second.status_code, 200, update_second.text)
+            self.assertEqual(update_second.json()["load_order"], 510)
+
+            list_response = client.get(f"/mods?modset_id={modset_id}")
+            self.assertEqual(list_response.status_code, 200, list_response.text)
+            mods = {entry["id"]: entry for entry in list_response.json()}
+            self.assertEqual(mods["LOADORDER001"]["load_order"], 510)
+            self.assertEqual(mods["LOADORDER002"]["load_order"], 510)
 
     def test_setting_installed_version_still_tracks_dependencies_when_parent_refresh_fails(self) -> None:
         with TestClient(app_main.app) as client:

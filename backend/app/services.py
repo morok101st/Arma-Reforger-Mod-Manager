@@ -83,6 +83,8 @@ async def update_user_mod(
         user_mod.pinned = payload.pinned
     if "is_core" in provided_fields and payload.is_core is not None:
         user_mod.is_core = payload.is_core
+    if "load_order" in provided_fields and payload.load_order is not None:
+        user_mod.load_order = payload.load_order
     user_mod.tracking_reason = "manual"
 
     db.commit()

@@ -92,7 +92,7 @@ export function createApiClient(onUnauthorized?: () => void) {
     },
     async updateMod(
       id: string,
-      payload: { current_version?: string | null; is_core?: boolean },
+      payload: { current_version?: string | null; is_core?: boolean; load_order?: number },
       modsetId?: number | null,
       options?: { deactivateOrphanDependencies?: boolean },
     ) {

@@ -218,6 +218,10 @@ export function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
       return timestamp(right.last_checked) - timestamp(left.last_checked) || compareByName(left, right);
     }
 
+    if (sortMode === "load_order") {
+      return left.load_order - right.load_order || compareByName(left, right);
+    }
+
     return compareByName(left, right);
   });
 }

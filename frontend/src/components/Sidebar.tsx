@@ -155,6 +155,7 @@ export function Sidebar({
               { value: "name", label: "Name" },
               { value: "status", label: "Status" },
               { value: "last_checked", label: "Last checked" },
+              { value: "load_order", label: "Load order" },
             ]}
             onChange={onSortChange}
             ariaLabel="Sort by"
