@@ -1,4 +1,17 @@
-import type { AuditLog, AuthUser, DiscordWebhook, Mod, Modset, ModsetActivity, ModsetExport, SchedulerStatus, ThemePreference, UserAccount, UserRole } from "../types";
+import type {
+  AuditLog,
+  AuthConfig,
+  AuthUser,
+  DiscordWebhook,
+  Mod,
+  Modset,
+  ModsetActivity,
+  ModsetExport,
+  SchedulerStatus,
+  ThemePreference,
+  UserAccount,
+  UserRole,
+} from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -42,6 +55,11 @@ export function createApiClient(onUnauthorized?: () => void) {
 
   return {
     request,
+    oidcLoginUrl: `${API_BASE_URL}/auth/oidc/login`,
+    async getAuthConfig() {
+      const response = await request("/auth/config");
+      return readJsonOrThrow<AuthConfig>(response, "Could not load authentication configuration.");
+    },
     async checkSession() {
       const response = await request("/auth/me");
       return response.ok ? ((await response.json()) as AuthUser) : null;

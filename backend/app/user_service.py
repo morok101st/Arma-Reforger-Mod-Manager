@@ -17,6 +17,9 @@ def user_to_read(user: User) -> UserRead:
         is_active=user.is_active,
         created_at=user.created_at,
         last_login_at=user.last_login_at,
+        auth_provider=user_auth_provider(user),
+        has_local_password=bool(user.password_hash),
+        email=user.email,
     )
 
 
@@ -32,7 +35,19 @@ def auth_user_to_read(user: User, session_expires_at=None):
         active_modset_id=user.active_modset_id,
         active_modset_name=user.active_modset.name if user.active_modset else None,
         session_expires_at=expires_at,
+        auth_provider=user_auth_provider(user),
+        has_local_password=bool(user.password_hash),
     )
+
+
+def user_auth_provider(user: User) -> str:
+    has_local = bool(user.password_hash)
+    has_oidc = bool(user.oidc_issuer and user.oidc_subject)
+    if has_local and has_oidc:
+        return "local+oidc"
+    if has_oidc:
+        return "oidc"
+    return "local"
 
 
 def list_users(db: Session) -> list[UserRead]:

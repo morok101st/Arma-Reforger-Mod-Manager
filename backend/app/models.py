@@ -77,7 +77,10 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    oidc_issuer: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    oidc_subject: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(24), default="user", server_default="user", index=True)
     session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     theme_preference: Mapped[str] = mapped_column(String(16), default="dark", server_default="dark")

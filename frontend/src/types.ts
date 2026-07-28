@@ -4,6 +4,12 @@ export type TrackingReason = "manual" | "dependency";
 export type UserRole = "admin" | "user";
 export type AuditFilter = "all" | "auth" | "user" | "mod" | "integration" | "failures";
 export type ThemePreference = "light" | "dark";
+export type AuthProvider = "local" | "oidc" | "local+oidc";
+
+export type AuthConfig = {
+  local_login_enabled: boolean;
+  oidc_enabled: boolean;
+};
 
 export type AuthUser = {
   id: number;
@@ -13,6 +19,8 @@ export type AuthUser = {
   active_modset_id: number | null;
   active_modset_name: string | null;
   session_expires_at: string | null;
+  auth_provider: AuthProvider;
+  has_local_password: boolean;
 };
 
 export type UserAccount = {
@@ -22,6 +30,9 @@ export type UserAccount = {
   is_active: boolean;
   created_at: string;
   last_login_at: string | null;
+  auth_provider: AuthProvider;
+  has_local_password: boolean;
+  email: string | null;
 };
 
 export type DiscordWebhook = {

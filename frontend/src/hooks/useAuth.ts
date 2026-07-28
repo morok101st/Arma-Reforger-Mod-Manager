@@ -1,11 +1,12 @@
 import React from "react";
 
-import type { AuthUser } from "../types";
+import type { AuthConfig, AuthUser } from "../types";
 import { useApiClient } from "./useApiClient";
 
 export function useAuth(onUnauthorized: () => void) {
   const [authChecked, setAuthChecked] = React.useState(false);
   const [authUser, setAuthUser] = React.useState<AuthUser | null>(null);
+  const [authConfig, setAuthConfig] = React.useState<AuthConfig>({ local_login_enabled: true, oidc_enabled: false });
   const [loginError, setLoginError] = React.useState<string | null>(null);
   const [themePreference, setThemePreference] = React.useState<AuthUser["theme_preference"]>("dark");
 
@@ -17,9 +18,9 @@ export function useAuth(onUnauthorized: () => void) {
   const api = useApiClient(resetSession);
 
   React.useEffect(() => {
-    api
-      .checkSession()
-      .then((user) => {
+    Promise.all([api.getAuthConfig().catch(() => ({ local_login_enabled: true, oidc_enabled: false })), api.checkSession()])
+      .then(([config, user]) => {
+        setAuthConfig(config);
         setAuthUser(user);
         setAuthChecked(true);
       })
@@ -59,6 +60,7 @@ export function useAuth(onUnauthorized: () => void) {
     api,
     authChecked,
     authUser,
+    authConfig,
     themePreference,
     loginError,
     setAuthUser,

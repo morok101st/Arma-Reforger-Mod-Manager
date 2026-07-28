@@ -93,7 +93,13 @@ export function App() {
   if (!auth.authUser) {
     return (
       <AuthFrame title="Arma Reforger Mod Manager" subtitle="Sign in to manage tracked Workshop mods.">
-        <LoginForm loginError={auth.loginError} loading={actions.loading} onSubmit={actions.login} />
+        <LoginForm
+          oidcEnabled={auth.authConfig.oidc_enabled}
+          oidcLoginUrl={auth.api.oidcLoginUrl}
+          loginError={auth.loginError}
+          loading={actions.loading}
+          onSubmit={actions.login}
+        />
       </AuthFrame>
     );
   }

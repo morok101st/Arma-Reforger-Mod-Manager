@@ -332,6 +332,9 @@ def api_reset_user_password(
         is_active=target.is_active,
         created_at=target.created_at,
         last_login_at=target.last_login_at,
+        auth_provider="local+oidc" if target.oidc_issuer and target.oidc_subject else "local",
+        has_local_password=bool(target.password_hash),
+        email=target.email,
     )
 
 

@@ -18,6 +18,13 @@ class AuthUserRead(BaseModel):
     active_modset_id: int | None = None
     active_modset_name: str | None = None
     session_expires_at: datetime | None = None
+    auth_provider: str = "local"
+    has_local_password: bool = True
+
+
+class AuthConfigRead(BaseModel):
+    local_login_enabled: bool = True
+    oidc_enabled: bool = False
 
 
 class PasswordChange(BaseModel):
