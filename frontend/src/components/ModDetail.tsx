@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
 import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
@@ -10,13 +10,10 @@ export function ModDetail({
   loading,
   saveState,
   installedVersionEdit,
-  loadOrderEdit,
   setInstalledVersionEdit,
-  setLoadOrderEdit,
   refreshMod,
   removeMod,
   updateInstalledVersion,
-  updateLoadOrder,
   changelogEntries,
   expandedChangelogVersions,
   toggleChangelogVersion,
@@ -28,13 +25,10 @@ export function ModDetail({
   loading: boolean;
   saveState: "idle" | "saved";
   installedVersionEdit: string;
-  loadOrderEdit: string;
   setInstalledVersionEdit: (value: string) => void;
-  setLoadOrderEdit: (value: string) => void;
   refreshMod: (id: string) => void;
   removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
   updateInstalledVersion: (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => void;
-  updateLoadOrder: () => void;
   changelogEntries: ChangelogEntry[];
   expandedChangelogVersions: Set<string>;
   toggleChangelogVersion: (version: string) => void;
@@ -44,12 +38,11 @@ export function ModDetail({
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = React.useState(false);
+  const [modJsonCopied, setModJsonCopied] = React.useState(false);
+  const modJsonCopiedTimerRef = React.useRef<number | null>(null);
   const normalizedInstalledVersionEdit = installedVersionEdit.trim();
   const currentInstalledVersion = (selected.current_version ?? "").trim();
   const hasInstalledVersionChange = normalizedInstalledVersionEdit !== currentInstalledVersion;
-  const normalizedLoadOrderEdit = Number.parseInt(loadOrderEdit.trim(), 10);
-  const isLoadOrderValid = Number.isFinite(normalizedLoadOrderEdit) && normalizedLoadOrderEdit >= 0 && normalizedLoadOrderEdit <= 999999;
-  const hasLoadOrderChange = isLoadOrderValid && normalizedLoadOrderEdit !== selected.load_order;
   const installedVersionOptions = React.useMemo(() => {
     const seen = new Set<string>();
     const versions: string[] = [];
@@ -103,6 +96,41 @@ export function ModDetail({
     });
   }, [allTrackedMods, selected, trackedDependencyMatches]);
   const isSettingNoInstalledVersion = hasInstalledVersionChange && normalizedInstalledVersionEdit === "";
+  const canCopyModJson = Boolean(currentInstalledVersion);
+
+  React.useEffect(() => {
+    setModJsonCopied(false);
+  }, [selected.id, selected.current_version]);
+
+  React.useEffect(() => {
+    return () => {
+      if (modJsonCopiedTimerRef.current !== null) {
+        window.clearTimeout(modJsonCopiedTimerRef.current);
+      }
+    };
+  }, []);
+
+  async function copyModJson() {
+    if (!canCopyModJson) return;
+    const modJson = JSON.stringify(
+      {
+        modId: selected.id,
+        name: selected.name ?? selected.id,
+        version: currentInstalledVersion,
+      },
+      null,
+      2,
+    );
+    await copyTextToClipboard(modJson);
+    setModJsonCopied(true);
+    if (modJsonCopiedTimerRef.current !== null) {
+      window.clearTimeout(modJsonCopiedTimerRef.current);
+    }
+    modJsonCopiedTimerRef.current = window.setTimeout(() => {
+      setModJsonCopied(false);
+      modJsonCopiedTimerRef.current = null;
+    }, 1500);
+  }
 
   return (
     <>
@@ -335,30 +363,16 @@ export function ModDetail({
             Set to latest
           </button>
         )}
-      </div>
-
-      <div className="version-editor load-order-editor">
-        <label>
-          Export load order
-          <input
-            min={0}
-            max={999999}
-            type="number"
-            value={loadOrderEdit}
-            onChange={(event) => setLoadOrderEdit(event.target.value)}
-            disabled={loading}
-          />
-        </label>
         <button
-          className="primary-button compact"
-          disabled={loading || !hasLoadOrderChange}
-          onClick={() => updateLoadOrder()}
+          className="secondary-button compact"
+          disabled={loading || !canCopyModJson}
+          onClick={() => copyModJson().catch(() => null)}
+          title={canCopyModJson ? "Copy mod JSON to clipboard" : "No installed version available for export"}
           type="button"
         >
-          <Save size={18} />
-          Save
+          {modJsonCopied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+          {modJsonCopied ? "Copied" : "Copy JSON"}
         </button>
-        <small className="muted load-order-hint">Lower values load earlier. Higher values load later. Default: 500.</small>
       </div>
 
       {saveState === "saved" && (
@@ -468,4 +482,21 @@ function ChangelogItem({
         ))}
     </article>
   );
+}
+
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.left = "-9999px";
+  textArea.style.position = "fixed";
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
 }

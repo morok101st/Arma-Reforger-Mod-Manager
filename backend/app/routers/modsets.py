@@ -17,13 +17,14 @@ from app.modset_service import (
     ensure_user_active_modset,
     export_modset,
     list_modsets,
+    update_modset_load_order,
     update_modset,
 )
 from app.models import User
 from app.router_helpers import audit_event
 from app.schemas_audit import ModsetActivityRead
 from app.schemas_auth import AuthUserRead
-from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetRead, ModSetUpdate
+from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetLoadOrderUpdate, ModSetRead, ModSetUpdate
 from app.user_service import auth_user_to_read
 
 router = APIRouter(tags=["modsets"])
@@ -169,6 +170,36 @@ def api_export_modset(
         return export_modset(db, current_user, modset_id)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch("/modsets/{modset_id}/load-order", status_code=status.HTTP_204_NO_CONTENT)
+def api_update_modset_load_order(
+    modset_id: int,
+    payload: ModSetLoadOrderUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_current_user),
+) -> None:
+    try:
+        update_modset_load_order(db, current_user, modset_id, payload)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    audit_event(
+        db,
+        action="modset_load_order_updated",
+        entity_type="modset",
+        entity_id=str(modset_id),
+        actor=current_user,
+        request=request,
+        detail={
+            "modset_id": modset_id,
+            "updated_count": len(payload.entries),
+            "mod_ids": [entry.mod_id for entry in payload.entries],
+        },
+    )
 
 
 @router.get("/modsets/{modset_id}/activity", response_model=list[ModsetActivityRead])

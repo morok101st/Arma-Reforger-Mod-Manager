@@ -4,7 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Mod, ModSet, User, UserMod
-from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetRead, ModSetUpdate
+from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetLoadOrderUpdate, ModSetRead, ModSetUpdate
 
 
 class ModSetError(ValueError):
@@ -207,6 +207,29 @@ def update_modset(db: Session, user: User, modset_id: int, payload: ModSetUpdate
     db.commit()
     db.refresh(modset)
     return _modset_to_read(db, modset, user)
+
+
+def update_modset_load_order(db: Session, user: User, modset_id: int, payload: ModSetLoadOrderUpdate) -> None:
+    modset = _get_accessible_modset(db, user, modset_id)
+    if not modset:
+        raise ModSetNotFoundError("Modset not found")
+
+    entries_by_mod_id = {entry.mod_id: entry.load_order for entry in payload.entries}
+    if len(entries_by_mod_id) != len(payload.entries):
+        raise ValueError("Duplicate mod IDs are not allowed")
+
+    mappings = db.scalars(
+        select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id.in_(entries_by_mod_id.keys()))
+    ).all()
+    mappings_by_mod_id = {mapping.mod_id: mapping for mapping in mappings}
+    missing_ids = sorted(set(entries_by_mod_id) - set(mappings_by_mod_id))
+    if missing_ids:
+        raise ValueError(f"Mods are not tracked in this modset: {', '.join(missing_ids)}")
+
+    for mod_id, load_order in entries_by_mod_id.items():
+        mappings_by_mod_id[mod_id].load_order = load_order
+
+    db.commit()
 
 
 def delete_modset(db: Session, user: User, modset_id: int) -> None:

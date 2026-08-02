@@ -151,6 +151,13 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(`/modsets/${modsetId}/export`);
       return readJsonOrThrow<ModsetExport>(response, "Could not export modset.");
     },
+    async updateModsetLoadOrder(modsetId: number, entries: { mod_id: string; load_order: number }[]) {
+      const response = await request(`/modsets/${modsetId}/load-order`, { method: "PATCH", json: { entries } });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail ?? "Could not update export order.");
+      }
+    },
     async listModsetActivity(modsetId: number, limit = 10, offset = 0) {
       const response = await request(`/modsets/${modsetId}/activity?limit=${limit}&offset=${offset}`);
       return readJsonOrThrow<ModsetActivity[]>(response, "Could not load modset activity.");

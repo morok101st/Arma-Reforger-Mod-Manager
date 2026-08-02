@@ -36,7 +36,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 
 - Add mod (dialog), optionally directly into another modset.
 - Mod detail view with status, metadata, installed-version selection from known changelog versions, “Set to latest”, refresh, and delete confirmation.
-- Mod detail view includes `Export load order` for controlling the exported Arma Reforger `mods` array order.
+- Mod detail view can copy the selected mod as a single export JSON entry for quick server-config edits.
 - Dedicated `No installed version` / `NOT_INSTALLED` handling instead of overloading the generic unknown state.
 - Follow-up confirmation dialogs when deleting a mod or changing it to `No installed version` would orphan dependency-origin mods.
 - Compact `deps` and `req` indicators in the mod list.
@@ -51,7 +51,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Shared modsets are visible and editable to other users.
 - Deleting non-empty modsets is allowed, but the last remaining modset is protected.
 - Export each modset as a JSON file.
-- The Modsets page shows an export-order preview for the selected modset below the modset list, including order value, mod name, mod ID, and installed version.
+- The Modsets page shows and edits the export order for the selected modset below the modset list, including order value, move controls, mod name, mod ID, and installed version.
 
 ### Security area
 
@@ -179,7 +179,9 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Higher values load later.
 - Equal values are allowed and fall back to mod name and mod ID for stable ordering.
 - The normal sidebar sort modes are for browsing; the exported file always uses the stored export load order.
-- The Modsets page includes an export-order preview for the selected modset so the final export order can be checked before downloading the JSON.
+- The Modsets page includes an editable export-order overview for the selected modset so the final export order can be adjusted and checked before downloading the JSON.
+- Export order can be adjusted either by entering a numeric value directly or by using move controls for top, up, down, and bottom.
+- `Reset order` sets all exported mods in the selected modset back to the default value `500`.
 
 ## Operations
 

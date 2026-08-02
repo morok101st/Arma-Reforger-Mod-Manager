@@ -13,6 +13,15 @@ class ModSetUpdate(BaseModel):
     shared: bool | None = None
 
 
+class ModSetLoadOrderEntry(BaseModel):
+    mod_id: str = Field(min_length=1, max_length=80)
+    load_order: int = Field(ge=0, le=999999)
+
+
+class ModSetLoadOrderUpdate(BaseModel):
+    entries: list[ModSetLoadOrderEntry] = Field(min_length=1)
+
+
 class ModSetRead(BaseModel):
     id: int
     name: str

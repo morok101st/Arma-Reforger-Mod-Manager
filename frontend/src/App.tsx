@@ -183,6 +183,8 @@ export function App() {
             deleteModset={actions.deleteModset}
             activateModset={actions.activateModset}
             exportModset={actions.exportModset}
+            updateModLoadOrder={actions.updateModLoadOrder}
+            updateModsetLoadOrder={actions.updateModsetLoadOrder}
           />
         ) : view.showUserAdmin ? (
           <UserAdmin
@@ -214,13 +216,10 @@ export function App() {
             loading={actions.loading}
             saveState={mods.saveState}
             installedVersionEdit={mods.installedVersionEdit}
-            loadOrderEdit={mods.loadOrderEdit}
             setInstalledVersionEdit={mods.setInstalledVersionEdit}
-            setLoadOrderEdit={mods.setLoadOrderEdit}
             refreshMod={actions.refreshMod}
             removeMod={actions.removeMod}
             updateInstalledVersion={actions.updateInstalledVersion}
-            updateLoadOrder={actions.updateLoadOrder}
             changelogEntries={mods.changelogEntries}
             expandedChangelogVersions={mods.expandedChangelogVersions}
             toggleChangelogVersion={mods.toggleChangelogVersion}

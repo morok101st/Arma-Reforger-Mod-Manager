@@ -23,6 +23,7 @@ export function useMods({
       modsetId?: number | null,
       options?: { deactivateOrphanDependencies?: boolean },
     ) => Promise<Mod>;
+    updateModsetLoadOrder: (modsetId: number, entries: { mod_id: string; load_order: number }[]) => Promise<void>;
   };
   authUser: AuthUser | null;
   activeModsetId: number | null;
@@ -32,7 +33,6 @@ export function useMods({
   const [schedulerStatus, setSchedulerStatus] = React.useState<SchedulerStatus | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [installedVersionEdit, setInstalledVersionEdit] = React.useState("");
-  const [loadOrderEdit, setLoadOrderEdit] = React.useState("500");
   const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -104,10 +104,6 @@ export function useMods({
   }, [selected?.id, selected?.current_version]);
 
   React.useEffect(() => {
-    setLoadOrderEdit(String(selected?.load_order ?? 500));
-  }, [selected?.id, selected?.load_order]);
-
-  React.useEffect(() => {
     setSaveState("idle");
   }, [selected?.id]);
 
@@ -168,18 +164,24 @@ export function useMods({
     [activeModsetId, api, installedVersionEdit, loadModsetActivity, loadMods, modsetActivityPage, selected],
   );
 
-  const updateLoadOrder = React.useCallback(async () => {
-    if (!selected || !activeModsetId) return null;
-    const normalizedLoadOrder = Number.parseInt(loadOrderEdit.trim(), 10);
+  const updateModLoadOrder = React.useCallback(async (modId: string, loadOrder: number) => {
+    if (!activeModsetId) return null;
+    const normalizedLoadOrder = Number.parseInt(String(loadOrder), 10);
     if (!Number.isFinite(normalizedLoadOrder)) return null;
-    const updated = await api.updateMod(selected.id, { load_order: normalizedLoadOrder }, activeModsetId);
+    await api.updateModsetLoadOrder(activeModsetId, [{ mod_id: modId, load_order: normalizedLoadOrder }]);
     await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
-    setSelectedId(updated.id);
-    setLoadOrderEdit(String(updated.load_order));
     setSaveState("saved");
     window.setTimeout(() => setSaveState("idle"), 3000);
-    return updated;
-  }, [activeModsetId, api, loadModsetActivity, loadMods, loadOrderEdit, modsetActivityPage, selected]);
+    return null;
+  }, [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage]);
+
+  const updateModsetLoadOrder = React.useCallback(async (entries: { mod_id: string; load_order: number }[]) => {
+    if (!activeModsetId || entries.length === 0) return;
+    await api.updateModsetLoadOrder(activeModsetId, entries);
+    await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+    setSaveState("saved");
+    window.setTimeout(() => setSaveState("idle"), 3000);
+  }, [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage]);
 
   const previousModsetActivityPage = React.useCallback(() => {
     if (modsetActivityPage <= 0) return;
@@ -209,7 +211,6 @@ export function useMods({
     selected,
     selectedId,
     installedVersionEdit,
-    loadOrderEdit,
     expandedChangelogVersions,
     sortMode,
     searchQuery,
@@ -218,7 +219,6 @@ export function useMods({
     changelogEntries,
     trackedDependencyMatches,
     setInstalledVersionEdit,
-    setLoadOrderEdit,
     setSortMode,
     setSearchQuery,
     setSelectedId,
@@ -232,7 +232,8 @@ export function useMods({
     refreshMod,
     removeMod,
     updateInstalledVersion,
-    updateLoadOrder,
+    updateModLoadOrder,
+    updateModsetLoadOrder,
     toggleChangelogVersion,
     canPageBackModsetActivity: modsetActivityPage > 0,
   };

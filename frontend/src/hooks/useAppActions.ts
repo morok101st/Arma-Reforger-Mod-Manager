@@ -39,7 +39,8 @@ export function useAppActions({
     refreshMod: (id: string) => Promise<unknown>;
     removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
-    updateLoadOrder: () => Promise<unknown>;
+    updateModLoadOrder: (modId: string, loadOrder: number) => Promise<unknown>;
+    updateModsetLoadOrder: (entries: { mod_id: string; load_order: number }[]) => Promise<unknown>;
   };
   modsets: {
     activateModset: (modsetId: number) => Promise<unknown>;
@@ -185,8 +186,12 @@ export function useAppActions({
     await action.run(() => mods.updateInstalledVersion(nextVersion, options));
   }, [action, mods]);
 
-  const updateLoadOrder = React.useCallback(async () => {
-    await action.run(() => mods.updateLoadOrder());
+  const updateModLoadOrder = React.useCallback(async (modId: string, loadOrder: number) => {
+    await action.run(() => mods.updateModLoadOrder(modId, loadOrder), { rethrow: true });
+  }, [action, mods]);
+
+  const updateModsetLoadOrder = React.useCallback(async (entries: { mod_id: string; load_order: number }[]) => {
+    await action.run(() => mods.updateModsetLoadOrder(entries), { rethrow: true });
   }, [action, mods]);
 
   const activateModset = React.useCallback(async (modsetId: number) => {
@@ -255,7 +260,8 @@ export function useAppActions({
     refreshMod,
     removeMod,
     updateInstalledVersion,
-    updateLoadOrder,
+    updateModLoadOrder,
+    updateModsetLoadOrder,
     activateModset,
     createModset,
     updateModset,

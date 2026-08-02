@@ -118,6 +118,46 @@ class ModsetsApiTestCase(ApiTestCase):
             self.assertEqual(reordered_response.status_code, 200, reordered_response.text)
             self.assertEqual([entry["modId"] for entry in reordered_response.json()], ["ORDERZULU001", "ORDERALPHA001", "ORDEROVERRIDE"])
 
+    def test_modset_load_order_batch_update_reorders_export(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            created = client.post("/modsets", json={"name": "Server Batch Ordered Export"})
+            self.assertEqual(created.status_code, 201)
+            modset_id = created.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="BATCHORDERA", name="Alpha"))
+                db.add(Mod(id="BATCHORDERB", name="Bravo"))
+                db.add(Mod(id="BATCHORDERC", name="Charlie"))
+                db.add(UserMod(modset_id=modset_id, mod_id="BATCHORDERA", current_version="1.0.0", pinned=False, tracking_reason="manual", load_order=500))
+                db.add(UserMod(modset_id=modset_id, mod_id="BATCHORDERB", current_version="1.0.0", pinned=False, tracking_reason="manual", load_order=510))
+                db.add(UserMod(modset_id=modset_id, mod_id="BATCHORDERC", current_version="1.0.0", pinned=False, tracking_reason="manual", load_order=520))
+                db.add(Mod(id="BATCHORDERX", name="Not tracked"))
+                db.commit()
+
+            update_response = client.patch(
+                f"/modsets/{modset_id}/load-order",
+                json={
+                    "entries": [
+                        {"mod_id": "BATCHORDERC", "load_order": 500},
+                        {"mod_id": "BATCHORDERA", "load_order": 510},
+                        {"mod_id": "BATCHORDERB", "load_order": 520},
+                    ]
+                },
+            )
+            self.assertEqual(update_response.status_code, 204, update_response.text)
+
+            reordered_response = client.get(f"/modsets/{modset_id}/export")
+            self.assertEqual(reordered_response.status_code, 200, reordered_response.text)
+            self.assertEqual([entry["modId"] for entry in reordered_response.json()], ["BATCHORDERC", "BATCHORDERA", "BATCHORDERB"])
+
+            invalid_response = client.patch(
+                f"/modsets/{modset_id}/load-order",
+                json={"entries": [{"mod_id": "BATCHORDERX", "load_order": 500}]},
+            )
+            self.assertEqual(invalid_response.status_code, 400, invalid_response.text)
+
     def test_same_mod_can_be_tracked_in_multiple_modsets(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)

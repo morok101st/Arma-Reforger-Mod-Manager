@@ -1,5 +1,5 @@
 import React from "react";
-import { Copy, Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsDown, ChevronsUp, Copy, Download, Pencil, Plus, RotateCcw, Save, Share2, TriangleAlert } from "lucide-react";
 
 import type { Mod, Modset } from "../types";
 import { Dialog } from "./common";
@@ -16,6 +16,8 @@ export function ModsetManagement({
   deleteModset,
   activateModset,
   exportModset,
+  updateModLoadOrder,
+  updateModsetLoadOrder,
 }: {
   modsets: Modset[];
   activeModsetId: number | null;
@@ -28,6 +30,8 @@ export function ModsetManagement({
   deleteModset: (modsetId: number) => Promise<void>;
   activateModset: (modsetId: number) => Promise<void>;
   exportModset: (modsetId: number, modsetName: string) => Promise<void>;
+  updateModLoadOrder: (modId: string, loadOrder: number) => Promise<void>;
+  updateModsetLoadOrder: (entries: { mod_id: string; load_order: number }[]) => Promise<void>;
 }) {
   const [newName, setNewName] = React.useState("");
   const [newShared, setNewShared] = React.useState(false);
@@ -36,6 +40,9 @@ export function ModsetManagement({
   const [editName, setEditName] = React.useState("");
   const [editShared, setEditShared] = React.useState(false);
   const [deleteModsetId, setDeleteModsetId] = React.useState<number | null>(null);
+  const [loadOrderEdits, setLoadOrderEdits] = React.useState<Record<string, string>>({});
+  const [highlightedModId, setHighlightedModId] = React.useState<string | null>(null);
+  const highlightTimerRef = React.useRef<number | null>(null);
 
   const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
   const deleteModsetTarget = modsets.find((modset) => modset.id === deleteModsetId) ?? null;
@@ -47,6 +54,18 @@ export function ModsetManagement({
         .sort((left, right) => left.load_order - right.load_order || compareModName(left, right)),
     [mods],
   );
+
+  React.useEffect(() => {
+    setLoadOrderEdits(Object.fromEntries(mods.map((mod) => [mod.id, String(mod.load_order ?? 500)])));
+  }, [activeModsetId, mods]);
+
+  React.useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current !== null) {
+        window.clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -88,6 +107,37 @@ export function ModsetManagement({
     setEditModsetId(null);
     setEditName("");
     setEditShared(false);
+  }
+
+  async function handleLoadOrderSave(mod: Mod) {
+    const value = loadOrderEdits[mod.id] ?? String(mod.load_order ?? 500);
+    const normalizedLoadOrder = Number.parseInt(value.trim(), 10);
+    if (!isValidLoadOrder(normalizedLoadOrder)) return;
+    await updateModLoadOrder(mod.id, normalizedLoadOrder);
+  }
+
+  async function handleMoveMod(modId: string, targetIndex: number) {
+    const currentIndex = exportOrderMods.findIndex((mod) => mod.id === modId);
+    if (currentIndex < 0) return;
+    const boundedTargetIndex = Math.max(0, Math.min(targetIndex, exportOrderMods.length - 1));
+    if (boundedTargetIndex === currentIndex) return;
+    const reordered = [...exportOrderMods];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(boundedTargetIndex, 0, moved);
+    await updateModsetLoadOrder(reindexedLoadOrderEntries(reordered));
+    setHighlightedModId(modId);
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedModId(null);
+      highlightTimerRef.current = null;
+    }, 1000);
+  }
+
+  async function handleResetLoadOrder() {
+    if (exportOrderMods.length === 0) return;
+    await updateModsetLoadOrder(exportOrderMods.map((mod) => ({ mod_id: mod.id, load_order: DEFAULT_LOAD_ORDER })));
   }
 
   return (
@@ -203,18 +253,95 @@ export function ModsetManagement({
             <p>Selected modset</p>
             <h3>Export order{activeModset ? ` - ${activeModset.name}` : ""}</h3>
           </div>
+          <button
+            className="secondary-button compact"
+            disabled={loading || exportOrderMods.length === 0 || exportOrderMods.every((mod) => mod.load_order === DEFAULT_LOAD_ORDER)}
+            onClick={() => handleResetLoadOrder().catch(() => null)}
+            type="button"
+          >
+            <RotateCcw size={16} />
+            Reset order
+          </button>
         </div>
         {exportOrderMods.length > 0 ? (
           <div className="export-order-table" role="table" aria-label="Export order">
             <div className="export-order-row export-order-header" role="row">
               <span role="columnheader">Order</span>
+              <span role="columnheader">Move</span>
               <span role="columnheader">Mod name</span>
               <span role="columnheader">Mod ID</span>
               <span role="columnheader">Installed version</span>
             </div>
-            {exportOrderMods.map((mod) => (
-              <div className="export-order-row" role="row" key={mod.id}>
-                <span role="cell">{mod.load_order}</span>
+            {exportOrderMods.map((mod, index) => (
+              <div className={`export-order-row ${highlightedModId === mod.id ? "highlighted" : ""}`} role="row" key={mod.id}>
+                <div className="export-order-control" role="cell">
+                  <input
+                    aria-label={`Export load order for ${mod.name ?? mod.id}`}
+                    disabled={loading}
+                    max={999999}
+                    min={0}
+                    type="number"
+                    value={loadOrderEdits[mod.id] ?? String(mod.load_order ?? 500)}
+                    onChange={(event) =>
+                      setLoadOrderEdits((current) => ({
+                        ...current,
+                        [mod.id]: event.target.value,
+                      }))
+                    }
+                  />
+                  <button
+                    aria-label={`Save export load order for ${mod.name ?? mod.id}`}
+                    className="primary-button compact"
+                    disabled={loading || !hasLoadOrderChange(mod, loadOrderEdits[mod.id])}
+                    onClick={() => handleLoadOrderSave(mod).catch(() => null)}
+                    title="Save order"
+                    type="button"
+                  >
+                    <Save size={16} />
+                  </button>
+                </div>
+                <div className="export-order-move-actions" role="cell">
+                  <button
+                    aria-label={`Move ${mod.name ?? mod.id} to top`}
+                    className="icon-button"
+                    disabled={loading || index === 0}
+                    onClick={() => handleMoveMod(mod.id, 0).catch(() => null)}
+                    title="Move to top"
+                    type="button"
+                  >
+                    <ChevronsUp size={16} />
+                  </button>
+                  <button
+                    aria-label={`Move ${mod.name ?? mod.id} up`}
+                    className="icon-button"
+                    disabled={loading || index === 0}
+                    onClick={() => handleMoveMod(mod.id, index - 1).catch(() => null)}
+                    title="Move up"
+                    type="button"
+                  >
+                    <ArrowUp size={16} />
+                  </button>
+                  <button
+                    aria-label={`Move ${mod.name ?? mod.id} down`}
+                    className="icon-button"
+                    disabled={loading || index === exportOrderMods.length - 1}
+                    onClick={() => handleMoveMod(mod.id, index + 1).catch(() => null)}
+                    title="Move down"
+                    type="button"
+                  >
+                    <ArrowDown size={16} />
+                  </button>
+                  <button
+                    aria-label={`Move ${mod.name ?? mod.id} to bottom`}
+                    className="icon-button"
+                    disabled={loading || index === exportOrderMods.length - 1}
+                    onClick={() => handleMoveMod(mod.id, exportOrderMods.length - 1).catch(() => null)}
+                    title="Move to bottom"
+                    type="button"
+                  >
+                    <ChevronsDown size={16} />
+                  </button>
+                </div>
                 <strong role="cell">{mod.name ?? "Unnamed mod"}</strong>
                 <code role="cell">{mod.id}</code>
                 <span role="cell">{mod.current_version}</span>
@@ -224,6 +351,7 @@ export function ModsetManagement({
         ) : (
           <p className="muted">No mods with an installed version are included in the export for this modset.</p>
         )}
+        <p className="muted load-order-hint">Lower values load earlier. Higher values load later. Default: 500.</p>
       </section>
 
       {showCreateDialog && (
@@ -326,3 +454,21 @@ function compareModName(left: Mod, right: Mod): number {
   const rightName = right.name ?? right.id;
   return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
 }
+
+function hasLoadOrderChange(mod: Mod, value: string | undefined) {
+  const normalizedLoadOrder = Number.parseInt((value ?? "").trim(), 10);
+  return isValidLoadOrder(normalizedLoadOrder) && normalizedLoadOrder !== mod.load_order;
+}
+
+function isValidLoadOrder(value: number) {
+  return Number.isFinite(value) && value >= 0 && value <= 999999;
+}
+
+function reindexedLoadOrderEntries(mods: Mod[]) {
+  return mods.map((mod, index) => ({
+    mod_id: mod.id,
+    load_order: DEFAULT_LOAD_ORDER + index * 10,
+  }));
+}
+
+const DEFAULT_LOAD_ORDER = 500;
