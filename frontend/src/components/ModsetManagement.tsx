@@ -47,6 +47,9 @@ export function ModsetManagement({
   const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
   const deleteModsetTarget = modsets.find((modset) => modset.id === deleteModsetId) ?? null;
   const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? null;
+  const editNameTrimmed = editName.trim();
+  const editSharedChanged = Boolean(editModset?.is_owner && editShared !== editModset.shared);
+  const editHasChanges = Boolean(editModset && (editNameTrimmed !== editModset.name || editSharedChanged));
   const exportOrderMods = React.useMemo(
     () =>
       mods
@@ -78,10 +81,8 @@ export function ModsetManagement({
   async function handleEdit(event: React.FormEvent) {
     event.preventDefault();
     if (!editModset) return;
-    const name = editName.trim();
-    const sharedChanged = editModset.is_owner && editShared !== editModset.shared;
-    if (!name || (name === editModset.name && !sharedChanged)) return;
-    await updateModset(editModset.id, name, sharedChanged ? editShared : undefined);
+    if (!editNameTrimmed || !editHasChanges) return;
+    await updateModset(editModset.id, editNameTrimmed, editSharedChanged ? editShared : undefined);
     closeEditDialog();
   }
 
@@ -398,7 +399,7 @@ export function ModsetManagement({
               <button className="secondary-button compact" onClick={closeEditDialog} type="button">
                 Cancel
               </button>
-              <button className="primary-button compact" disabled={loading || !editName.trim() || editName.trim() === editModset.name}>
+              <button className="primary-button compact" disabled={loading || !editNameTrimmed || !editHasChanges}>
                 Save
               </button>
             </div>
