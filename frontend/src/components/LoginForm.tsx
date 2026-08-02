@@ -2,12 +2,16 @@ import React from "react";
 import { Shield } from "lucide-react";
 
 export function LoginForm({
+  oidcEnabled,
   loginError,
   loading,
+  oidcLoginUrl,
   onSubmit,
 }: {
+  oidcEnabled: boolean;
   loginError: string | null;
   loading: boolean;
+  oidcLoginUrl: string;
   onSubmit: (username: string, password: string) => Promise<void>;
 }) {
   const [username, setUsername] = React.useState("");
@@ -34,6 +38,12 @@ export function LoginForm({
         <Shield size={18} />
         Sign in
       </button>
+      {oidcEnabled && (
+        <button className="secondary-button" onClick={() => window.location.assign(oidcLoginUrl)} disabled={loading} type="button">
+          <Shield size={18} />
+          Sign in with OIDC
+        </button>
+      )}
     </form>
   );
 }

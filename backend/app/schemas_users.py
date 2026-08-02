@@ -29,3 +29,6 @@ class UserRead(BaseModel):
     is_active: bool
     created_at: datetime
     last_login_at: datetime | None
+    auth_provider: str = "local"
+    has_local_password: bool = True
+    email: str | None = None

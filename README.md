@@ -57,6 +57,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 
 - Change your own password.
 - Admin features: create users, change roles, enable/disable users, reset passwords.
+- Optional OIDC login can be enabled alongside local login.
 - Admin-managed Discord webhooks for update alerts: create, edit, disable, delete, and test webhooks in the UI.
 - Discord webhooks can be limited to specific modsets directly in the webhook dialog.
 - Discord update notifications can open the affected mod directly inside ARMM when `ARMM_PUBLIC_URL` is configured.
@@ -77,6 +78,7 @@ It stores mod data per user-owned modset, regularly crawls Workshop data, compar
 - Production startup fails fast if `ARMM_SECRET_KEY` is missing or left at a placeholder value.
 - Cookie flags: `HttpOnly`, `SameSite=Lax`, and `Secure` in production.
 - Logout clears the session cookie.
+- OIDC logout clears only the ARMM session cookie; the central provider/SSO session may remain active.
 - Origin validation for unsafe HTTP methods (additional CSRF protection via origin allowlist).
 - Audit trail for login/logout, password actions, user changes, mod changes, modset changes, and webhook changes.
 - Modset ownership and `shared` state are persisted and enforced server-side.
@@ -96,6 +98,9 @@ Base path behind the frontend proxy: `/api`
 - `GET /api/health` (public)
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
+- `GET /api/auth/config`
+- `GET /api/auth/oidc/login`
+- `GET /api/auth/oidc/callback`
 - `GET /api/auth/me`
 - `PATCH /api/auth/password`
 - `GET/POST/PATCH/DELETE /api/mods...`
@@ -183,6 +188,30 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
 - The example compose file uses GHCR images from the latest tagged release and does not build locally.
+
+### Optional OIDC login
+
+OIDC can be enabled without disabling local login. Unknown OIDC users are created automatically as regular `user` accounts. Admin privileges must be assigned inside ARMM after the first OIDC login.
+
+Minimum `.env` settings:
+
+```env
+OIDC_ENABLED=true
+OIDC_ISSUER_URL=https://identity.example.com/realms/armm
+OIDC_CLIENT_ID=armm
+OIDC_CLIENT_SECRET=change-me-client-secret
+ARMM_PUBLIC_URL=https://armm.example.com
+```
+
+Register this redirect URI at the OIDC provider:
+
+```text
+https://armm.example.com/api/auth/oidc/callback
+```
+
+If `OIDC_REDIRECT_URI` is set, it overrides the URI derived from `ARMM_PUBLIC_URL`. Keep `OIDC_SCOPES` at `openid email profile` unless the provider requires a different scope set. ARMM uses the issuer and subject claim as the stable identity and does not auto-link existing local users by email.
+
+No OIDC logout callback URL is required for the current implementation. ARMM logout only clears the local ARMM session cookie through `POST /api/auth/logout`; it does not call the provider's single logout or end-session endpoint. For Authentik and similar providers, configure only the redirect URI above unless a future ARMM release adds RP-initiated logout.
 
 ## Deployment checklist
 

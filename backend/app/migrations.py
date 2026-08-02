@@ -239,6 +239,34 @@ def _migrate_users(engine: Engine, inspector) -> None:
     elif engine.dialect.name == "postgresql":
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ALTER COLUMN session_version SET DEFAULT 0"))
+    if "oidc_issuer" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN oidc_issuer VARCHAR(255)"))
+    if "oidc_subject" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN oidc_subject VARCHAR(255)"))
+    if "email" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(255)"))
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))
+            connection.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_oidc_identity "
+                    "ON users (oidc_issuer, oidc_subject) "
+                    "WHERE oidc_issuer IS NOT NULL AND oidc_subject IS NOT NULL"
+                )
+            )
+    else:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_oidc_identity "
+                    "ON users (oidc_issuer, oidc_subject) "
+                    "WHERE oidc_issuer IS NOT NULL AND oidc_subject IS NOT NULL"
+                )
+            )
 
     with engine.begin() as connection:
         default_modset_id = connection.execute(text("SELECT id FROM modsets ORDER BY id LIMIT 1")).scalar()

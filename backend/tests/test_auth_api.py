@@ -1,7 +1,10 @@
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, patch
 
 from app import main as app_main
 from app.auth import authenticate_user
+from app.models import User
+from app.oidc import _issuer_for_validation
 from tests.support import ApiTestCase
 
 
@@ -35,6 +38,75 @@ class AuthApiTestCase(ApiTestCase):
         with self.SessionLocal() as db:
             user = authenticate_user(db, "ADMIN", "very-secure-admin-pass")
             self.assertIsNotNone(user)
+
+    def test_auth_config_reports_oidc_disabled_by_default(self) -> None:
+        with TestClient(app_main.app) as client:
+            response = client.get("/auth/config")
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json(), {"local_login_enabled": True, "oidc_enabled": False})
+
+    def test_oidc_login_redirects_when_configured(self) -> None:
+        with (
+            patch("app.routers.auth.oidc_is_configured", return_value=True),
+            patch("app.routers.auth.build_authorization_redirect", new=AsyncMock(return_value="https://issuer.example/authorize")),
+            TestClient(app_main.app) as client,
+        ):
+            response = client.get("/auth/oidc/login", follow_redirects=False)
+            self.assertEqual(response.status_code, 302, response.text)
+            self.assertEqual(response.headers["location"], "https://issuer.example/authorize")
+
+    def test_oidc_callback_sets_local_session_cookie(self) -> None:
+        with self.SessionLocal() as db:
+            user = User(username="oidc.user", password_hash=None, role="user", is_active=True, oidc_issuer="https://issuer.example", oidc_subject="sub-1")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            user_id = user.id
+
+        async def fake_callback(request, response, db):
+            return db.get(User, user_id), True
+
+        with (
+            patch("app.routers.auth.handle_oidc_callback", new=fake_callback),
+            TestClient(app_main.app) as client,
+        ):
+            response = client.get("/auth/oidc/callback?code=abc&state=state", follow_redirects=False)
+            self.assertEqual(response.status_code, 303, response.text)
+            self.assertIn("armm_session", response.headers.get("set-cookie", ""))
+
+            session_response = client.get("/auth/me")
+            self.assertEqual(session_response.status_code, 200, session_response.text)
+            self.assertEqual(session_response.json()["username"], "oidc.user")
+            self.assertEqual(session_response.json()["auth_provider"], "oidc")
+            self.assertFalse(session_response.json()["has_local_password"])
+
+    def test_oidc_only_user_cannot_use_local_password_change(self) -> None:
+        with self.SessionLocal() as db:
+            user = User(username="oidc.only", password_hash=None, role="user", is_active=True, oidc_issuer="https://issuer.example", oidc_subject="sub-2")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            user_id = user.id
+
+        async def fake_callback(request, response, db):
+            return db.get(User, user_id), False
+
+        with (
+            patch("app.routers.auth.handle_oidc_callback", new=fake_callback),
+            TestClient(app_main.app) as client,
+        ):
+            login_response = client.get("/auth/oidc/callback?code=abc&state=state", follow_redirects=False)
+            self.assertEqual(login_response.status_code, 303, login_response.text)
+
+            change_response = client.patch(
+                "/auth/password",
+                json={"current_password": "unused-password", "new_password": "new-very-secure-password"},
+            )
+            self.assertEqual(change_response.status_code, 400, change_response.text)
+
+    def test_oidc_token_validation_uses_exact_discovered_issuer(self) -> None:
+        issuer = _issuer_for_validation({"issuer": "https://issuer.example/application/o/armm/"})
+        self.assertEqual(issuer, "https://issuer.example/application/o/armm/")
 
     def test_auth_theme_preference_update(self) -> None:
         with TestClient(app_main.app) as client:

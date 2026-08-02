@@ -3,6 +3,7 @@ beautifulsoup4==4.12.3
 fastapi==0.115.6
 httpx==0.28.1
 cryptography==42.0.8
+PyJWT[crypto]==2.10.1
 packaging==24.2
 psycopg[binary]==3.2.3
 pydantic-settings==2.7.1

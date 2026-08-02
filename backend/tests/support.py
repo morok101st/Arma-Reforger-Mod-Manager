@@ -17,6 +17,27 @@ from app.login_protection import _failed_logins
 from app.models import User
 
 
+def test_settings(**overrides):
+    values = {
+        "armm_secret_key": "test-secret",
+        "is_production": False,
+        "workshop_base_url": "https://example.invalid/workshop",
+        "armm_public_url": "http://testserver",
+        "oidc_enabled": False,
+        "oidc_issuer_url": None,
+        "oidc_client_id": None,
+        "oidc_client_secret": None,
+        "oidc_redirect_uri": None,
+        "oidc_scopes": "openid email profile",
+        "oidc_scope_list": ["openid", "email", "profile"],
+        "oidc_username_claim": "preferred_username",
+        "oidc_email_claim": "email",
+        "effective_oidc_redirect_uri": None,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
 class DummyScheduler:
     def get_job(self, job_id: str):
         return None
@@ -35,29 +56,16 @@ class ApiTestCase(unittest.TestCase):
 
         self.settings_patcher = patch(
             "app.auth.get_settings",
-            return_value=SimpleNamespace(
-                armm_secret_key="test-secret",
-                is_production=False,
-                workshop_base_url="https://example.invalid/workshop",
-            ),
+            return_value=test_settings(),
         )
         self.session_settings_patcher = patch(
             "app.session_auth.get_settings",
-            return_value=SimpleNamespace(
-                armm_secret_key="test-secret",
-                is_production=False,
-                workshop_base_url="https://example.invalid/workshop",
-            ),
+            return_value=test_settings(),
         )
+        self.oidc_settings_patcher = patch("app.oidc.get_settings", return_value=test_settings())
         self.bootstrap_settings_patcher = patch(
             "app.admin_bootstrap.get_settings",
-            return_value=SimpleNamespace(
-                armm_secret_key="test-secret",
-                is_production=False,
-                armm_admin_username="admin",
-                armm_admin_password="very-secure-admin-pass",
-                workshop_base_url="https://example.invalid/workshop",
-            ),
+            return_value=test_settings(armm_admin_username="admin", armm_admin_password="very-secure-admin-pass"),
         )
         self.main_engine_patcher = patch.object(app_main, "engine", self.engine)
         self.main_session_patcher = patch.object(app_main, "SessionLocal", self.SessionLocal)
@@ -65,6 +73,7 @@ class ApiTestCase(unittest.TestCase):
 
         self.settings_patcher.start()
         self.session_settings_patcher.start()
+        self.oidc_settings_patcher.start()
         self.bootstrap_settings_patcher.start()
         self.main_engine_patcher.start()
         self.main_session_patcher.start()
@@ -87,6 +96,7 @@ class ApiTestCase(unittest.TestCase):
         self.main_session_patcher.stop()
         self.main_engine_patcher.stop()
         self.bootstrap_settings_patcher.stop()
+        self.oidc_settings_patcher.stop()
         self.session_settings_patcher.stop()
         self.settings_patcher.stop()
         Base.metadata.drop_all(self.engine)

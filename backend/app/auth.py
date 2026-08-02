@@ -28,6 +28,8 @@ def authenticate_user(db: Session, username: str, password: str) -> User | None:
     user = db.scalar(select(User).where(func.lower(User.username) == username.casefold()))
     if not user or not user.is_active:
         return None
+    if not user.password_hash:
+        return None
     if not verify_password(password, user.password_hash):
         return None
     user.last_login_at = datetime.now(timezone.utc)

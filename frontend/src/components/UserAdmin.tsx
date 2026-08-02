@@ -125,31 +125,39 @@ export function UserAdmin({
         <div className="metrics">
           <Info label="Signed in as" value={currentUser.username} />
           <Info label="Role" value={currentUser.role} />
+          <Info label="Login" value={authProviderLabel(currentUser.auth_provider)} />
           <Info label="Session expires" value={formatDate(currentUser.session_expires_at)} />
           <Info label="Lifetime" value="7 days" />
         </div>
       </section>
 
-      <form className="user-form" onSubmit={handleOwnPasswordChange}>
-        <label>
-          Current password
-          <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
-        </label>
-        <label>
-          New password
-          <input
-            value={newOwnPassword}
-            onChange={(event) => setNewOwnPassword(event.target.value)}
-            type="password"
-            autoComplete="new-password"
-            placeholder="at least 12 characters"
-          />
-        </label>
-        <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
-          <Save size={18} />
-          Change
-        </button>
-      </form>
+      {currentUser.has_local_password ? (
+        <form className="user-form" onSubmit={handleOwnPasswordChange}>
+          <label>
+            Current password
+            <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
+          </label>
+          <label>
+            New password
+            <input
+              value={newOwnPassword}
+              onChange={(event) => setNewOwnPassword(event.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="at least 12 characters"
+            />
+          </label>
+          <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
+            <Save size={18} />
+            Change
+          </button>
+        </form>
+      ) : (
+        <section className="content-section">
+          <h3>Password</h3>
+          <p className="muted">This account signs in through OIDC and has no local ARMM password.</p>
+        </section>
+      )}
 
       {currentUser.role === "admin" && (
         <>
@@ -167,7 +175,8 @@ export function UserAdmin({
                 <div>
                   <strong>{user.username}</strong>
                   <small>
-                    {user.role} · {user.is_active ? "active" : "disabled"} · Last login {formatDate(user.last_login_at) ?? "never"}
+                    {user.role} · {user.is_active ? "active" : "disabled"} · {authProviderLabel(user.auth_provider)} · Last login{" "}
+                    {formatDate(user.last_login_at) ?? "never"}
                   </small>
                 </div>
                 <button className="secondary-button compact" disabled={loading} onClick={() => setEditUserId(user.id)} type="button">
@@ -262,6 +271,9 @@ export function UserAdmin({
                     placeholder="leave empty to keep unchanged"
                   />
                 </label>
+                {editUser.auth_provider === "oidc" && (
+                  <p className="muted">Setting a password enables additional local login for this OIDC account.</p>
+                )}
                 <div className="dialog-actions">
                   <button className="secondary-button compact" onClick={() => setEditUserId(null)} type="button">
                     Cancel
@@ -358,4 +370,10 @@ export function UserAdmin({
       )}
     </>
   );
+}
+
+function authProviderLabel(provider: UserAccount["auth_provider"] | AuthUser["auth_provider"]) {
+  if (provider === "local+oidc") return "Local + OIDC";
+  if (provider === "oidc") return "OIDC";
+  return "Local";
 }

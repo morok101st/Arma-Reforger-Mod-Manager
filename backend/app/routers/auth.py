@@ -1,10 +1,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.config import get_settings
+from app.oidc import build_authorization_redirect, handle_oidc_callback, oidc_is_configured
 from app.router_helpers import audit_event
 from app.auth import (
     SESSION_COOKIE_NAME,
@@ -21,10 +24,15 @@ from app.auth import (
 )
 from app.models import User
 from app.modset_service import ensure_user_active_modset
-from app.schemas_auth import AuthUserRead, LoginRequest, PasswordChange, ThemePreferenceUpdate
+from app.schemas_auth import AuthConfigRead, AuthUserRead, LoginRequest, PasswordChange, ThemePreferenceUpdate
 from app.user_service import auth_user_to_read
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/config", response_model=AuthConfigRead)
+def api_auth_config() -> AuthConfigRead:
+    return AuthConfigRead(local_login_enabled=True, oidc_enabled=oidc_is_configured())
 
 
 @router.post("/login", response_model=AuthUserRead)
@@ -74,6 +82,63 @@ def api_login(payload: LoginRequest, request: Request, response: Response, db: S
     return auth_user_to_read(user)
 
 
+@router.get("/oidc/login")
+async def api_oidc_login(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
+    if not oidc_is_configured():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OIDC login is not enabled")
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response.headers["location"] = await build_authorization_redirect(response)
+    audit_event(
+        db,
+        action="oidc_login_started",
+        entity_type="auth",
+        entity_id="oidc",
+        request=request,
+        detail={"provider": get_settings().oidc_issuer_url},
+    )
+    return response
+
+
+@router.get("/oidc/callback")
+async def api_oidc_callback(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
+    settings = get_settings()
+    redirect_target = settings.armm_public_url.rstrip("/") + "/" if settings.armm_public_url else "/"
+    response = RedirectResponse(url=redirect_target, status_code=status.HTTP_303_SEE_OTHER)
+    try:
+        user, created = await handle_oidc_callback(request, response, db)
+    except HTTPException as exc:
+        audit_event(
+            db,
+            action="oidc_login_failed",
+            entity_type="auth",
+            entity_id="oidc",
+            request=request,
+            detail={"reason": exc.detail, "provider": settings.oidc_issuer_url},
+        )
+        raise
+    set_session_cookie(response, user)
+    if created:
+        audit_event(
+            db,
+            action="oidc_user_created",
+            entity_type="user",
+            entity_id=str(user.id),
+            actor=user,
+            request=request,
+            detail={"username": user.username, "role": user.role, "provider": settings.oidc_issuer_url},
+        )
+    audit_event(
+        db,
+        action="oidc_login_success",
+        entity_type="auth",
+        entity_id=str(user.id),
+        actor=user,
+        request=request,
+        detail={"username": user.username, "role": user.role, "provider": settings.oidc_issuer_url},
+    )
+    return response
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def api_logout(
     request: Request,
@@ -109,11 +174,23 @@ def api_me(
 def api_change_password(
     payload: PasswordChange,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_current_user),
     session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
 ) -> AuthUserRead:
     ensure_user_active_modset(db, current_user)
+    if not current_user.password_hash:
+        audit_event(
+            db,
+            action="password_change_failed",
+            entity_type="user",
+            entity_id=str(current_user.id),
+            actor=current_user,
+            request=request,
+            detail={"reason": "local_password_not_enabled"},
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Local password login is not enabled for this user")
     if not verify_password(payload.current_password, current_user.password_hash):
         audit_event(
             db,
