@@ -220,13 +220,21 @@ async def _validate_id_token(id_token: str, metadata: dict[str, Any], *, expecte
             key=jwt.PyJWK.from_dict(key).key,
             algorithms=[str(algorithm) for algorithm in algorithms],
             audience=settings.oidc_client_id,
-            issuer=settings.oidc_issuer_url.rstrip("/") if settings.oidc_issuer_url else None,
+            issuer=_issuer_for_validation(metadata),
         )
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC ID token validation failed") from exc
     if claims.get("nonce") != expected_nonce:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC nonce validation failed")
     return claims
+
+
+def _issuer_for_validation(metadata: dict[str, Any]) -> str | None:
+    issuer = metadata.get("issuer")
+    if isinstance(issuer, str) and issuer:
+        return issuer
+    settings = get_settings()
+    return settings.oidc_issuer_url.rstrip("/") if settings.oidc_issuer_url else None
 
 
 def _select_jwk(jwks: dict[str, Any], header: dict[str, Any]) -> dict[str, Any]:

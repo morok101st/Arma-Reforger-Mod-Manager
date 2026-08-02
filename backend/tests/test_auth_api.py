@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 from app import main as app_main
 from app.auth import authenticate_user
 from app.models import User
+from app.oidc import _issuer_for_validation
 from tests.support import ApiTestCase
 
 
@@ -102,6 +103,10 @@ class AuthApiTestCase(ApiTestCase):
                 json={"current_password": "unused-password", "new_password": "new-very-secure-password"},
             )
             self.assertEqual(change_response.status_code, 400, change_response.text)
+
+    def test_oidc_token_validation_uses_exact_discovered_issuer(self) -> None:
+        issuer = _issuer_for_validation({"issuer": "https://issuer.example/application/o/armm/"})
+        self.assertEqual(issuer, "https://issuer.example/application/o/armm/")
 
     def test_auth_theme_preference_update(self) -> None:
         with TestClient(app_main.app) as client:
