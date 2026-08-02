@@ -211,6 +211,8 @@ https://armm.example.com/api/auth/oidc/callback
 
 If `OIDC_REDIRECT_URI` is set, it overrides the URI derived from `ARMM_PUBLIC_URL`. Keep `OIDC_SCOPES` at `openid email profile` unless the provider requires a different scope set. ARMM uses the issuer and subject claim as the stable identity and does not auto-link existing local users by email.
 
+No OIDC logout callback URL is required for the current implementation. ARMM logout only clears the local ARMM session cookie through `POST /api/auth/logout`; it does not call the provider's single logout or end-session endpoint. For Authentik and similar providers, configure only the redirect URI above unless a future ARMM release adds RP-initiated logout.
+
 ## Deployment checklist
 
 Before exposing ARMM to other users, verify these points:
