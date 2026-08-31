@@ -1,7 +1,11 @@
+import asyncio
+import threading
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.database import SessionLocal
 from app.discord_webhooks import notify_update_available
 from app.mod_dependencies import (
     dependency_mod_id,
@@ -21,6 +25,7 @@ from app.mod_queries import (
 from app.models import Mod, UserMod
 from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.scraper import WorkshopScraper
+from app.workshop_provider import get_workshop_metadata_provider
 
 
 class ModDeleteBlockedError(Exception):
@@ -65,6 +70,7 @@ async def update_user_mod(
     provided_fields: set[str] | None = None,
     deactivate_orphan_dependencies: bool = False,
     send_update_notifications: bool = False,
+    defer_metadata_refresh: bool = False,
 ) -> ModRead | None:
     mod = db.get(Mod, mod_id)
     if not mod:
@@ -92,7 +98,15 @@ async def update_user_mod(
     if deactivate_orphan_dependencies and previous_current_version and not current_version:
         orphaned_dependency_ids = find_orphaned_dependency_ids_for_mod_delete(db, mod_id, modset_id)
         deactivate_dependency_tracking(db, modset_id, orphaned_dependency_ids)
-    scraper = WorkshopScraper(get_settings().workshop_base_url)
+    if defer_metadata_refresh:
+        refreshed = get_mod_or_none(db, mod_id, modset_id)
+        if refreshed:
+            synchronize_dependency_tracking_for_modset_state(db, modset_id)
+        read = get_mod_read(db, mod_id, modset_id)
+        if read and send_update_notifications:
+            await notify_update_available(db, modset_id, read)
+        return read
+    metadata_provider = get_workshop_metadata_provider(get_settings())
     # If a mod transitions from "no installed version" to a defined version, try a full refresh first.
     # If that fails (network/workshop issue), fall back to the stored dependency list so dependency
     # tracking is still applied for the active modset.
@@ -102,7 +116,7 @@ async def update_user_mod(
         except Exception:
             refreshed = get_mod_or_none(db, mod_id, modset_id)
             if refreshed:
-                await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
+                await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, metadata_provider)
             read = get_mod_read(db, mod_id, modset_id)
             if read and send_update_notifications:
                 await notify_update_available(db, modset_id, read)
@@ -110,20 +124,37 @@ async def update_user_mod(
 
     refreshed = get_mod_or_none(db, mod_id, modset_id)
     if refreshed:
-        await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
+        await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, metadata_provider)
     read = get_mod_read(db, mod_id, modset_id)
     if read and send_update_notifications:
         await notify_update_available(db, modset_id, read)
     return read
 
 
+async def refresh_mod_background(mod_id: str, modset_id: int, send_update_notifications: bool = False) -> None:
+    db = SessionLocal()
+    try:
+        await refresh_mod(db, mod_id, modset_id, send_update_notifications=send_update_notifications)
+    except Exception as exc:
+        print(f"Background metadata refresh failed for mod={mod_id} modset={modset_id}: {exc}", flush=True)
+    finally:
+        db.close()
+
+
+def schedule_mod_metadata_refresh(mod_id: str, modset_id: int, send_update_notifications: bool = False) -> None:
+    def run() -> None:
+        asyncio.run(refresh_mod_background(mod_id, modset_id, send_update_notifications=send_update_notifications))
+
+    thread = threading.Thread(target=run, name=f"mod-refresh-{modset_id}-{mod_id}", daemon=True)
+    thread.start()
+
+
 async def refresh_mod(db: Session, mod_id: str, modset_id: int, send_update_notifications: bool = False) -> ModRead:
-    scraper = WorkshopScraper(get_settings().workshop_base_url)
-    scraped = await scraper.fetch_mod(mod_id)
-    upsert_scraped_mod(db, scraped)
+    metadata_provider = get_workshop_metadata_provider(get_settings())
+    await fetch_and_upsert_mods(db, metadata_provider, [mod_id])
     refreshed = get_mod_or_none(db, mod_id, modset_id)
     assert refreshed is not None
-    await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
+    await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, metadata_provider)
     read = get_mod_read(db, mod_id, modset_id)
     assert read is not None
     if send_update_notifications:
@@ -146,19 +177,27 @@ async def refresh_all_mods(db: Session, send_update_notifications: bool = False)
 
 async def refresh_mod_for_all_modsets(db: Session, mod_id: str, send_update_notifications: bool = False) -> None:
     # Refreshes global workshop data once, then updates dependency tracking in each modset that tracks the mod.
-    scraper = WorkshopScraper(get_settings().workshop_base_url)
-    scraped = await scraper.fetch_mod(mod_id)
-    upsert_scraped_mod(db, scraped)
+    metadata_provider = get_workshop_metadata_provider(get_settings())
+    await fetch_and_upsert_mods(db, metadata_provider, [mod_id])
 
     modset_ids = list(db.scalars(select(UserMod.modset_id).where(UserMod.mod_id == mod_id).distinct()).all())
     for modset_id in modset_ids:
         refreshed = get_mod_or_none(db, mod_id, modset_id)
         if not refreshed:
             continue
-        await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, scraper)
+        await track_and_refresh_dependencies_for_installed_mod(db, refreshed, modset_id, metadata_provider)
         read = get_mod_read(db, mod_id, modset_id)
         if read and send_update_notifications:
             await notify_update_available(db, modset_id, read)
+
+
+async def fetch_and_upsert_mods(db: Session, metadata_provider, mod_ids: list[str]) -> None:
+    if hasattr(metadata_provider, "fetch_mods"):
+        scraped_mods = (await metadata_provider.fetch_mods(mod_ids)).values()
+    else:
+        scraped_mods = [await metadata_provider.fetch_mod(mod_id) for mod_id in mod_ids]
+    for scraped in scraped_mods:
+        upsert_scraped_mod(db, scraped)
 
 
 def delete_mod(db: Session, mod_id: str, modset_id: int, deactivate_orphan_dependencies: bool = False) -> bool:

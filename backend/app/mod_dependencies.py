@@ -1,4 +1,5 @@
 import re
+from typing import Protocol
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -7,20 +8,33 @@ from app.models import Mod, UserMod
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import list_tracked_user_mods, normalize_dependencies, normalize_match_value
 from app.schemas_mods import DependencyRead
-from app.scraper import WorkshopScraper
+from app.scraper import ScrapedMod
 
 
-async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, modset_id: int, scraper: WorkshopScraper) -> None:
+class WorkshopMetadataProvider(Protocol):
+    async def fetch_mod(self, mod_id: str) -> ScrapedMod:
+        pass
+
+
+async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, modset_id: int, metadata_provider: WorkshopMetadataProvider) -> None:
     user_mod = db.scalar(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id == mod.id))
     if not user_mod:
         return
-    await synchronize_dependency_tracking_for_modset(db, modset_id, scraper)
+    await synchronize_dependency_tracking_for_modset(db, modset_id, metadata_provider)
 
 
-async def synchronize_dependency_tracking_for_modset(db: Session, modset_id: int, scraper: WorkshopScraper) -> None:
-    dependency_ids_to_refresh = synchronize_dependency_tracking_for_modset_state(db, modset_id)
-    if dependency_ids_to_refresh:
-        await refresh_dependency_mods(db, dependency_ids_to_refresh, scraper)
+async def synchronize_dependency_tracking_for_modset(db: Session, modset_id: int, metadata_provider: WorkshopMetadataProvider) -> None:
+    refreshed_ids: set[str] = set()
+    for _ in range(20):
+        dependency_ids_to_refresh = [
+            mod_id
+            for mod_id in synchronize_dependency_tracking_for_modset_state(db, modset_id)
+            if mod_id not in refreshed_ids
+        ]
+        if not dependency_ids_to_refresh:
+            return
+        refreshed_ids.update(dependency_ids_to_refresh)
+        await refresh_dependency_mods(db, dependency_ids_to_refresh, metadata_provider)
 
 
 def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int) -> list[str]:
@@ -29,14 +43,26 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
     required_dependencies: dict[str, DependencyRead] = {}
     dependency_ids_to_refresh: list[str] = []
     state_changed = False
-    for mapping in mappings:
-        if not (mapping.current_version or "").strip():
+    source_queue = [mapping.mod_id for mapping in mappings if (mapping.current_version or "").strip()]
+    inspected_sources: set[str] = set()
+    while source_queue:
+        source_id = source_queue.pop(0)
+        if source_id in inspected_sources:
             continue
-        for dependency in normalize_dependencies(mapping.mod.dependencies or []):
+        inspected_sources.add(source_id)
+
+        source_mapping = tracked_mappings_by_id.get(source_id)
+        source_mod = source_mapping.mod if source_mapping else db.get(Mod, source_id)
+        if not source_mod:
+            continue
+
+        for dependency in normalize_dependencies(source_mod.dependencies or []):
             dependency_id = dependency_mod_id(dependency, db)
-            if not dependency_id or dependency_id == mapping.mod_id:
+            if not dependency_id or dependency_id == source_id:
                 continue
             required_dependencies.setdefault(dependency_id, dependency)
+            if dependency_id not in inspected_sources:
+                source_queue.append(dependency_id)
 
     for dependency_id, dependency in required_dependencies.items():
         dependency_mod = db.get(Mod, dependency_id)
@@ -61,7 +87,8 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
                     tracking_reason="dependency",
                 )
             )
-            dependency_ids_to_refresh.append(dependency_id)
+            if not dependency_mod.latest_version:
+                dependency_ids_to_refresh.append(dependency_id)
             state_changed = True
         else:
             if not existing_mapping.dependency_origin:
@@ -75,10 +102,10 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
     return dependency_ids_to_refresh
 
 
-async def refresh_dependency_mods(db: Session, mod_ids: list[str], scraper: WorkshopScraper) -> None:
+async def refresh_dependency_mods(db: Session, mod_ids: list[str], metadata_provider: WorkshopMetadataProvider) -> None:
     for mod_id in dict.fromkeys(mod_ids):
         try:
-            scraped = await scraper.fetch_mod(mod_id)
+            scraped = await metadata_provider.fetch_mod(mod_id)
             upsert_scraped_mod(db, scraped)
         except Exception:
             # Dependency mappings are already persisted; metadata refresh is best-effort.
@@ -86,6 +113,9 @@ async def refresh_dependency_mods(db: Session, mod_ids: list[str], scraper: Work
 
 
 def dependency_mod_id(dependency: DependencyRead, db: Session) -> str | None:
+    if dependency.id:
+        return dependency.id
+
     mod_id = workshop_mod_id_from_url(dependency.url)
     if mod_id:
         return mod_id

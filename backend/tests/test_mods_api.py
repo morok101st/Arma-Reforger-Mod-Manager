@@ -145,6 +145,48 @@ class ModsApiTestCase(ApiTestCase):
             self.assertTrue(mods["DEPMOD001"]["is_dependency"])
             self.assertEqual(mods["DEPMOD001"]["load_order"], 500)
 
+    def test_setting_installed_version_auto_tracks_transitive_dependencies_for_modset(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Transitive"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="PARENTMODT01",
+                        name="Parent Mod",
+                        latest_version="1.0.0",
+                        dependencies=[{"name": "Dependency Mod", "url": "https://reforger.armaplatform.com/workshop/DEPMODT001"}],
+                        source_url="https://reforger.armaplatform.com/workshop/PARENTMODT01",
+                    )
+                )
+                db.add(
+                    Mod(
+                        id="DEPMODT001",
+                        name="Dependency Mod",
+                        latest_version="2.0.0",
+                        dependencies=[{"name": "Transitive Mod", "url": "https://reforger.armaplatform.com/workshop/TRANSMOD001"}],
+                        source_url="https://reforger.armaplatform.com/workshop/DEPMODT001",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODT01", current_version=None, pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            update_response = client.patch(f"/mods/PARENTMODT01?modset_id={modset_id}", json={"current_version": "1.0.0"})
+
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+
+            with self.SessionLocal() as db:
+                direct_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODT001").one_or_none()
+                transitive_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="TRANSMOD001").one_or_none()
+                self.assertIsNotNone(direct_mapping)
+                self.assertIsNotNone(transitive_mapping)
+                self.assertEqual(direct_mapping.tracking_reason, "dependency")
+                self.assertEqual(transitive_mapping.tracking_reason, "dependency")
+
     def test_load_order_can_be_updated_and_duplicate_values_are_allowed(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)

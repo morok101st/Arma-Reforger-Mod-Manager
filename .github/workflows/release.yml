@@ -44,6 +44,7 @@ jobs:
             echo
             echo "- \`ghcr.io/${{ github.repository_owner }}/armm-backend:${{ steps.version.outputs.version }}\`"
             echo "- \`ghcr.io/${{ github.repository_owner }}/armm-frontend:${{ steps.version.outputs.version }}\`"
+            echo "- \`ghcr.io/${{ github.repository_owner }}/armm-reforger-cli:${{ steps.version.outputs.version }}\`"
           } > release-notes.md
 
       - name: Set up Docker Buildx
@@ -75,6 +76,15 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/armm-frontend:${{ steps.version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/armm-frontend:latest
+
+      - name: Build and push Reforger metadata service image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./reforger-cli
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/armm-reforger-cli:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/armm-reforger-cli:latest
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

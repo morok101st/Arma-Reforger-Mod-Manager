@@ -76,6 +76,7 @@ export type ModVersion = {
 };
 
 export type Dependency = {
+  id: string | null;
   name: string;
   url: string | null;
 };

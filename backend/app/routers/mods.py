@@ -26,6 +26,7 @@ from app.services import (
     list_mods,
     refresh_all_mods,
     refresh_mod,
+    schedule_mod_metadata_refresh,
     update_user_mod,
 )
 
@@ -99,6 +100,7 @@ async def api_update_user_mod(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     request_payload = await request.json()
     provided_fields = set(request_payload.keys()) if isinstance(request_payload, dict) else set()
+    should_refresh_in_background = "current_version" in provided_fields
     mod = await update_user_mod(
         db,
         mod_id,
@@ -106,9 +108,12 @@ async def api_update_user_mod(
         effective_modset_id,
         provided_fields=provided_fields,
         deactivate_orphan_dependencies=deactivate_orphan_dependencies,
+        defer_metadata_refresh=should_refresh_in_background,
     )
     if not mod:
         raise HTTPException(status_code=404, detail="Mod not found")
+    if should_refresh_in_background:
+        schedule_mod_metadata_refresh(mod_id, effective_modset_id)
     audit_mod_updated(
         db,
         mod_id=mod_id,

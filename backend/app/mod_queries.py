@@ -98,13 +98,16 @@ def normalize_dependencies(dependencies: list[object]) -> list[DependencyRead]:
             continue
 
         if isinstance(dependency, dict):
+            id_value = dependency.get("id") or dependency.get("modId")
+            dependency_id = str(id_value).strip() if id_value is not None else None
             name_value = dependency.get("name")
             name = str(name_value).strip() if name_value is not None else ""
+            name = name or dependency_id or ""
             if not name:
                 continue
             url_value = dependency.get("url")
             url = str(url_value).strip() if url_value else None
-            normalized.append(DependencyRead(name=name, url=url))
+            normalized.append(DependencyRead(id=dependency_id, name=name, url=url))
     return normalized
 
 
@@ -146,10 +149,16 @@ def collect_dependency_sets(mappings: list[UserMod]) -> tuple[set[str], set[str]
 def dependency_matches_mod(dependency: DependencyRead, target: Mod) -> bool:
     target_id = normalize_match_value(target.id)
     target_name = normalize_match_value(target.name)
+    dependency_id = normalize_match_value(dependency.id)
     dependency_name = normalize_match_value(dependency.name)
     dependency_url = normalize_match_value(dependency.url)
 
-    return bool(dependency_url and target_id in dependency_url) or dependency_name == target_id or bool(target_name and dependency_name == target_name)
+    return (
+        dependency_id == target_id
+        or bool(dependency_url and target_id in dependency_url)
+        or dependency_name == target_id
+        or bool(target_name and dependency_name == target_name)
+    )
 
 
 def normalize_match_value(value: str | None) -> str:

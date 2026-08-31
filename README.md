@@ -1,11 +1,12 @@
 # Arma Reforger Mod Manager (ARMM)
 
 ARMM is a web application for managing and monitoring Arma Reforger Workshop mods.
-It stores mod data per user-owned modset, regularly crawls Workshop data, compares installed and latest versions, and centralizes updates, dependency relations, sharing, and audit events in one UI.
+It stores mod data per user-owned modset, regularly refreshes Workshop metadata, compares installed and latest versions, and centralizes updates, dependency relations, sharing, and audit events in one UI.
 
 ## What the application does
 
 - Tracks Workshop mods by mod ID.
+- Reads Workshop metadata through a dedicated internal Reforger metadata service that uses the official Arma Reforger server tooling and generated `ServerData.json` files.
 - Supports multiple modsets per user. A modset is private by default and can be marked `shared` by its owner so other users can see and manage it.
 - Compares `Installed Version` vs. `Latest Version`.
 - Uses a dedicated `No installed version` state for tracked mods without an installed target version.
@@ -168,6 +169,30 @@ docker compose up -d
 - API docs (after login): `https://<your-domain>/api/docs`
 
 Note: The automatic crawl runs twice per day at `10:00` and `19:00` in `ARMM_SCHEDULER_TIMEZONE`. Discord update alerts are emitted only from those automatic runs, not from manual refreshes or manual version edits.
+
+## Workshop Metadata
+
+ARMM uses a hybrid Workshop metadata strategy.
+Dependencies, changelog entries, descriptions, and other display metadata are still read from the Workshop pages.
+The latest mod version is read through an internal `reforger-cli` container because the Workshop pages can lag behind the backend data used by Arma Reforger.
+
+The `reforger-cli` service installs or updates the Arma Reforger Dedicated Server through SteamCMD on startup, keeps the installation in the `reforger-server-data` Docker volume, and exposes an internal metadata API for the backend.
+
+This avoids relying on cached Workshop website HTML for update detection while keeping the richer dependency and changelog parsing from the Workshop pages. The Bohemia tooling may still download or materialize mod files while resolving version metadata; those files stay isolated inside the `reforger-cli` container volume and are not stored in the backend container.
+
+Metadata lookup flow:
+
+- ARMM receives a mod ID from the UI.
+- The backend scrapes the Workshop detail and changelog pages for metadata, dependencies, and version history.
+- The backend also calls the internal `reforger-cli` metadata API for the same mod ID.
+- The metadata service starts `ArmaReforgerServer` in headless mode with a temporary config for that mod.
+- The service watches the temporary profile until the root mod `ServerData.json` is available and stable.
+- The service terminates the Arma server process and returns the version from the root `ServerData.json`.
+- The backend stores the scraped metadata but overrides the latest version with the Reforger CLI value.
+- Dependencies discovered by scraping are refreshed recursively, so transitive dependencies can still be tracked.
+- Temporary probe data is deleted after each lookup unless debug retention is explicitly enabled in the service environment.
+
+No external port is published for the metadata service. It is only reachable from the Docker network at `http://reforger-cli:8081`.
 
 ## Export load order
 

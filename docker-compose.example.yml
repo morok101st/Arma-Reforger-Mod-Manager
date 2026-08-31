@@ -38,6 +38,30 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      reforger-cli:
+        condition: service_healthy
+
+  reforger-cli:
+    image: ghcr.io/morok101st/armm-reforger-cli:${ARMM_IMAGE_TAG:-0.2.2}
+    container_name: armm-reforger-cli
+    environment:
+      SRCDS_APPID: ${REFORGER_SERVER_APPID:-1874900}
+      REFORGER_INSTALL_DIR: /opt/reforger-server
+      REFORGER_METADATA_PORT: 8081
+      REFORGER_METADATA_TIMEOUT_SECONDS: 180
+      REFORGER_METADATA_SETTLE_SECONDS: 8
+      REFORGER_METADATA_POLL_SECONDS: 0.5
+      REFORGER_UPDATE_TIMEOUT_SECONDS: 600
+      REFORGER_UPDATE_ON_START: true
+      REFORGER_KEEP_WORKDIR: false
+      REFORGER_WORKDIR: /tmp
+    volumes:
+      - reforger-server-data:/opt/reforger-server
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import json, urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=5); assert json.load(response)['binary_exists']"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   frontend:
     image: ghcr.io/morok101st/armm-frontend:${ARMM_IMAGE_TAG:-0.2.2}
@@ -60,6 +84,7 @@ services:
 
 volumes:
   armm-db-data:
+  reforger-server-data:
 
 networks:
   traefik_default:

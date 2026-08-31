@@ -22,6 +22,9 @@ def test_settings(**overrides):
         "armm_secret_key": "test-secret",
         "is_production": False,
         "workshop_base_url": "https://example.invalid/workshop",
+        "workshop_metadata_provider": "scraper",
+        "reforger_metadata_url": "http://reforger-cli:8081",
+        "reforger_metadata_timeout_seconds": 180,
         "armm_public_url": "http://testserver",
         "oidc_enabled": False,
         "oidc_issuer_url": None,
@@ -63,6 +66,8 @@ class ApiTestCase(unittest.TestCase):
             return_value=test_settings(),
         )
         self.oidc_settings_patcher = patch("app.oidc.get_settings", return_value=test_settings())
+        self.services_settings_patcher = patch("app.services.get_settings", return_value=test_settings())
+        self.mod_refresh_scheduler_patcher = patch("app.routers.mods.schedule_mod_metadata_refresh", autospec=True)
         self.bootstrap_settings_patcher = patch(
             "app.admin_bootstrap.get_settings",
             return_value=test_settings(armm_admin_username="admin", armm_admin_password="very-secure-admin-pass"),
@@ -74,6 +79,8 @@ class ApiTestCase(unittest.TestCase):
         self.settings_patcher.start()
         self.session_settings_patcher.start()
         self.oidc_settings_patcher.start()
+        self.services_settings_patcher.start()
+        self.mod_refresh_scheduler_patcher.start()
         self.bootstrap_settings_patcher.start()
         self.main_engine_patcher.start()
         self.main_session_patcher.start()
@@ -96,6 +103,8 @@ class ApiTestCase(unittest.TestCase):
         self.main_session_patcher.stop()
         self.main_engine_patcher.stop()
         self.bootstrap_settings_patcher.stop()
+        self.mod_refresh_scheduler_patcher.stop()
+        self.services_settings_patcher.stop()
         self.oidc_settings_patcher.stop()
         self.session_settings_patcher.stop()
         self.settings_patcher.stop()
