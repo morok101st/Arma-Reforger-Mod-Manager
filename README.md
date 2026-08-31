@@ -213,6 +213,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Configure the deployment timezone for automatic runs with `ARMM_SCHEDULER_TIMEZONE` in `.env`.
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
 - Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
+- Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
 - The example compose file uses GHCR images from the latest tagged release and does not build locally.
 
@@ -268,6 +269,20 @@ Only anonymized example files are meant for Git:
 
 - `.env.example`
 - `docker-compose.example.yml`
+
+## Troubleshooting
+
+### Database schema checks
+
+Use the SQLAlchemy models or current migrations as the source of truth for table and column names.
+Common current names:
+
+- Tracked mods are stored in `user_mods`, not `tracked_mods`.
+- Modset ownership is stored as `modsets.owner_user_id`.
+- Modset sharing is stored as `modsets.shared`.
+- Audit payloads are stored as `audit_logs.detail`, not `audit_logs.details`.
+
+Errors such as `relation "tracked_mods" does not exist` or `column a.details does not exist` usually indicate an outdated manual SQL query, not an application migration failure.
 
 ## Development and CI
 

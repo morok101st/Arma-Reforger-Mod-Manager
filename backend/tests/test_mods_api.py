@@ -145,6 +145,31 @@ class ModsApiTestCase(ApiTestCase):
             self.assertTrue(mods["DEPMOD001"]["is_dependency"])
             self.assertEqual(mods["DEPMOD001"]["load_order"], 500)
 
+    def test_create_mod_defers_reliable_version_refresh(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            with (
+                patch(
+                    "app.services.WorkshopScraper.fetch_mod",
+                    autospec=True,
+                    return_value=ScrapedMod(
+                        id="FASTCREATE001",
+                        name="Fast Create Mod",
+                        latest_version="1.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/FASTCREATE001",
+                    ),
+                ) as scraper_fetch,
+                patch("app.routers.mods.schedule_mod_metadata_refresh") as schedule_refresh,
+            ):
+                response = client.post("/mods", json={"id": "FASTCREATE001", "current_version": "1.0.0"})
+
+            self.assertEqual(response.status_code, 201, response.text)
+            self.assertEqual(response.json()["id"], "FASTCREATE001")
+            self.assertEqual(scraper_fetch.call_count, 1)
+            schedule_refresh.assert_called_once()
+
     def test_setting_installed_version_auto_tracks_transitive_dependencies_for_modset(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)

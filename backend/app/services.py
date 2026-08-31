@@ -1,5 +1,7 @@
 import asyncio
+import queue
 import threading
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -32,7 +34,21 @@ class ModDeleteBlockedError(Exception):
     pass
 
 
-async def create_mod(db: Session, payload: ModCreate, modset_id: int) -> ModRead:
+@dataclass(frozen=True)
+class MetadataRefreshJob:
+    mod_id: str
+    modset_id: int
+    send_update_notifications: bool = False
+
+
+_METADATA_REFRESH_WORKERS = 2
+_metadata_refresh_queue: queue.Queue[MetadataRefreshJob] = queue.Queue()
+_metadata_refresh_pending: set[tuple[str, int]] = set()
+_metadata_refresh_lock = threading.Lock()
+_metadata_refresh_workers_started = False
+
+
+async def create_mod(db: Session, payload: ModCreate, modset_id: int, defer_metadata_refresh: bool = False) -> ModRead:
     mod = db.get(Mod, payload.id)
     if not mod:
         mod = Mod(id=payload.id)
@@ -56,7 +72,11 @@ async def create_mod(db: Session, payload: ModCreate, modset_id: int) -> ModRead
         user_mod.tracking_reason = "manual"
 
     db.commit()
-    await refresh_mod(db, payload.id, modset_id, send_update_notifications=False)
+    if defer_metadata_refresh:
+        await fetch_and_upsert_mods(db, WorkshopScraper(get_settings().workshop_base_url), [payload.id])
+        synchronize_dependency_tracking_for_modset_state(db, modset_id)
+    else:
+        await refresh_mod(db, payload.id, modset_id, send_update_notifications=False)
     read = get_mod_read(db, payload.id, modset_id)
     assert read is not None
     return read
@@ -142,11 +162,42 @@ async def refresh_mod_background(mod_id: str, modset_id: int, send_update_notifi
 
 
 def schedule_mod_metadata_refresh(mod_id: str, modset_id: int, send_update_notifications: bool = False) -> None:
-    def run() -> None:
-        asyncio.run(refresh_mod_background(mod_id, modset_id, send_update_notifications=send_update_notifications))
+    global _metadata_refresh_workers_started
 
-    thread = threading.Thread(target=run, name=f"mod-refresh-{modset_id}-{mod_id}", daemon=True)
-    thread.start()
+    normalized_mod_id = mod_id.strip().upper()
+    job_key = (normalized_mod_id, modset_id)
+    with _metadata_refresh_lock:
+        if not _metadata_refresh_workers_started:
+            _start_metadata_refresh_workers()
+            _metadata_refresh_workers_started = True
+        if job_key in _metadata_refresh_pending:
+            return
+        _metadata_refresh_pending.add(job_key)
+
+    _metadata_refresh_queue.put(MetadataRefreshJob(normalized_mod_id, modset_id, send_update_notifications))
+
+
+def _start_metadata_refresh_workers() -> None:
+    for worker_index in range(_METADATA_REFRESH_WORKERS):
+        thread = threading.Thread(target=_metadata_refresh_worker, name=f"mod-refresh-worker-{worker_index + 1}", daemon=True)
+        thread.start()
+
+
+def _metadata_refresh_worker() -> None:
+    while True:
+        job = _metadata_refresh_queue.get()
+        try:
+            asyncio.run(
+                refresh_mod_background(
+                    job.mod_id,
+                    job.modset_id,
+                    send_update_notifications=job.send_update_notifications,
+                )
+            )
+        finally:
+            with _metadata_refresh_lock:
+                _metadata_refresh_pending.discard((job.mod_id, job.modset_id))
+            _metadata_refresh_queue.task_done()
 
 
 async def refresh_mod(db: Session, mod_id: str, modset_id: int, send_update_notifications: bool = False) -> ModRead:

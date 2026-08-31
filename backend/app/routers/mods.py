@@ -59,7 +59,8 @@ async def api_create_mod(
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     try:
-        created = await create_mod(db, payload, effective_modset_id)
+        created = await create_mod(db, payload, effective_modset_id, defer_metadata_refresh=True)
+        schedule_mod_metadata_refresh(payload.id, effective_modset_id)
         audit_mod_created(db, mod=created, modset_id=effective_modset_id, request=request, actor=current_user)
         return created
     except Exception as exc:
