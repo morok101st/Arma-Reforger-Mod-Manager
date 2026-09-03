@@ -230,13 +230,13 @@ def _tail(path: Path, max_chars: int = 1000) -> str:
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if urlparse(self.path).path != "/health":
-            self._json({"detail": "Not found"}, HTTPStatus.NOT_FOUND)
+            self._safe_json({"detail": "Not found"}, HTTPStatus.NOT_FOUND)
             return
-        self._json({"status": "ok", "binary": str(BINARY), "binary_exists": BINARY.exists()})
+        self._safe_json({"status": "ok", "binary": str(BINARY), "binary_exists": BINARY.exists()})
 
     def do_POST(self) -> None:
         if urlparse(self.path).path != "/mods":
-            self._json({"detail": "Not found"}, HTTPStatus.NOT_FOUND)
+            self._safe_json({"detail": "Not found"}, HTTPStatus.NOT_FOUND)
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -246,10 +246,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"detail": "mod_ids must be a list of strings"}, HTTPStatus.BAD_REQUEST)
                 return
             self._json({"mods": fetch_metadata(mod_ids)})
+        except (BrokenPipeError, ConnectionResetError):
+            self._log_client_disconnect()
         except TimeoutError as exc:
-            self._json({"detail": str(exc)}, HTTPStatus.GATEWAY_TIMEOUT)
+            self._safe_json({"detail": str(exc)}, HTTPStatus.GATEWAY_TIMEOUT)
         except Exception as exc:
-            self._json({"detail": str(exc)}, HTTPStatus.BAD_GATEWAY)
+            self._safe_json({"detail": str(exc)}, HTTPStatus.BAD_GATEWAY)
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"{self.address_string()} - {format % args}", flush=True)
@@ -261,6 +263,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _safe_json(self, payload: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
+        try:
+            self._json(payload, status)
+        except (BrokenPipeError, ConnectionResetError):
+            self._log_client_disconnect()
+
+    def _log_client_disconnect(self) -> None:
+        print(f"{self.address_string()} - client disconnected before response was sent", flush=True)
 
 
 def main() -> None:
