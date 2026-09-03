@@ -626,6 +626,49 @@ class ModsApiTestCase(ApiTestCase):
                 deliveries = db.query(DiscordWebhookDelivery).all()
                 self.assertEqual(len(deliveries), 0)
 
+    def test_refresh_all_can_use_scraper_only_provider(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Scraper Only"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="SCRAPERONLY001", name="Stored Mod", latest_version="1.0.0", dependencies=[]))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="SCRAPERONLY001",
+                        current_version="1.0.0",
+                        pinned=False,
+                        tracking_reason="manual",
+                    )
+                )
+                db.commit()
+
+            with (
+                patch("app.services.get_workshop_metadata_provider", autospec=True) as provider_mock,
+                patch(
+                    "app.services.WorkshopScraper.fetch_mod",
+                    autospec=True,
+                    return_value=ScrapedMod(
+                        id="SCRAPERONLY001",
+                        name="Scraper Only Mod",
+                        latest_version="1.1.0",
+                        dependencies=[],
+                        source_url="https://example.invalid/workshop/SCRAPERONLY001",
+                    ),
+                ) as scraper_mock,
+            ):
+                with self.SessionLocal() as db:
+                    result = asyncio.run(refresh_all_mods(db, use_reliable_latest=False))
+
+            self.assertEqual(result.refreshed, 1)
+            self.assertEqual(result.failed, {})
+            provider_mock.assert_not_called()
+            scraper_mock.assert_called_once()
+
     def test_update_alert_is_sent_once_per_latest_version_and_webhook(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)

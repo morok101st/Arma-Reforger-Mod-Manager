@@ -213,22 +213,37 @@ async def refresh_mod(db: Session, mod_id: str, modset_id: int, send_update_noti
     return read
 
 
-async def refresh_all_mods(db: Session, send_update_notifications: bool = False) -> RefreshResult:
+async def refresh_all_mods(db: Session, send_update_notifications: bool = False, use_reliable_latest: bool = True) -> RefreshResult:
     mod_ids = list(db.scalars(select(UserMod.mod_id).distinct().order_by(UserMod.mod_id)).all())
     failed: dict[str, str] = {}
     refreshed = 0
     for mod_id in mod_ids:
         try:
-            await refresh_mod_for_all_modsets(db, mod_id, send_update_notifications=send_update_notifications)
+            await refresh_mod_for_all_modsets(
+                db,
+                mod_id,
+                send_update_notifications=send_update_notifications,
+                use_reliable_latest=use_reliable_latest,
+            )
             refreshed += 1
         except Exception as exc:
             failed[mod_id] = str(exc)
     return RefreshResult(refreshed=refreshed, failed=failed)
 
 
-async def refresh_mod_for_all_modsets(db: Session, mod_id: str, send_update_notifications: bool = False) -> None:
+async def refresh_mod_for_all_modsets(
+    db: Session,
+    mod_id: str,
+    send_update_notifications: bool = False,
+    use_reliable_latest: bool = True,
+) -> None:
     # Refreshes global workshop data once, then updates dependency tracking in each modset that tracks the mod.
-    metadata_provider = get_workshop_metadata_provider(get_settings())
+    settings = get_settings()
+    metadata_provider = (
+        get_workshop_metadata_provider(settings)
+        if use_reliable_latest
+        else WorkshopScraper(settings.workshop_base_url)
+    )
     await fetch_and_upsert_mods(db, metadata_provider, [mod_id])
 
     modset_ids = list(db.scalars(select(UserMod.modset_id).where(UserMod.mod_id == mod_id).distinct()).all())

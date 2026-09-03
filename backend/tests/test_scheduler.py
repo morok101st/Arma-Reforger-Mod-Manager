@@ -91,3 +91,54 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(status["scheduler_timezone"], "Europe/Berlin")
         self.assertEqual(status["automatic_run_times"], ["10:00", "19:00"])
         self.assertEqual(status["next_automatic_run_at"], next_run)
+
+    def test_refresh_job_uses_scraper_only_refresh(self) -> None:
+        class FakeDb:
+            def __init__(self) -> None:
+                self.added = []
+                self.commits = 0
+                self.closed = False
+
+            def add(self, row) -> None:
+                self.added.append(row)
+
+            def commit(self) -> None:
+                self.commits += 1
+
+            def close(self) -> None:
+                self.closed = True
+
+        fake_db = FakeDb()
+        calls = []
+
+        async def fake_refresh_all_mods(db, send_update_notifications=False, use_reliable_latest=True):
+            calls.append(
+                {
+                    "db": db,
+                    "send_update_notifications": send_update_notifications,
+                    "use_reliable_latest": use_reliable_latest,
+                }
+            )
+            return SimpleNamespace(refreshed=2, failed={})
+
+        with (
+            patch.object(scheduler_module, "SessionLocal", return_value=fake_db),
+            patch.object(scheduler_module, "refresh_all_mods", side_effect=fake_refresh_all_mods),
+            patch.object(scheduler_module, "_update_next_run_at"),
+        ):
+            scheduler_module._refresh_job()
+
+        self.assertEqual(
+            calls,
+            [
+                {
+                    "db": fake_db,
+                    "send_update_notifications": True,
+                    "use_reliable_latest": False,
+                }
+            ],
+        )
+        self.assertEqual(fake_db.added[0].refreshed, 2)
+        self.assertEqual(fake_db.added[0].failed, {})
+        self.assertIsNotNone(fake_db.added[0].completed_at)
+        self.assertTrue(fake_db.closed)

@@ -6,11 +6,11 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 ## What the application does
 
 - Tracks Workshop mods by mod ID.
-- Reads Workshop metadata through a dedicated internal Reforger metadata service that uses the official Arma Reforger server tooling and generated `ServerData.json` files.
+- Reads Workshop metadata from the Workshop pages and can use a dedicated internal Reforger metadata service for manual reliable latest-version checks.
 - Supports multiple modsets per user. A modset is private by default and can be marked `shared` by its owner so other users can see and manage it.
 - Compares `Installed Version` vs. `Latest Version`.
 - Uses a dedicated `No installed version` state for tracked mods without an installed target version.
-- Runs an automatic crawl twice per day at fixed times.
+- Runs an automatic crawl twice per day at fixed times. Scheduled crawls use Workshop scraping only and do not call the Reforger CLI metadata service.
 - Shows dependency and `Required by` relations between tracked mods.
 - Automatically adds dependencies to tracking when an installed version is set.
 - Preserves dependency origin information even when a dependency mod is later edited manually.
@@ -168,19 +168,19 @@ docker compose up -d
 - Browser entry for authenticated API docs: `https://<your-domain>/api`
 - API docs (after login): `https://<your-domain>/api/docs`
 
-Note: The automatic crawl runs twice per day at `10:00` and `19:00` in `ARMM_SCHEDULER_TIMEZONE`. Discord update alerts are emitted only from those automatic runs, not from manual refreshes or manual version edits.
+Note: The automatic crawl runs twice per day at `10:00` and `19:00` in `ARMM_SCHEDULER_TIMEZONE`. Discord update alerts are emitted only from those automatic runs, not from manual refreshes or manual version edits. Scheduled automatic crawls use Workshop scraping only; they do not call the internal Reforger CLI metadata service.
 
 ## Workshop Metadata
 
 ARMM uses a hybrid Workshop metadata strategy.
 Dependencies, changelog entries, descriptions, and other display metadata are still read from the Workshop pages.
-The latest mod version is read through an internal `reforger-cli` container because the Workshop pages can lag behind the backend data used by Arma Reforger.
+For manual reliable checks, the latest mod version is read through an internal `reforger-cli` container because the Workshop pages can lag behind the backend data used by Arma Reforger.
 
 The `reforger-cli` service installs or updates the Arma Reforger Dedicated Server through SteamCMD on startup, keeps the installation in the `reforger-server-data` Docker volume, and exposes an internal metadata API for the backend.
 
-This avoids relying on cached Workshop website HTML for update detection while keeping the richer dependency and changelog parsing from the Workshop pages. The Bohemia tooling may still download or materialize mod files while resolving version metadata; those files stay isolated inside the `reforger-cli` container volume and are not stored in the backend container.
+This avoids relying on cached Workshop website HTML for manual latest-version verification while keeping the richer dependency and changelog parsing from the Workshop pages. The Bohemia tooling may still download or materialize mod files while resolving version metadata; those files stay isolated inside the `reforger-cli` container volume and are not stored in the backend container.
 
-Metadata lookup flow:
+Manual reliable metadata lookup flow:
 
 - ARMM receives a mod ID from the UI.
 - The backend scrapes the Workshop detail and changelog pages for metadata, dependencies, and version history.
@@ -193,6 +193,13 @@ Metadata lookup flow:
 - Temporary probe data is deleted after each lookup unless debug retention is explicitly enabled in the service environment.
 
 No external port is published for the metadata service. It is only reachable from the Docker network at `http://reforger-cli:8081`.
+
+Scheduled metadata lookup flow:
+
+- The scheduler runs at `10:00` and `19:00` in `ARMM_SCHEDULER_TIMEZONE`.
+- Scheduled runs use Workshop scraping only for metadata, version history, dependencies, and Discord update detection.
+- Scheduled runs intentionally skip the internal Reforger CLI metadata service to reduce server load.
+- Manual mod refreshes still use the hybrid strategy and can correct the latest version with the Reforger CLI value.
 
 ## Export load order
 
@@ -214,6 +221,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
 - Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
+- Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
 - The example compose file uses GHCR images from the latest tagged release and does not build locally.
 
