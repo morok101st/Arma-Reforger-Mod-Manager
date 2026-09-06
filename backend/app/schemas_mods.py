@@ -19,6 +19,7 @@ class UserModUpdate(BaseModel):
 
 
 class DependencyRead(BaseModel):
+    id: str | None = None
     name: str
     url: str | None = None
 

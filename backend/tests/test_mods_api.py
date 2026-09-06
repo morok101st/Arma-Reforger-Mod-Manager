@@ -145,6 +145,73 @@ class ModsApiTestCase(ApiTestCase):
             self.assertTrue(mods["DEPMOD001"]["is_dependency"])
             self.assertEqual(mods["DEPMOD001"]["load_order"], 500)
 
+    def test_create_mod_defers_reliable_version_refresh(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            with (
+                patch(
+                    "app.services.WorkshopScraper.fetch_mod",
+                    autospec=True,
+                    return_value=ScrapedMod(
+                        id="FASTCREATE001",
+                        name="Fast Create Mod",
+                        latest_version="1.0.0",
+                        dependencies=[],
+                        source_url="https://reforger.armaplatform.com/workshop/FASTCREATE001",
+                    ),
+                ) as scraper_fetch,
+                patch("app.routers.mods.schedule_mod_metadata_refresh") as schedule_refresh,
+            ):
+                response = client.post("/mods", json={"id": "FASTCREATE001", "current_version": "1.0.0"})
+
+            self.assertEqual(response.status_code, 201, response.text)
+            self.assertEqual(response.json()["id"], "FASTCREATE001")
+            self.assertEqual(scraper_fetch.call_count, 1)
+            schedule_refresh.assert_called_once()
+
+    def test_setting_installed_version_auto_tracks_transitive_dependencies_for_modset(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Server Transitive"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(
+                    Mod(
+                        id="PARENTMODT01",
+                        name="Parent Mod",
+                        latest_version="1.0.0",
+                        dependencies=[{"name": "Dependency Mod", "url": "https://reforger.armaplatform.com/workshop/DEPMODT001"}],
+                        source_url="https://reforger.armaplatform.com/workshop/PARENTMODT01",
+                    )
+                )
+                db.add(
+                    Mod(
+                        id="DEPMODT001",
+                        name="Dependency Mod",
+                        latest_version="2.0.0",
+                        dependencies=[{"name": "Transitive Mod", "url": "https://reforger.armaplatform.com/workshop/TRANSMOD001"}],
+                        source_url="https://reforger.armaplatform.com/workshop/DEPMODT001",
+                    )
+                )
+                db.add(UserMod(modset_id=modset_id, mod_id="PARENTMODT01", current_version=None, pinned=False, tracking_reason="manual"))
+                db.commit()
+
+            update_response = client.patch(f"/mods/PARENTMODT01?modset_id={modset_id}", json={"current_version": "1.0.0"})
+
+            self.assertEqual(update_response.status_code, 200, update_response.text)
+
+            with self.SessionLocal() as db:
+                direct_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="DEPMODT001").one_or_none()
+                transitive_mapping = db.query(UserMod).filter_by(modset_id=modset_id, mod_id="TRANSMOD001").one_or_none()
+                self.assertIsNotNone(direct_mapping)
+                self.assertIsNotNone(transitive_mapping)
+                self.assertEqual(direct_mapping.tracking_reason, "dependency")
+                self.assertEqual(transitive_mapping.tracking_reason, "dependency")
+
     def test_load_order_can_be_updated_and_duplicate_values_are_allowed(self) -> None:
         with TestClient(app_main.app) as client:
             self.login_admin(client)
@@ -558,6 +625,49 @@ class ModsApiTestCase(ApiTestCase):
             with self.SessionLocal() as db:
                 deliveries = db.query(DiscordWebhookDelivery).all()
                 self.assertEqual(len(deliveries), 0)
+
+    def test_refresh_all_can_use_scraper_only_provider(self) -> None:
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+
+            modset_response = client.post("/modsets", json={"name": "Scraper Only"})
+            self.assertEqual(modset_response.status_code, 201)
+            modset_id = modset_response.json()["id"]
+
+            with self.SessionLocal() as db:
+                db.add(Mod(id="SCRAPERONLY001", name="Stored Mod", latest_version="1.0.0", dependencies=[]))
+                db.add(
+                    UserMod(
+                        modset_id=modset_id,
+                        mod_id="SCRAPERONLY001",
+                        current_version="1.0.0",
+                        pinned=False,
+                        tracking_reason="manual",
+                    )
+                )
+                db.commit()
+
+            with (
+                patch("app.services.get_workshop_metadata_provider", autospec=True) as provider_mock,
+                patch(
+                    "app.services.WorkshopScraper.fetch_mod",
+                    autospec=True,
+                    return_value=ScrapedMod(
+                        id="SCRAPERONLY001",
+                        name="Scraper Only Mod",
+                        latest_version="1.1.0",
+                        dependencies=[],
+                        source_url="https://example.invalid/workshop/SCRAPERONLY001",
+                    ),
+                ) as scraper_mock,
+            ):
+                with self.SessionLocal() as db:
+                    result = asyncio.run(refresh_all_mods(db, use_reliable_latest=False))
+
+            self.assertEqual(result.refreshed, 1)
+            self.assertEqual(result.failed, {})
+            provider_mock.assert_not_called()
+            scraper_mock.assert_called_once()
 
     def test_update_alert_is_sent_once_per_latest_version_and_webhook(self) -> None:
         with TestClient(app_main.app) as client:

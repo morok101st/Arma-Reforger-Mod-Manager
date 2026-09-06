@@ -249,14 +249,15 @@ export function findTrackedDependency(dependency: Dependency, mods: Mod[]): Mod 
 export function dependencyTargetsMod(dependency: Dependency, mod: Mod): boolean {
   const modId = normalizeMatchValue(mod.id);
   const modName = normalizeMatchValue(mod.name);
+  const dependencyId = normalizeMatchValue(dependency.id);
   const dependencyName = normalizeMatchValue(dependency.name);
   const dependencyUrl = normalizeMatchValue(dependency.url);
 
-  return Boolean(dependencyUrl && modId && dependencyUrl.includes(modId)) || dependencyName === modId || Boolean(modName && dependencyName === modName);
+  return dependencyId === modId || Boolean(dependencyUrl && modId && dependencyUrl.includes(modId)) || dependencyName === modId || Boolean(modName && dependencyName === modName);
 }
 
 export function dependencyKey(dependency: Dependency): string {
-  return `${dependency.name}-${dependency.url ?? ""}`;
+  return `${dependency.id ?? ""}-${dependency.name}-${dependency.url ?? ""}`;
 }
 
 function normalizeMatchValue(value: string | null): string {

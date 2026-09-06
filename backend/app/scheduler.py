@@ -69,7 +69,7 @@ def _refresh_job() -> None:
     db.add(run)
     db.commit()
     try:
-        result = asyncio.run(refresh_all_mods(db, send_update_notifications=True))
+        result = asyncio.run(refresh_all_mods(db, send_update_notifications=True, use_reliable_latest=False))
         _last_refreshed = result.refreshed
         _last_failed = result.failed
         _last_automatic_completed_at = datetime.now(timezone.utc)

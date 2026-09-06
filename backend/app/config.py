@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     armm_scheduler_timezone: str = "Europe/Berlin"
     database_url: str = "sqlite:///./armm.db"
     workshop_base_url: str = "https://reforger.armaplatform.com/workshop"
+    workshop_metadata_provider: str = "reforger"
+    reforger_metadata_url: str = "http://reforger-cli:8081"
+    reforger_metadata_timeout_seconds: int = 180
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     oidc_enabled: bool = False
     oidc_issuer_url: str | None = None
@@ -54,6 +57,10 @@ class Settings(BaseSettings):
             ZoneInfo(self.armm_scheduler_timezone)
         except ZoneInfoNotFoundError as exc:
             raise ValueError(f"Unknown ARMM_SCHEDULER_TIMEZONE: {self.armm_scheduler_timezone}") from exc
+        if self.workshop_metadata_provider.casefold() not in {"scraper", "reforger"}:
+            raise ValueError("WORKSHOP_METADATA_PROVIDER must be either 'scraper' or 'reforger'")
+        if self.reforger_metadata_timeout_seconds < 1:
+            raise ValueError("REFORGER_METADATA_TIMEOUT_SECONDS must be greater than zero")
         if self.oidc_enabled:
             missing = [
                 name
