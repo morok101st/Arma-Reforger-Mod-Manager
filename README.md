@@ -153,6 +153,12 @@ At minimum, change these values:
 
 `ARMM_SCHEDULER_TIMEZONE` defines the deployment timezone used for the automatic runs. ARMM checks for updates twice per day at `10:00` and `19:00` in that timezone.
 
+`WORKSHOP_METADATA_PROVIDER` controls the metadata provider used for reliable/manual refreshes. The default `reforger` uses the hybrid Workshop scraper plus internal Reforger metadata service flow. Use `scraper` only if you intentionally want to disable the Reforger metadata service.
+
+`REFORGER_METADATA_URL` points the backend to the internal metadata service. In the standard Compose deployment this should stay `http://reforger-cli:8081`.
+
+`REFORGER_METADATA_TIMEOUT_SECONDS` controls how long the backend waits for the internal Reforger metadata service before treating the reliable metadata lookup as failed.
+
 Also adjust Traefik host/domain labels in `docker-compose.yml` for your environment.
 
 ### 3. Start the stack
