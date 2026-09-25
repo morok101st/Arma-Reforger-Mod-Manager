@@ -2,7 +2,7 @@ import React from "react";
 import { Home, Layers3, Lock, LogOut, Moon, Pin, Plus, Shield, Sun } from "lucide-react";
 
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
-import type { Mod, Modset, SortMode, ThemePreference } from "../types";
+import type { Mod, Modset, ModStatusFilter, SortMode, ThemePreference } from "../types";
 
 export function Sidebar({
   isMobileDrawerOpen,
@@ -15,6 +15,7 @@ export function Sidebar({
   modsets,
   activeModsetId,
   searchQuery,
+  statusFilter,
   sortMode,
   mods,
   totalModsCount,
@@ -27,6 +28,7 @@ export function Sidebar({
   onShowAddMod,
   onActivateModset,
   onSearchChange,
+  onStatusFilterChange,
   onSortChange,
   onOpenMod,
 }: {
@@ -40,6 +42,7 @@ export function Sidebar({
   modsets: Modset[];
   activeModsetId: number | null;
   searchQuery: string;
+  statusFilter: ModStatusFilter;
   sortMode: SortMode;
   mods: Mod[];
   totalModsCount: number;
@@ -52,6 +55,7 @@ export function Sidebar({
   onShowAddMod: () => void;
   onActivateModset: (modsetId: number) => void;
   onSearchChange: (value: string) => void;
+  onStatusFilterChange: (value: ModStatusFilter) => void;
   onSortChange: (value: SortMode) => void;
   onOpenMod: (id: string) => void;
 }) {
@@ -142,9 +146,23 @@ export function Sidebar({
       </div>
 
       <div className="filter-row">
-        <label>
+        <label className="filter-search">
           Search
           <input value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} placeholder="Mod name or ID" />
+        </label>
+        <label>
+          Status
+          <CustomSelect<ModStatusFilter>
+            value={statusFilter}
+            options={[
+              { value: "all", label: "All" },
+              { value: "UPDATE_AVAILABLE", label: "Update available" },
+              { value: "NOT_INSTALLED", label: "No version" },
+              { value: "UNKNOWN", label: "Status unknown" },
+            ]}
+            onChange={onStatusFilterChange}
+            ariaLabel="Filter by status"
+          />
         </label>
         <label>
           Sort by
@@ -197,7 +215,7 @@ export function Sidebar({
           </button>
         ))}
         {totalModsCount === 0 && <p className="empty">No mods tracked yet.</p>}
-        {totalModsCount > 0 && mods.length === 0 && <p className="empty">No mods match your search.</p>}
+        {totalModsCount > 0 && mods.length === 0 && <p className="empty">No mods match the current filters.</p>}
       </div>
     </section>
   );

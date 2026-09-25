@@ -1,4 +1,5 @@
 export type ModStatus = "NOT_INSTALLED" | "UNKNOWN" | "UP_TO_DATE" | "UPDATE_AVAILABLE";
+export type ModStatusFilter = "all" | "NOT_INSTALLED" | "UNKNOWN" | "UPDATE_AVAILABLE";
 export type SortMode = "name" | "status" | "last_checked" | "updates" | "load_order";
 export type TrackingReason = "manual" | "dependency";
 export type UserRole = "admin" | "user";

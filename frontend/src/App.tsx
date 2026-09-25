@@ -120,6 +120,7 @@ export function App() {
         modsets={modsets.modsets}
         activeModsetId={modsets.activeModsetId}
         searchQuery={mods.searchQuery}
+        statusFilter={mods.statusFilter}
         sortMode={mods.sortMode}
         mods={mods.sortedMods}
         totalModsCount={mods.mods.length}
@@ -132,6 +133,7 @@ export function App() {
         onShowAddMod={handleShowAddMod}
         onActivateModset={handleActivateModset}
         onSearchChange={mods.setSearchQuery}
+        onStatusFilterChange={mods.setStatusFilter}
         onSortChange={mods.setSortMode}
         onOpenMod={handleOpenMod}
       />

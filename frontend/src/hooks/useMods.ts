@@ -1,7 +1,7 @@
 import React from "react";
 
 import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "../lib/utils";
-import type { AuthUser, Mod, ModsetActivity, SchedulerStatus, SortMode } from "../types";
+import type { AuthUser, Mod, ModsetActivity, ModStatusFilter, SchedulerStatus, SortMode } from "../types";
 
 const MODSET_ACTIVITY_PAGE_SIZE = 10;
 
@@ -36,11 +36,12 @@ export function useMods({
   const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<ModStatusFilter>("all");
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
   const [modsetActivityPage, setModsetActivityPage] = React.useState(0);
   const [canPageForwardModsetActivity, setCanPageForwardModsetActivity] = React.useState(false);
 
-  const visibleMods = React.useMemo(() => filterMods(mods, searchQuery), [mods, searchQuery]);
+  const visibleMods = React.useMemo(() => filterMods(mods, searchQuery, statusFilter), [mods, searchQuery, statusFilter]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
   const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
   const changelogEntries = React.useMemo(() => changelogEntriesFromVersions(selected?.versions ?? []), [selected?.versions]);
@@ -214,6 +215,7 @@ export function useMods({
     expandedChangelogVersions,
     sortMode,
     searchQuery,
+    statusFilter,
     saveState,
     sortedMods,
     changelogEntries,
@@ -221,6 +223,7 @@ export function useMods({
     setInstalledVersionEdit,
     setSortMode,
     setSearchQuery,
+    setStatusFilter,
     setSelectedId,
     loadMods,
     loadModsetActivity,
