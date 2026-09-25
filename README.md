@@ -30,8 +30,9 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Metrics: tracked mods, dependency links, and the configured auto schedule.
 - Auto schedule summary showing the configured timezone and daily run times.
 - “Needs attention” card with clear OK/Warning state.
+- Collapsible export-order editor for the active modset, collapsed by default.
 - Recent modset changes showing the latest user actions such as adding mods, removing mods, or changing installed versions.
-- Recent modset changes can be paged through directly in the overview.
+- Recent modset changes use compact responsive rows and can be paged through directly in the overview.
 
 ### Mod management
 
@@ -52,7 +53,6 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Shared modsets are visible and editable to other users.
 - Deleting non-empty modsets is allowed, but the last remaining modset is protected.
 - Export each modset as a JSON file.
-- The Modsets page shows and edits the export order for the selected modset below the modset list, including order value, move controls, mod name, mod ID, and installed version.
 
 ### Security area
 
@@ -217,7 +217,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Higher values load later.
 - Equal values are allowed and fall back to mod name and mod ID for stable ordering.
 - The normal sidebar sort modes are for browsing; the exported file always uses the stored export load order.
-- The Modsets page includes an editable export-order overview for the selected modset so the final export order can be adjusted and checked before downloading the JSON.
+- The dashboard includes a collapsible export-order editor for the active modset so the final export order can be adjusted and checked before downloading the JSON.
 - Export order can be adjusted either by entering a numeric value directly or by using move controls for top, up, down, and bottom.
 - `Reset order` sets all exported mods in the selected modset back to the default value `500`.
 
