@@ -701,6 +701,14 @@ button:disabled {
   grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) minmax(140px, 180px) auto;
 }
 
+.session-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(140px, 180px);
+}
+
+.session-form label {
+  min-width: 0;
+}
+
 .user-list {
   display: grid;
   gap: 12px;
@@ -1039,6 +1047,39 @@ button:disabled {
   grid-template-columns: repeat(4, minmax(140px, 1fr));
 }
 
+.session-section {
+  container-type: inline-size;
+}
+
+.metrics.session-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@container (max-width: 720px) {
+  .metrics.session-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-form .primary-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@container (max-width: 520px) {
+  .metrics.session-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .session-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .dashboard-hero {
   align-items: end;
   background:
@@ -1325,6 +1366,14 @@ button:disabled {
 .content-section {
   display: grid;
   gap: 12px;
+}
+
+.admin-section {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--shape-corner-md);
+  padding: 18px;
+  width: 100%;
 }
 
 .section-heading {

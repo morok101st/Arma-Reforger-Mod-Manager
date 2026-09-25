@@ -151,7 +151,7 @@ export function DiscordWebhookAdmin({
 
   return (
     <>
-      <section className="content-section">
+      <section className="content-section admin-section">
         <div className="section-title-row">
           <h3>Discord webhooks</h3>
           <button

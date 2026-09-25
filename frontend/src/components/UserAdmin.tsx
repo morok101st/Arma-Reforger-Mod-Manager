@@ -120,72 +120,73 @@ export function UserAdmin({
         </div>
       </header>
 
-      <section className="content-section">
+      <section className="content-section admin-section session-section">
         <h3>Session</h3>
-        <div className="metrics">
+        <div className="metrics session-metrics">
           <Info label="Signed in as" value={currentUser.username} />
           <Info label="Role" value={currentUser.role} />
           <Info label="Login" value={authProviderLabel(currentUser.auth_provider)} />
           <Info label="Session expires" value={formatDate(currentUser.session_expires_at)} />
-          <Info label="Lifetime" value="7 days" />
         </div>
-      </section>
 
-      {currentUser.has_local_password ? (
-        <form className="user-form" onSubmit={handleOwnPasswordChange}>
-          <label>
-            Current password
-            <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
-          </label>
-          <label>
-            New password
-            <input
-              value={newOwnPassword}
-              onChange={(event) => setNewOwnPassword(event.target.value)}
-              type="password"
-              autoComplete="new-password"
-              placeholder="at least 12 characters"
-            />
-          </label>
-          <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
-            <Save size={18} />
-            Change
-          </button>
-        </form>
-      ) : (
-        <section className="content-section">
-          <h3>Password</h3>
-          <p className="muted">This account signs in through OIDC and has no local ARMM password.</p>
-        </section>
-      )}
+        {currentUser.has_local_password ? (
+          <form className="user-form session-form" onSubmit={handleOwnPasswordChange}>
+            <label>
+              Current password
+              <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
+            </label>
+            <label>
+              New password
+              <input
+                value={newOwnPassword}
+                onChange={(event) => setNewOwnPassword(event.target.value)}
+                type="password"
+                autoComplete="new-password"
+                placeholder="at least 12 characters"
+              />
+            </label>
+            <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
+              <Save size={18} />
+              Change
+            </button>
+          </form>
+        ) : (
+          <div className="content-section">
+            <h3>Password</h3>
+            <p className="muted">This account signs in through OIDC and has no local ARMM password.</p>
+          </div>
+        )}
+      </section>
 
       {currentUser.role === "admin" && (
         <>
-          <div className="section-title-row">
-            <h3>Users</h3>
-            <button className="primary-button compact" onClick={() => setShowCreateUserDialog(true)} type="button">
-              <Plus size={18} />
-              Create user
-            </button>
-          </div>
+          <section className="content-section admin-section">
+            <div className="section-title-row">
+              <h3>Users</h3>
+              <button className="primary-button compact" onClick={() => setShowCreateUserDialog(true)} type="button">
+                <Plus size={18} />
+                Create user
+              </button>
+            </div>
 
-          <div className="user-list">
-            {users.map((user) => (
-              <article className="user-row" key={user.id}>
-                <div>
-                  <strong>{user.username}</strong>
-                  <small>
-                    {user.role} · {user.is_active ? "active" : "disabled"} · {authProviderLabel(user.auth_provider)} · Last login{" "}
-                    {formatDate(user.last_login_at) ?? "never"}
-                  </small>
-                </div>
-                <button className="secondary-button compact" disabled={loading} onClick={() => setEditUserId(user.id)} type="button">
-                  <Pencil size={16} />
-                  Edit
-                </button>
-              </article>
-            ))}
-          </div>
+            <div className="user-list">
+              {users.map((user) => (
+                <article className="user-row" key={user.id}>
+                  <div>
+                    <strong>{user.username}</strong>
+                    <small>
+                      {user.role} · {user.is_active ? "active" : "disabled"} · {authProviderLabel(user.auth_provider)} · Last login{" "}
+                      {formatDate(user.last_login_at) ?? "never"}
+                    </small>
+                  </div>
+                  <button className="secondary-button compact" disabled={loading} onClick={() => setEditUserId(user.id)} type="button">
+                    <Pencil size={16} />
+                    Edit
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <DiscordWebhookAdmin
             webhooks={webhooks}
@@ -322,7 +323,7 @@ export function UserAdmin({
             </Dialog>
           )}
 
-          <section className="content-section">
+          <section className="content-section admin-section">
             <div className="section-title-row">
               <h3>Audit log</h3>
               <button className="secondary-button compact" disabled={loading} onClick={() => loadAuditLogs().catch(() => null)} type="button">
