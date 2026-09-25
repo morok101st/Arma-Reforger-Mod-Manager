@@ -166,17 +166,20 @@ export function App() {
             schedulerStatus={mods.schedulerStatus}
             openMod={handleOpenMod}
             activeModsetName={activeModsetName}
+            loading={actions.loading}
+            error={actions.error}
             modsetActivityPage={mods.modsetActivityPage}
             canPageBackModsetActivity={mods.canPageBackModsetActivity}
             canPageForwardModsetActivity={mods.canPageForwardModsetActivity}
             previousModsetActivityPage={mods.previousModsetActivityPage}
             nextModsetActivityPage={mods.nextModsetActivityPage}
+            updateModLoadOrder={actions.updateModLoadOrder}
+            updateModsetLoadOrder={actions.updateModsetLoadOrder}
           />
         ) : view.showModsetAdmin ? (
           <ModsetManagement
             modsets={modsets.modsets}
             activeModsetId={modsets.activeModsetId}
-            mods={mods.mods}
             loading={actions.loading}
             error={actions.error}
             createModset={actions.createModset}
@@ -185,8 +188,6 @@ export function App() {
             deleteModset={actions.deleteModset}
             activateModset={actions.activateModset}
             exportModset={actions.exportModset}
-            updateModLoadOrder={actions.updateModLoadOrder}
-            updateModsetLoadOrder={actions.updateModsetLoadOrder}
           />
         ) : view.showUserAdmin ? (
           <UserAdmin

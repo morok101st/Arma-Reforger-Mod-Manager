@@ -4,6 +4,7 @@ import { Activity, BarChart3, CheckCircle2, Clock, History, TriangleAlert } from
 import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
 import type { Mod, ModsetActivity, SchedulerStatus } from "../types";
 import { Info, StatusIcon } from "./common";
+import { ExportOrderSection } from "./ExportOrderSection";
 
 export function Dashboard({
   mods,
@@ -11,22 +12,30 @@ export function Dashboard({
   schedulerStatus,
   openMod,
   activeModsetName,
+  loading,
+  error,
   modsetActivityPage,
   canPageBackModsetActivity,
   canPageForwardModsetActivity,
   previousModsetActivityPage,
   nextModsetActivityPage,
+  updateModLoadOrder,
+  updateModsetLoadOrder,
 }: {
   mods: Mod[];
   modsetActivity: ModsetActivity[];
   schedulerStatus: SchedulerStatus | null;
   openMod: (id: string) => void;
   activeModsetName: string;
+  loading: boolean;
+  error: string | null;
   modsetActivityPage: number;
   canPageBackModsetActivity: boolean;
   canPageForwardModsetActivity: boolean;
   previousModsetActivityPage: () => void;
   nextModsetActivityPage: () => void;
+  updateModLoadOrder: (modId: string, loadOrder: number) => Promise<void>;
+  updateModsetLoadOrder: (entries: { mod_id: string; load_order: number }[]) => Promise<void>;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
   const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
@@ -110,6 +119,15 @@ export function Dashboard({
         </section>
       </div>
 
+      <ExportOrderSection
+        activeModsetName={activeModsetName}
+        mods={mods}
+        loading={loading}
+        error={error}
+        updateModLoadOrder={updateModLoadOrder}
+        updateModsetLoadOrder={updateModsetLoadOrder}
+      />
+
       <section className="dashboard-card activity-card">
         <div className="section-title-row">
           <h3>Recent modset changes</h3>
@@ -121,12 +139,10 @@ export function Dashboard({
               const canOpen = !!entry.entity_id && trackedModIds.has(entry.entity_id);
               const content = (
                 <>
-                  <Activity size={20} />
-                  <span>
-                    <strong>{modsetActivityTitle(entry)}</strong>
-                    <small>{modsetActivitySummary(entry)}</small>
-                    <small>{formatDate(entry.created_at)}</small>
-                  </span>
+                  <Activity className="activity-entry-icon" size={18} />
+                  <strong className="activity-entry-title">{modsetActivityTitle(entry)}</strong>
+                  <small className="activity-entry-summary">{modsetActivitySummary(entry)}</small>
+                  <time className="activity-entry-time" dateTime={entry.created_at}>{formatDate(entry.created_at)}</time>
                 </>
               );
 
