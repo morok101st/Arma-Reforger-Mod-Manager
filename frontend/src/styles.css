@@ -466,7 +466,11 @@ input {
   align-items: end;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) minmax(130px, 150px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filter-search {
+  grid-column: 1 / -1;
 }
 
 .primary-button {
