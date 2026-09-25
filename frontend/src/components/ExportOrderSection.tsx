@@ -77,7 +77,7 @@ export function ExportOrderSection({
   return (
     <section className="dashboard-card export-order-card">
       <div className="section-heading">
-        <h3>{`Export order - ${activeModsetName}`}</h3>
+        <h3>Export order</h3>
         <div className="export-order-heading-actions">
           {isExpanded && (
             <button

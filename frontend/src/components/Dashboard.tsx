@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, BarChart3, CheckCircle2, Clock, History, TriangleAlert } from "lucide-react";
+import { Activity, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, TriangleAlert } from "lucide-react";
 
 import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
 import type { Mod, ModsetActivity, SchedulerStatus } from "../types";
@@ -39,6 +39,8 @@ export function Dashboard({
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
   const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
+  const [isActivityExpanded, setIsActivityExpanded] = React.useState(false);
+  const activityContentId = React.useId();
 
   return (
     <>
@@ -130,47 +132,60 @@ export function Dashboard({
 
       <section className="dashboard-card activity-card">
         <div className="section-title-row">
-          <h3>Recent modset changes</h3>
-          <History size={20} />
+          <h3>Changelog</h3>
+          <button
+            aria-controls={activityContentId}
+            aria-expanded={isActivityExpanded}
+            className="secondary-button compact"
+            onClick={() => setIsActivityExpanded((current) => !current)}
+            type="button"
+          >
+            {isActivityExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {isActivityExpanded ? "Collapse" : "Expand"}
+          </button>
         </div>
-        {modsetActivity.length > 0 ? (
-          <div className="compact-list activity-list">
-            {modsetActivity.map((entry) => {
-              const canOpen = !!entry.entity_id && trackedModIds.has(entry.entity_id);
-              const content = (
-                <>
-                  <Activity className="activity-entry-icon" size={18} />
-                  <strong className="activity-entry-title">{modsetActivityTitle(entry)}</strong>
-                  <small className="activity-entry-summary">{modsetActivitySummary(entry)}</small>
-                  <time className="activity-entry-time" dateTime={entry.created_at}>{formatDate(entry.created_at)}</time>
-                </>
-              );
+        {isActivityExpanded && (
+          <div id={activityContentId}>
+            {modsetActivity.length > 0 ? (
+              <div className="compact-list activity-list">
+                {modsetActivity.map((entry) => {
+                  const canOpen = !!entry.entity_id && trackedModIds.has(entry.entity_id);
+                  const content = (
+                    <>
+                      <Activity className="activity-entry-icon" size={18} />
+                      <strong className="activity-entry-title">{modsetActivityTitle(entry)}</strong>
+                      <small className="activity-entry-summary">{modsetActivitySummary(entry)}</small>
+                      <time className="activity-entry-time" dateTime={entry.created_at}>{formatDate(entry.created_at)}</time>
+                    </>
+                  );
 
-              return canOpen ? (
-                <button key={entry.id} onClick={() => openMod(entry.entity_id!)} type="button">
-                  {content}
+                  return canOpen ? (
+                    <button key={entry.id} onClick={() => openMod(entry.entity_id!)} type="button">
+                      {content}
+                    </button>
+                  ) : (
+                    <div key={entry.id} className="compact-list-entry static">
+                      {content}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="muted">No modset changes recorded.</p>
+            )}
+            <div className="list-pagination">
+              <span className="muted">{`Page ${modsetActivityPage + 1}`}</span>
+              <div className="dialog-actions">
+                <button className="secondary-button compact" disabled={!canPageBackModsetActivity} onClick={previousModsetActivityPage} type="button">
+                  Previous
                 </button>
-              ) : (
-                <div key={entry.id} className="compact-list-entry static">
-                  {content}
-                </div>
-              );
-            })}
+                <button className="secondary-button compact" disabled={!canPageForwardModsetActivity} onClick={nextModsetActivityPage} type="button">
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
-        ) : (
-          <p className="muted">No recent mod changes recorded for this modset.</p>
         )}
-        <div className="list-pagination">
-          <span className="muted">{`Page ${modsetActivityPage + 1}`}</span>
-          <div className="dialog-actions">
-            <button className="secondary-button compact" disabled={!canPageBackModsetActivity} onClick={previousModsetActivityPage} type="button">
-              Previous
-            </button>
-            <button className="secondary-button compact" disabled={!canPageForwardModsetActivity} onClick={nextModsetActivityPage} type="button">
-              Next
-            </button>
-          </div>
-        </div>
       </section>
     </>
   );

@@ -31,8 +31,8 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Auto schedule summary showing the configured timezone and daily run times.
 - “Needs attention” card with clear OK/Warning state.
 - Collapsible export-order editor for the active modset, collapsed by default.
-- Recent modset changes showing the latest user actions such as adding mods, removing mods, or changing installed versions.
-- Recent modset changes use compact responsive rows and can be paged through directly in the overview.
+- Collapsible Changelog showing the latest modset actions such as adding mods, removing mods, or changing installed versions; collapsed by default.
+- Changelog entries use compact responsive rows and can be paged through directly in the overview.
 
 ### Mod management
 
