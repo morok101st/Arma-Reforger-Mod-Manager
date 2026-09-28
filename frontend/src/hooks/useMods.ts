@@ -38,6 +38,9 @@ export function useMods({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<ModStatusFilter>("all");
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
+  const [refreshingModKeys, setRefreshingModKeys] = React.useState<Set<string>>(new Set());
+  const [completedRefreshKeys, setCompletedRefreshKeys] = React.useState<Set<string>>(new Set());
+  const refreshCompletionTimersRef = React.useRef<Map<string, number>>(new Map());
   const [modsetActivityPage, setModsetActivityPage] = React.useState(0);
   const [canPageForwardModsetActivity, setCanPageForwardModsetActivity] = React.useState(false);
 
@@ -109,6 +112,11 @@ export function useMods({
   }, [selected?.id]);
 
   React.useEffect(() => {
+    const timers = refreshCompletionTimersRef.current;
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+
+  React.useEffect(() => {
     setExpandedChangelogVersions(changelogEntries[0] ? new Set([changelogEntries[0].version]) : new Set());
   }, [selected?.id, changelogEntries]);
 
@@ -133,10 +141,51 @@ export function useMods({
   const refreshMod = React.useCallback(
     async (id: string) => {
       if (!activeModsetId) return;
-      await api.refreshMod(id, activeModsetId);
-      await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+      const refreshKey = `${activeModsetId}:${id.trim().toUpperCase()}`;
+      const previousTimer = refreshCompletionTimersRef.current.get(refreshKey);
+      if (previousTimer !== undefined) {
+        window.clearTimeout(previousTimer);
+        refreshCompletionTimersRef.current.delete(refreshKey);
+      }
+      setCompletedRefreshKeys((current) => {
+        const next = new Set(current);
+        next.delete(refreshKey);
+        return next;
+      });
+      setRefreshingModKeys((current) => new Set(current).add(refreshKey));
+      try {
+        await api.refreshMod(id, activeModsetId);
+        await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+        setCompletedRefreshKeys((current) => new Set(current).add(refreshKey));
+        const timer = window.setTimeout(() => {
+          setCompletedRefreshKeys((current) => {
+            const next = new Set(current);
+            next.delete(refreshKey);
+            return next;
+          });
+          refreshCompletionTimersRef.current.delete(refreshKey);
+        }, 3000);
+        refreshCompletionTimersRef.current.set(refreshKey, timer);
+      } finally {
+        setRefreshingModKeys((current) => {
+          const next = new Set(current);
+          next.delete(refreshKey);
+          return next;
+        });
+      }
     },
     [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage],
+  );
+
+  const getModRefreshState = React.useCallback(
+    (id: string): "idle" | "checking" | "completed" => {
+      if (!activeModsetId) return "idle";
+      const refreshKey = `${activeModsetId}:${id.trim().toUpperCase()}`;
+      if (refreshingModKeys.has(refreshKey)) return "checking";
+      if (completedRefreshKeys.has(refreshKey)) return "completed";
+      return "idle";
+    },
+    [activeModsetId, completedRefreshKeys, refreshingModKeys],
   );
 
   const removeMod = React.useCallback(
@@ -233,6 +282,7 @@ export function useMods({
     openMod,
     addMod,
     refreshMod,
+    getModRefreshState,
     removeMod,
     updateInstalledVersion,
     updateModLoadOrder,

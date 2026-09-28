@@ -996,6 +996,11 @@ button:disabled {
   border-color: #9fc8ad;
 }
 
+.status-band.checking {
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline);
+}
+
 .status-band.save-band {
   background: #edf8f1;
   border-color: #9fc8ad;
@@ -1039,6 +1044,22 @@ button:disabled {
 
 .status-icon.unknown {
   color: var(--md-sys-color-on-surface-variant);
+}
+
+.refresh-spin {
+  animation: refresh-spin 1s linear infinite;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh-spin {
+    animation: none;
+  }
 }
 
 .metrics {
