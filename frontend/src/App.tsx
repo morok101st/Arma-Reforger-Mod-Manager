@@ -217,6 +217,7 @@ export function App() {
           <ModDetail
             selected={mods.selected}
             loading={actions.loading}
+            refreshState={mods.getModRefreshState(mods.selected.id)}
             saveState={mods.saveState}
             installedVersionEdit={mods.installedVersionEdit}
             setInstalledVersionEdit={mods.setInstalledVersionEdit}

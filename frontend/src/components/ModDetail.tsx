@@ -8,6 +8,7 @@ import { CustomSelect, Dialog, Info, StatusIcon, statusLabel } from "./common";
 export function ModDetail({
   selected,
   loading,
+  refreshState,
   saveState,
   installedVersionEdit,
   setInstalledVersionEdit,
@@ -23,6 +24,7 @@ export function ModDetail({
 }: {
   selected: Mod;
   loading: boolean;
+  refreshState: "idle" | "checking" | "completed";
   saveState: "idle" | "saved";
   installedVersionEdit: string;
   setInstalledVersionEdit: (value: string) => void;
@@ -36,6 +38,7 @@ export function ModDetail({
   allTrackedMods: Mod[];
   openMod: (id: string) => void;
 }) {
+  const refreshing = refreshState === "checking";
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = React.useState(false);
   const [modJsonCopied, setModJsonCopied] = React.useState(false);
@@ -146,8 +149,15 @@ export function ModDetail({
               Workshop
             </a>
           )}
-          <button className="icon-button" onClick={() => refreshMod(selected.id)} disabled={loading} title="Refresh mod">
-            <RefreshCw size={18} />
+          <button
+            className="icon-button"
+            onClick={() => refreshMod(selected.id)}
+            disabled={loading || refreshing}
+            title={refreshing ? "Checking for updates" : "Refresh mod"}
+            aria-label={refreshing ? "Checking mod for updates" : "Refresh mod"}
+            aria-busy={refreshing}
+          >
+            <RefreshCw className={refreshing ? "refresh-spin" : undefined} size={18} />
           </button>
           <button
             className="icon-button danger"
@@ -322,14 +332,35 @@ export function ModDetail({
         </Dialog>
       )}
 
-      <div className={`status-band ${selected.status.toLowerCase()}`}>
-        <StatusIcon status={selected.status} />
-        <strong>{statusLabel(selected.status)}</strong>
-        <span>
-          {selected.status === "NOT_INSTALLED"
-            ? `Latest ${selected.latest_version ?? UNKNOWN_VALUE}`
-            : `Installed ${selected.current_version ?? UNKNOWN_VALUE} · Latest ${selected.latest_version ?? UNKNOWN_VALUE}`}
-        </span>
+      <div
+        className={`status-band ${refreshing ? "checking" : refreshState === "completed" ? "save-band" : selected.status.toLowerCase()}`}
+        role="status"
+        aria-live="polite"
+        aria-busy={refreshing}
+      >
+        {refreshing ? (
+          <>
+            <RefreshCw className="status-icon unknown refresh-spin" size={20} />
+            <strong>Checking for updates</strong>
+            <span>Deep check in progress: Workshop data is being crawled and the latest version is being verified via the Reforger CLI.</span>
+          </>
+        ) : refreshState === "completed" ? (
+          <>
+            <CheckCircle2 className="status-icon ok" size={20} />
+            <strong>Check completed</strong>
+            <span>Workshop data and latest version were refreshed.</span>
+          </>
+        ) : (
+          <>
+            <StatusIcon status={selected.status} />
+            <strong>{statusLabel(selected.status)}</strong>
+            <span>
+              {selected.status === "NOT_INSTALLED"
+                ? `Latest ${selected.latest_version ?? UNKNOWN_VALUE}`
+                : `Installed ${selected.current_version ?? UNKNOWN_VALUE} · Latest ${selected.latest_version ?? UNKNOWN_VALUE}`}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="version-editor">
