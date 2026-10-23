@@ -47,6 +47,14 @@ jobs:
             echo "- \`ghcr.io/${{ github.repository_owner }}/armm-reforger-cli:${{ steps.version.outputs.version }}\`"
           } > release-notes.md
 
+          version_notes="docs/releases/${current_tag#v}.md"
+          if [ -f "$version_notes" ]; then
+            cat "$version_notes" > release-notes-combined.md
+            printf '\n' >> release-notes-combined.md
+            cat release-notes.md >> release-notes-combined.md
+            mv release-notes-combined.md release-notes.md
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

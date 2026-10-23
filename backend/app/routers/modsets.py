@@ -81,7 +81,11 @@ def api_update_modset(
         entity_id=str(updated.id),
         actor=current_user,
         request=request,
-        detail={"modset_name": updated.name},
+        detail={
+            "modset_name": updated.name,
+            **({"group_permissions": [entry.model_dump() for entry in payload.group_permissions]}
+               if payload.group_permissions is not None else {}),
+        },
     )
     return updated
 

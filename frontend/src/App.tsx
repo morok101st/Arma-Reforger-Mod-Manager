@@ -10,9 +10,10 @@ import { ModsetManagement } from "./components/ModsetManagement";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
+import { GroupAdmin } from "./components/GroupAdmin";
 
 export function App() {
-  const { detailRef, view, auth, modsets, mods, admin, actions, openMod } = useAppController();
+  const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const deepLinkRef = React.useRef(() => {
     const params = new URLSearchParams(window.location.search);
@@ -24,7 +25,9 @@ export function App() {
       modId: modParam?.trim() || null,
     };
   });
-  const activeModsetName = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId)?.name ?? "Default";
+  const activeModset = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId);
+  const activeModsetName = activeModset?.name ?? "No modset selected";
+  const canEdit = activeModset?.can_edit ?? false;
   const openSidebar = React.useCallback(() => setMobileSidebarOpen(true), []);
   const closeSidebar = React.useCallback(() => setMobileSidebarOpen(false), []);
   const handleShowDashboard = React.useCallback(() => {
@@ -141,7 +144,7 @@ export function App() {
       {view.showAddModDialog && (
         <AddModDialog
           loading={actions.loading}
-          modsets={modsets.modsets}
+          modsets={modsets.modsets.filter(modset => modset.can_edit)}
           activeModsetId={modsets.activeModsetId}
           onClose={view.closeAddModDialog}
           onSubmit={actions.addMod}
@@ -161,6 +164,7 @@ export function App() {
         </div>
         {view.showDashboard ? (
           <Dashboard
+            canEdit={canEdit}
             mods={mods.mods}
             modsetActivity={mods.modsetActivity}
             schedulerStatus={mods.schedulerStatus}
@@ -178,6 +182,9 @@ export function App() {
           />
         ) : view.showModsetAdmin ? (
           <ModsetManagement
+            api={auth.api}
+            groups={groups.directory}
+            onAccessChanged={refreshAccess}
             modsets={modsets.modsets}
             activeModsetId={modsets.activeModsetId}
             loading={actions.loading}
@@ -190,12 +197,17 @@ export function App() {
             exportModset={actions.exportModset}
           />
         ) : view.showUserAdmin ? (
+          <>
           <UserAdmin
+            groups={groups.groups}
+            saveUserGroups={groups.saveUserGroups}
+            groupError={groups.error}
+            groupManagement={<GroupAdmin data={groups} users={admin.users} />}
             users={admin.users}
             webhooks={admin.discordWebhooks}
             modsets={admin.modsets}
             currentUser={authUser}
-            loading={actions.loading}
+            loading={actions.loading || groups.loading}
             auditLogs={admin.auditLogs}
             changeOwnPassword={actions.changeOwnPassword}
             createDiscordWebhook={actions.createDiscordWebhook}
@@ -213,8 +225,10 @@ export function App() {
             previousAuditLogPage={admin.previousAuditLogPage}
             nextAuditLogPage={admin.nextAuditLogPage}
           />
+          </>
         ) : mods.selected ? (
           <ModDetail
+            canEdit={canEdit}
             selected={mods.selected}
             loading={actions.loading}
             refreshState={mods.getModRefreshState(mods.selected.id)}
@@ -233,8 +247,8 @@ export function App() {
           />
         ) : (
           <div className="placeholder">
-            <h2>Add a mod</h2>
-            <p>Use Add mod to start the first fetch.</p>
+            <h2>{!activeModset ? "No accessible modset" : canEdit ? "Add a mod" : "No mods tracked"}</h2>
+            <p>{!activeModset ? "Create a modset or ask its owner for group access." : canEdit ? "Use Add mod to start the first fetch." : "This modset is empty."}</p>
           </div>
         )}
       </section>

@@ -139,7 +139,7 @@ export function DiscordWebhookAdmin({
                 <span className="webhook-modset-label">
                   {checked ? <CheckSquare2 size={16} /> : <Square size={16} />}
                   <strong>{modset.name}</strong>
-                  {modset.shared && <span className="webhook-modset-shared">Shared</span>}
+                  {modset.has_group_access && <span className="webhook-modset-group">Group access</span>}
                 </span>
               </label>
             );

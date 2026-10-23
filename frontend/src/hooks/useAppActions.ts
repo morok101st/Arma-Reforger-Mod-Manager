@@ -1,3 +1,4 @@
+import type { GroupPermission } from "../types";
 import React from "react";
 
 import type { DiscordWebhook, ModsetExport, ThemePreference, UserAccount } from "../types";
@@ -44,8 +45,8 @@ export function useAppActions({
   };
   modsets: {
     activateModset: (modsetId: number) => Promise<unknown>;
-    createModset: (name: string, shared?: boolean) => Promise<unknown>;
-    updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<unknown>;
+    createModset: (name: string) => Promise<unknown>;
+    updateModset: (modsetId: number, name: string, permissions?: GroupPermission[]) => Promise<unknown>;
     duplicateModset: (modsetId: number) => Promise<unknown>;
     deleteModset: (modsetId: number) => Promise<unknown>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
@@ -198,12 +199,12 @@ export function useAppActions({
     await action.run(() => modsets.activateModset(modsetId), { rethrow: true });
   }, [action, modsets]);
 
-  const createModset = React.useCallback(async (name: string, shared = false) => {
-    await action.run(() => modsets.createModset(name, shared), { rethrow: true });
+  const createModset = React.useCallback(async (name: string) => {
+    await action.run(() => modsets.createModset(name), { rethrow: true });
   }, [action, modsets]);
 
-  const updateModset = React.useCallback(async (modsetId: number, name: string, shared?: boolean) => {
-    await action.run(() => modsets.updateModset(modsetId, name, shared), { rethrow: true });
+  const updateModset = React.useCallback(async (modsetId: number, name: string, permissions?: GroupPermission[]) => {
+    await action.run(() => modsets.updateModset(modsetId, name, permissions), { rethrow: true });
   }, [action, modsets]);
 
   const deleteModset = React.useCallback(async (modsetId: number) => {

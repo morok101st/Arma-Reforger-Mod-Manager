@@ -135,12 +135,20 @@ export type Modset = {
   id: number;
   name: string;
   tracked_mods_count: number;
-  shared: boolean;
   owner_username: string | null;
   is_owner: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  can_manage_access: boolean;
+  has_group_access: boolean;
   created_at: string;
   updated_at: string;
 };
+
+export type GroupSummary = { id: number; name: string };
+export type UserGroup = GroupSummary & { description: string; user_ids: number[] };
+export type GroupWrite = { name: string; description: string; user_ids: number[] };
+export type GroupPermission = { group_id: number; permission: "read" | "write" };
 
 export type ModsetExport = Array<{
   modId: string;

@@ -870,7 +870,7 @@ button:disabled {
   gap: 8px;
 }
 
-.webhook-modset-shared {
+.webhook-modset-group {
   align-items: center;
   background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 26%, transparent);
@@ -893,7 +893,7 @@ button:disabled {
   background: #242424;
 }
 
-:root[data-theme="dark"] .webhook-modset-shared {
+:root[data-theme="dark"] .webhook-modset-group {
   background: rgba(255, 206, 58, 0.12);
   border-color: rgba(255, 206, 58, 0.24);
 }
@@ -957,7 +957,7 @@ button:disabled {
   vertical-align: middle;
 }
 
-.modset-sharing-state.shared {
+.modset-sharing-state.groups {
   background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
   border-radius: 999px;
@@ -966,7 +966,7 @@ button:disabled {
   padding: 2px 8px;
 }
 
-:root[data-theme="dark"] .modset-sharing-state.shared {
+:root[data-theme="dark"] .modset-sharing-state.groups {
   background: rgba(255, 206, 58, 0.12);
   border-color: rgba(255, 206, 58, 0.24);
 }
@@ -2073,4 +2073,25 @@ button:focus-visible,
     grid-template-columns: 1fr;
   }
 
+}
+
+
+.group-options {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 10px;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.group-access-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.group-access-fields h4,
+.group-access-fields p {
+  margin: 0;
 }

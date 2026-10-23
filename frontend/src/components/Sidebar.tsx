@@ -125,7 +125,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <button className="primary-button" onClick={onShowAddMod} type="button">
+      <button className="primary-button" onClick={onShowAddMod} disabled={!modsets.some(modset => modset.can_edit)} type="button">
         <Plus size={18} />
         Add mod
       </button>

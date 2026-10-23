@@ -213,18 +213,24 @@ async def refresh_mod(db: Session, mod_id: str, modset_id: int, send_update_noti
     return read
 
 
-async def refresh_all_mods(db: Session, send_update_notifications: bool = False, use_reliable_latest: bool = True) -> RefreshResult:
-    mod_ids = list(db.scalars(select(UserMod.mod_id).distinct().order_by(UserMod.mod_id)).all())
+async def refresh_all_mods(db: Session, send_update_notifications: bool = False, use_reliable_latest: bool = True, modset_id: int | None = None) -> RefreshResult:
+    query = select(UserMod.mod_id).distinct().order_by(UserMod.mod_id)
+    if modset_id is not None:
+        query = query.where(UserMod.modset_id == modset_id)
+    mod_ids = list(db.scalars(query).all())
     failed: dict[str, str] = {}
     refreshed = 0
     for mod_id in mod_ids:
         try:
-            await refresh_mod_for_all_modsets(
-                db,
-                mod_id,
-                send_update_notifications=send_update_notifications,
-                use_reliable_latest=use_reliable_latest,
-            )
+            if modset_id is not None:
+                await refresh_mod(db, mod_id, modset_id, send_update_notifications=send_update_notifications)
+            else:
+                await refresh_mod_for_all_modsets(
+                    db,
+                    mod_id,
+                    send_update_notifications=send_update_notifications,
+                    use_reliable_latest=use_reliable_latest,
+                )
             refreshed += 1
         except Exception as exc:
             failed[mod_id] = str(exc)

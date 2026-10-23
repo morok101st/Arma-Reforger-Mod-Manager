@@ -15,16 +15,19 @@ from app.routers.auth import router as auth_router
 from app.routers.modsets import router as modsets_router
 from app.routers.mods import router as mods_router
 from app.routers.system import router as system_router
+from app.routers.groups import router as groups_router
 from app.scheduler import start_scheduler
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    # Let the migration create the webhook scope table so it can distinguish
-    # legacy installations from explicitly saved (including empty) scopes.
+    # These tables belong to migrations: scope backfills must distinguish legacy
+    # installs, and group tables must be created in the versioned transaction.
     Base.metadata.create_all(
         bind=engine,
-        tables=[table for table in Base.metadata.tables.values() if table.name != "discord_webhook_modsets"],
+        tables=[table for table in Base.metadata.tables.values() if table.name not in {
+            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions",
+        }],
     )
     migrate_schema(engine)
     with SessionLocal() as db:
@@ -48,7 +51,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Arma Reforger Mod Manager API",
-        version="0.1.0",
+        version="0.2.5",
         root_path="/api",
         docs_url=None,
         redoc_url=None,
@@ -68,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(modsets_router)
     app.include_router(mods_router)
+    app.include_router(groups_router)
 
     def custom_openapi() -> dict[str, object]:
         if app.openapi_schema:

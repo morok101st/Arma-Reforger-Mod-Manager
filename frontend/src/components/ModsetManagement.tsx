@@ -1,10 +1,16 @@
+import type { GroupPermission } from "../types";
 import React from "react";
 import { Copy, Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
 
-import type { Modset } from "../types";
+import type { GroupSummary, Modset } from "../types";
+import type { createApiClient } from "../lib/api";
+import { ModsetEditDialog } from "./ModsetEditDialog";
 import { Dialog } from "./common";
 
 export function ModsetManagement({
+  api,
+  groups,
+  onAccessChanged,
   modsets,
   activeModsetId,
   loading,
@@ -16,69 +22,52 @@ export function ModsetManagement({
   activateModset,
   exportModset,
 }: {
+  api: ReturnType<typeof createApiClient>;
+  groups: GroupSummary[];
+  onAccessChanged: () => Promise<unknown>;
   modsets: Modset[];
   activeModsetId: number | null;
   loading: boolean;
   error: string | null;
-  createModset: (name: string, shared?: boolean) => Promise<void>;
-  updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<void>;
+  createModset: (name: string) => Promise<void>;
+  updateModset: (modsetId: number, name: string, permissions?: GroupPermission[]) => Promise<void>;
   duplicateModset: (modsetId: number) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
   activateModset: (modsetId: number) => Promise<void>;
   exportModset: (modsetId: number, modsetName: string) => Promise<void>;
 }) {
   const [newName, setNewName] = React.useState("");
-  const [newShared, setNewShared] = React.useState(false);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
-  const [editName, setEditName] = React.useState("");
-  const [editShared, setEditShared] = React.useState(false);
   const [deleteModsetId, setDeleteModsetId] = React.useState<number | null>(null);
 
   const editModset = modsets.find((modset) => modset.id === editModsetId) ?? null;
   const deleteModsetTarget = modsets.find((modset) => modset.id === deleteModsetId) ?? null;
-  const editNameTrimmed = editName.trim();
-  const editSharedChanged = Boolean(editModset?.is_owner && editShared !== editModset.shared);
-  const editHasChanges = Boolean(editModset && (editNameTrimmed !== editModset.name || editSharedChanged));
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
     const name = newName.trim();
     if (!name) return;
-    await createModset(name, newShared);
+    await createModset(name);
     closeCreateDialog();
-  }
-
-  async function handleEdit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!editModset) return;
-    if (!editNameTrimmed || !editHasChanges) return;
-    await updateModset(editModset.id, editNameTrimmed, editSharedChanged ? editShared : undefined);
-    closeEditDialog();
   }
 
   function openEditDialog(modset: Modset) {
     setEditModsetId(modset.id);
-    setEditName(modset.name);
-    setEditShared(modset.shared);
   }
 
   function openCreateDialog() {
     setNewName("");
-    setNewShared(false);
     setShowCreateDialog(true);
   }
 
   function closeCreateDialog() {
     setShowCreateDialog(false);
     setNewName("");
-    setNewShared(false);
   }
 
   function closeEditDialog() {
     setEditModsetId(null);
-    setEditName("");
-    setEditShared(false);
   }
 
   return (
@@ -123,21 +112,17 @@ export function ModsetManagement({
                 <strong>{modset.name}</strong>
                 <small>
                   {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"} ·{" "}
-                  {modset.shared ? (
-                    <span className="modset-sharing-state shared" title="Shared modset">
-                      <Share2 size={13} />
-                      Shared
-                    </span>
-                  ) : (
-                    "Private"
-                  )}{" "}
+                  {modset.has_group_access ? (
+                    <span className="modset-sharing-state groups"><Share2 size={13} /> Group access</span>
+                  ) : "Private"}{" "}
                   · {modset.is_owner ? "Owner: you" : `Owner: ${modset.owner_username ?? "unknown"}`}
+                  {!modset.can_edit && " · Read only"}
                 </small>
               </div>
               <div className="row-actions modset-row-actions">
                 <button
                   className="secondary-button compact"
-                  disabled={loading}
+                  disabled={loading || !modset.can_edit}
                   onClick={(event) => {
                     event.stopPropagation();
                     openEditDialog(modset);
@@ -161,7 +146,7 @@ export function ModsetManagement({
                 </button>
                 <button
                   className="secondary-button compact danger-button"
-                  disabled={loading || modsets.length <= 1}
+                  disabled={loading || !modset.can_delete || modsets.length <= 1}
                   onClick={(event) => {
                     event.stopPropagation();
                     setDeleteModsetId(modset.id);
@@ -195,10 +180,6 @@ export function ModsetManagement({
               Name
               <input autoFocus value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
             </label>
-            <label className="checkbox-row">
-              <input checked={newShared} onChange={(event) => setNewShared(event.target.checked)} type="checkbox" />
-              Shared
-            </label>
             <div className="dialog-actions">
               <button className="secondary-button compact" onClick={closeCreateDialog} type="button">
                 Cancel
@@ -211,34 +192,8 @@ export function ModsetManagement({
         </Dialog>
       )}
 
-      {editModset && (
-        <Dialog title={`Edit modset ${editModset.name}`} onClose={closeEditDialog}>
-          <form className="dialog-form" onSubmit={handleEdit}>
-            <label>
-              Name
-              <input value={editName} onChange={(event) => setEditName(event.target.value)} />
-            </label>
-            {editModset.is_owner ? (
-              <label className="checkbox-row">
-                <input checked={editShared} onChange={(event) => setEditShared(event.target.checked)} type="checkbox" />
-                Shared
-              </label>
-            ) : (
-              <p className="muted">
-                Shared by <strong>{editModset.owner_username ?? "another user"}</strong>.
-              </p>
-            )}
-            <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={closeEditDialog} type="button">
-                Cancel
-              </button>
-              <button className="primary-button compact" disabled={loading || !editNameTrimmed || !editHasChanges}>
-                Save
-              </button>
-            </div>
-          </form>
-        </Dialog>
-      )}
+      {editModset && <ModsetEditDialog key={editModset.id} modset={editModset} groups={groups} api={api}
+        updateModset={updateModset} onClose={closeEditDialog} onSaved={onAccessChanged} />}
 
       {deleteModsetTarget && (
         <Dialog title={`Delete modset ${deleteModsetTarget.name}`} onClose={() => setDeleteModsetId(null)}>

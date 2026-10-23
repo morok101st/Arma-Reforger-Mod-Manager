@@ -55,7 +55,7 @@ async def api_create_mod(
     modset_id: int | None = None,
 ) -> ModRead:
     try:
-        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id, write=True)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     try:
@@ -96,7 +96,7 @@ async def api_update_user_mod(
     deactivate_orphan_dependencies: bool = False,
 ) -> ModRead:
     try:
-        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id, write=True)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     request_payload = await request.json()
@@ -137,7 +137,7 @@ async def api_refresh_mod(
     modset_id: int | None = None,
 ) -> ModRead:
     try:
-        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id, write=True)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     existing_mod = get_mod_or_none(db, mod_id, effective_modset_id)
@@ -177,7 +177,7 @@ def api_delete_mod(
     deactivate_orphan_dependencies: bool = False,
 ) -> Response:
     try:
-        effective_modset_id = resolve_modset_id(db, current_user, modset_id)
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id, write=True)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     existing_mod = get_mod_or_none(db, mod_id, effective_modset_id)
@@ -206,6 +206,10 @@ async def api_refresh_all(
     current_user: User = Depends(require_current_user),
     modset_id: int | None = None,
 ) -> RefreshResult:
-    result = await refresh_all_mods(db)
-    audit_refresh_all(db, result=result, modset_id=modset_id, request=request, actor=current_user)
+    try:
+        effective_modset_id = resolve_modset_id(db, current_user, modset_id, write=True)
+    except ModSetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    result = await refresh_all_mods(db, modset_id=effective_modset_id)
+    audit_refresh_all(db, result=result, modset_id=effective_modset_id, request=request, actor=current_user)
     return result

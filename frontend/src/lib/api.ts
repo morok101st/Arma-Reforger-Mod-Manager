@@ -11,6 +11,10 @@ import type {
   ThemePreference,
   UserAccount,
   UserRole,
+  GroupSummary,
+  UserGroup,
+  GroupWrite,
+  GroupPermission,
 } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -55,6 +59,39 @@ export function createApiClient(onUnauthorized?: () => void) {
 
   return {
     request,
+    async listGroups() {
+      return readJsonOrThrow<GroupSummary[]>(await request("/groups"), "Could not load groups.");
+    },
+    async listAdminGroups() {
+      return readJsonOrThrow<UserGroup[]>(await request("/admin/groups"), "Could not load group memberships.");
+    },
+    async saveGroup(id: number | null, payload: GroupWrite) {
+      return readJsonOrThrow<UserGroup>(await request(id === null ? "/admin/groups" : `/admin/groups/${id}`, {
+        method: id === null ? "POST" : "PUT", json: payload,
+      }), "Could not save group.");
+    },
+    async deleteGroup(id: number) {
+      const response = await request(`/admin/groups/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail ?? "Could not delete group.");
+      }
+    },
+    async saveUserGroups(userId: number, groupIds: number[]) {
+      const response = await request(`/admin/users/${userId}/groups`, { method: "PUT", json: { group_ids: groupIds } });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail ?? "Could not save group memberships.");
+      }
+    },
+    async listGroupPermissions(modsetId: number) {
+      return readJsonOrThrow<GroupPermission[]>(await request(`/modsets/${modsetId}/group-permissions`), "Could not load group permissions.");
+    },
+    async saveGroupPermissions(modsetId: number, entries: GroupPermission[]) {
+      return readJsonOrThrow<GroupPermission[]>(await request(`/modsets/${modsetId}/group-permissions`, {
+        method: "PUT", json: { entries },
+      }), "Could not save group permissions.");
+    },
     oidcLoginUrl: `${API_BASE_URL}/auth/oidc/login`,
     async getAuthConfig() {
       const response = await request("/auth/config");
@@ -62,7 +99,8 @@ export function createApiClient(onUnauthorized?: () => void) {
     },
     async checkSession() {
       const response = await request("/auth/me");
-      return response.ok ? ((await response.json()) as AuthUser) : null;
+      if (response.status === 401) return null;
+      return readJsonOrThrow<AuthUser>(response, "Could not check session.");
     },
     async login(username: string, password: string) {
       const response = await request("/auth/login", { method: "POST", json: { username, password } });
@@ -125,13 +163,12 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request("/modsets");
       return readJsonOrThrow<Modset[]>(response, "Could not load modsets.");
     },
-    async createModset(name: string, shared = false) {
-      const response = await request("/modsets", { method: "POST", json: { name, shared } });
+    async createModset(name: string) {
+      const response = await request("/modsets", { method: "POST", json: { name } });
       return readJsonOrThrow<Modset>(response, "Could not create modset.");
     },
-    async updateModset(modsetId: number, name: string, shared?: boolean) {
-      const payload: { name: string; shared?: boolean } = { name };
-      if (shared !== undefined) payload.shared = shared;
+    async updateModset(modsetId: number, name: string, permissions?: GroupPermission[]) {
+      const payload = { name, ...(permissions !== undefined ? { group_permissions: permissions } : {}) };
       const response = await request(`/modsets/${modsetId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<Modset>(response, "Could not rename modset.");
     },

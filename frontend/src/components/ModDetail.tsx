@@ -6,6 +6,7 @@ import type { ChangelogEntry, Dependency, Mod } from "../types";
 import { CustomSelect, Dialog, Info, StatusIcon, statusLabel } from "./common";
 
 export function ModDetail({
+  canEdit,
   selected,
   loading,
   refreshState,
@@ -22,6 +23,7 @@ export function ModDetail({
   allTrackedMods,
   openMod,
 }: {
+  canEdit: boolean;
   selected: Mod;
   loading: boolean;
   refreshState: "idle" | "checking" | "completed";
@@ -152,7 +154,7 @@ export function ModDetail({
           <button
             className="icon-button"
             onClick={() => refreshMod(selected.id)}
-            disabled={loading || refreshing}
+            disabled={loading || refreshing || !canEdit}
             title={refreshing ? "Checking for updates" : "Refresh mod"}
             aria-label={refreshing ? "Checking mod for updates" : "Refresh mod"}
             aria-busy={refreshing}
@@ -162,7 +164,7 @@ export function ModDetail({
           <button
             className="icon-button danger"
             onClick={() => setShowDeleteDialog(true)}
-            disabled={loading}
+            disabled={loading || !canEdit}
             title={selected.delete_blocked ? "This mod is required by another tracked mod and cannot be deleted." : "Remove mod"}
           >
             <Trash2 size={18} />
@@ -219,7 +221,7 @@ export function ModDetail({
                     <>
                       <button
                         className="secondary-button compact danger-button"
-                        disabled={loading}
+                        disabled={loading || !canEdit}
                         onClick={() => {
                           setShowDeleteDialog(false);
                           removeMod(selected.id, { deactivateOrphanDependencies: false });
@@ -230,7 +232,7 @@ export function ModDetail({
                       </button>
                       <button
                         className="secondary-button compact danger-button"
-                        disabled={loading}
+                        disabled={loading || !canEdit}
                         onClick={() => {
                           setShowDeleteDialog(false);
                           removeMod(selected.id, { deactivateOrphanDependencies: true });
@@ -244,7 +246,7 @@ export function ModDetail({
                   {orphanedDependencyCandidates.length === 0 && (
                     <button
                       className="secondary-button compact danger-button"
-                      disabled={loading}
+                      disabled={loading || !canEdit}
                       onClick={() => {
                         setShowDeleteDialog(false);
                         removeMod(selected.id, { deactivateOrphanDependencies: false });
@@ -283,7 +285,7 @@ export function ModDetail({
                   </button>
                   <button
                     className="secondary-button compact"
-                    disabled={loading}
+                    disabled={loading || !canEdit}
                     onClick={() => {
                       setShowDeactivateDialog(false);
                       updateInstalledVersion("", { deactivateOrphanDependencies: false });
@@ -294,7 +296,7 @@ export function ModDetail({
                   </button>
                   <button
                     className="primary-button compact"
-                    disabled={loading}
+                    disabled={loading || !canEdit}
                     onClick={() => {
                       setShowDeactivateDialog(false);
                       updateInstalledVersion("", { deactivateOrphanDependencies: true });
@@ -316,7 +318,7 @@ export function ModDetail({
                   </button>
                   <button
                     className="primary-button compact"
-                    disabled={loading}
+                    disabled={loading || !canEdit}
                     onClick={() => {
                       setShowDeactivateDialog(false);
                       updateInstalledVersion("", { deactivateOrphanDependencies: false });
@@ -370,13 +372,13 @@ export function ModDetail({
             value={installedVersionEdit}
             options={installedVersionOptions}
             onChange={setInstalledVersionEdit}
-            disabled={loading}
+            disabled={loading || !canEdit}
             ariaLabel="Installed version"
           />
         </label>
         <button
           className="primary-button compact"
-          disabled={loading || !hasInstalledVersionChange}
+          disabled={loading || !canEdit || !hasInstalledVersionChange}
           onClick={() => {
             if (isSettingNoInstalledVersion) {
               setShowDeactivateDialog(true);
@@ -390,7 +392,7 @@ export function ModDetail({
           Save
         </button>
         {selected.latest_version && selected.current_version !== selected.latest_version && (
-          <button className="secondary-button compact" disabled={loading} onClick={() => updateInstalledVersion(selected.latest_version ?? "")} type="button">
+          <button className="secondary-button compact" disabled={loading || !canEdit} onClick={() => updateInstalledVersion(selected.latest_version ?? "")} type="button">
             Set to latest
           </button>
         )}

@@ -1,3 +1,4 @@
+import type { GroupPermission } from "../types";
 import React from "react";
 
 import type { AuthUser, Modset, ModsetExport } from "../types";
@@ -9,8 +10,8 @@ export function useModsets({
 }: {
   api: {
     listModsets: () => Promise<Modset[]>;
-    createModset: (name: string, shared?: boolean) => Promise<Modset>;
-    updateModset: (modsetId: number, name: string, shared?: boolean) => Promise<Modset>;
+    createModset: (name: string) => Promise<Modset>;
+    updateModset: (modsetId: number, name: string, permissions?: GroupPermission[]) => Promise<Modset>;
     duplicateModset: (modsetId: number) => Promise<Modset>;
     deleteModset: (modsetId: number) => Promise<AuthUser>;
     activateModset: (modsetId: number) => Promise<AuthUser>;
@@ -61,8 +62,8 @@ export function useModsets({
   );
 
   const createModset = React.useCallback(
-    async (name: string, shared = false) => {
-      const created = await api.createModset(name, shared);
+    async (name: string) => {
+      const created = await api.createModset(name);
       await loadModsets();
       return created;
     },
@@ -70,8 +71,8 @@ export function useModsets({
   );
 
   const updateModset = React.useCallback(
-    async (modsetId: number, name: string, shared?: boolean) => {
-      const updated = await api.updateModset(modsetId, name, shared);
+    async (modsetId: number, name: string, permissions?: GroupPermission[]) => {
+      const updated = await api.updateModset(modsetId, name, permissions);
       await loadModsets();
       return updated;
     },

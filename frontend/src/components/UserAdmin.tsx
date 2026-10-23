@@ -5,8 +5,13 @@ import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, a
 import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
 import { CustomSelect, Dialog, Info } from "./common";
 import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
+import type { UserGroup } from "../types";
 
 export function UserAdmin({
+  groups,
+  saveUserGroups,
+  groupError,
+  groupManagement,
   users,
   webhooks,
   modsets,
@@ -29,6 +34,10 @@ export function UserAdmin({
   previousAuditLogPage,
   nextAuditLogPage,
 }: {
+  groups: UserGroup[];
+  saveUserGroups: (userId: number, groupIds: number[]) => Promise<void>;
+  groupError: string | null;
+  groupManagement: React.ReactNode;
   users: UserAccount[];
   webhooks: DiscordWebhook[];
   modsets: Modset[];
@@ -60,6 +69,7 @@ export function UserAdmin({
   const [editUserId, setEditUserId] = React.useState<number | null>(null);
   const [editRole, setEditRole] = React.useState<UserRole>("user");
   const [editIsActive, setEditIsActive] = React.useState(true);
+  const [editGroupIds, setEditGroupIds] = React.useState<number[]>([]);
   const [resetPassword, setResetPassword] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
@@ -84,23 +94,22 @@ export function UserAdmin({
     setShowCreateUserDialog(false);
   }
 
-  React.useEffect(() => {
-    if (!editUser) {
-      setEditRole("user");
-      setEditIsActive(true);
-      setResetPassword("");
-      setConfirmDelete(false);
-      return;
-    }
-    setEditRole(editUser.role);
-    setEditIsActive(editUser.is_active);
+  function openEditUser(user: UserAccount) {
+    setEditUserId(user.id);
+    setEditRole(user.role);
+    setEditIsActive(user.is_active);
+    setEditGroupIds(groups.filter(group => group.user_ids.includes(user.id)).map(group => group.id));
     setResetPassword("");
     setConfirmDelete(false);
-  }, [editUser]);
+  }
 
   async function handleEditUser(event: React.FormEvent) {
     event.preventDefault();
     if (!editUser) return;
+    const originalGroupIds = groups.filter(group => group.user_ids.includes(editUser.id)).map(group => group.id);
+    if (originalGroupIds.length !== editGroupIds.length || originalGroupIds.some(id => !editGroupIds.includes(id))) {
+      await saveUserGroups(editUser.id, editGroupIds);
+    }
     if (editRole !== editUser.role || editIsActive !== editUser.is_active) {
       await updateUserAccount(editUser.id, { role: editRole, is_active: editIsActive });
     }
@@ -177,9 +186,10 @@ export function UserAdmin({
                     <small>
                       {user.role} · {user.is_active ? "active" : "disabled"} · {authProviderLabel(user.auth_provider)} · Last login{" "}
                       {formatDate(user.last_login_at) ?? "never"}
+                      {groups.some(group => group.user_ids.includes(user.id)) && ` · Groups: ${groups.filter(group => group.user_ids.includes(user.id)).map(group => group.name).join(", ")}`}
                     </small>
                   </div>
-                  <button className="secondary-button compact" disabled={loading} onClick={() => setEditUserId(user.id)} type="button">
+                  <button className="secondary-button compact" disabled={loading} onClick={() => openEditUser(user)} type="button">
                     <Pencil size={16} />
                     Edit
                   </button>
@@ -187,6 +197,8 @@ export function UserAdmin({
               ))}
             </div>
           </section>
+
+          {groupManagement}
 
           <DiscordWebhookAdmin
             webhooks={webhooks}
@@ -235,7 +247,16 @@ export function UserAdmin({
 
           {editUser && (
             <Dialog title={`Edit user ${editUser.username}`} onClose={() => setEditUserId(null)}>
-              <form className="dialog-form" onSubmit={handleEditUser}>
+              <form className="dialog-form" onSubmit={event => { handleEditUser(event).catch(() => null); }}>
+                {groupError && <p role="alert">{groupError}</p>}
+                <fieldset className="group-options"><legend>Groups</legend>
+                  {groups.length === 0 && <p className="muted">No groups available. Create groups in the Groups section.</p>}
+                  {groups.map(group => <label className="checkbox-row" key={group.id}>
+                    <input type="checkbox" checked={editGroupIds.includes(group.id)} disabled={loading}
+                      onChange={event => setEditGroupIds(event.target.checked ? [...editGroupIds, group.id] : editGroupIds.filter(id => id !== group.id))} />
+                    {group.name}
+                  </label>)}
+                </fieldset>
                 <label>
                   Role
                   <CustomSelect<UserRole>

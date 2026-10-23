@@ -7,7 +7,8 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 - Tracks Workshop mods by mod ID.
 - Reads Workshop metadata from the Workshop pages and can use a dedicated internal Reforger metadata service for manual reliable latest-version checks.
-- Supports multiple modsets per user. A modset is private by default and can be marked `shared` by its owner so other users can see and manage it.
+- Supports multiple modsets per user. A modset is private by default; its owner can grant selected groups read or write access.
+- Supports admin-managed user groups. Owners can grant selected groups read or write access to private modsets, including access for existing service accounts.
 - Compares `Installed Version` vs. `Latest Version`.
 - Uses a dedicated `No installed version` state for tracked mods without an installed target version.
 - Runs an automatic crawl twice per day at fixed times. Scheduled crawls use Workshop scraping only and do not call the Reforger CLI metadata service.
@@ -46,11 +47,12 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 ### Modsets
 
-- Create, rename, activate, share, and delete modsets.
+- Create, rename, activate, grant group access to, and delete modsets.
 - Duplicate modsets including their tracked mod entries. Duplicates are created as private copies and are not automatically added to existing webhook scopes.
 - Modsets are owned by the user who created them.
-- Private modsets are visible and editable only to their owner.
-- Shared modsets are visible and editable to other users.
+- Private modsets are available to their owner, administrators, and explicitly authorized groups.
+- Owners can additionally grant groups read or write access. Read permits viewing and export; write permits editing mods, the modset name, and export order. Group access alone does not permit deleting the modset or managing its sharing.
+- Global Shared access has been removed. After upgrading from 0.2.4, other accounts need explicit group access even for previously shared modsets.
 - Deleting non-empty modsets is allowed, but the last remaining modset is protected.
 - Export each modset as a JSON file.
 
@@ -58,6 +60,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 - Change your own password.
 - Admin features: create users, change roles, enable/disable users, reset passwords.
+- Admin features: create, edit, and delete groups; manage memberships from the group or user editor.
 - Optional OIDC login can be enabled alongside local login.
 - Admin-managed Discord webhooks for update alerts: create, edit, disable, delete, and test webhooks in the UI.
 - Discord webhooks can be limited to specific modsets directly in the webhook dialog.
@@ -82,7 +85,8 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - OIDC logout clears only the ARMM session cookie; the central provider/SSO session may remain active.
 - Origin validation for unsafe HTTP methods (additional CSRF protection via origin allowlist).
 - Audit trail for login/logout, password actions, user changes, mod changes, modset changes, and webhook changes.
-- Modset ownership and `shared` state are persisted and enforced server-side.
+- Modset ownership and group permissions are persisted and enforced server-side.
+- Group permissions are checked server-side on every request. The strongest applicable group permission wins; legacy `shared` values never grant access. Owners and administrators can delete modsets or manage grants.
 - Discord webhook targets are stored server-side and alerts are deduplicated per webhook, modset, mod, and latest version.
 - Discord update alerts are only sent from the scheduled automatic runs at `10:00` and `19:00` in the configured deployment timezone.
 - Discord webhook URLs are stored encrypted server-side and only shown in masked form in the UI.
@@ -115,6 +119,10 @@ Base path behind the frontend proxy: `/api`
 - `GET/POST/PATCH /api/users...` (admin)
 - `GET/POST/PATCH/DELETE /api/discord-webhooks...` (admin)
 - `GET /api/admin/modsets` (admin, used for webhook modset selection)
+- `GET /api/groups` (signed-in group directory, names and IDs only)
+- `GET/POST /api/admin/groups`, `PUT/DELETE /api/admin/groups/{group_id}` (admin)
+- `PUT /api/admin/users/{user_id}/groups` (admin, replaces that user's memberships)
+- `GET/PUT /api/modsets/{modset_id}/group-permissions` (owner or admin)
 - `POST /api/discord-webhooks/{webhook_id}/test` (admin)
 - `GET /api/audit` (admin, `limit`, `offset`)
 - `GET /api/scheduler/status`
@@ -225,7 +233,9 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 
 - Configure the deployment timezone for automatic runs with `ARMM_SCHEDULER_TIMEZONE` in `.env`.
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
-- Modsets are user-scoped. The creator becomes the owner, and only `shared` modsets are available to other users.
+- Modsets are user-scoped. The creator becomes the owner; other users need an explicit group grant.
+- Private modsets can also be shared with selected groups. For setup, service-account API examples, and upgrading existing 0.2.4 deployments, see [Group sharing and upgrades](docs/group-sharing-upgrade.md).
+- Manual `POST /api/refresh` is limited to the selected authorized modset (`modset_id`, or the active modset if omitted). Scheduled checks still cover all tracked modsets.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
@@ -293,7 +303,7 @@ Common current names:
 
 - Tracked mods are stored in `user_mods`, not `tracked_mods`.
 - Modset ownership is stored as `modsets.owner_user_id`.
-- Modset sharing is stored as `modsets.shared`.
+- Group access is stored in `modset_group_permissions` and `group_memberships`. The historical `modsets.shared` column remains for database compatibility and has no effect on access.
 - Audit payloads are stored as `audit_logs.detail`, not `audit_logs.details`.
 
 Errors such as `relation "tracked_mods" does not exist` or `column a.details does not exist` usually indicate an outdated manual SQL query, not an application migration failure.
