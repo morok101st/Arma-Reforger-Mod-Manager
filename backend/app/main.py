@@ -20,7 +20,12 @@ from app.scheduler import start_scheduler
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    Base.metadata.create_all(bind=engine)
+    # Let the migration create the webhook scope table so it can distinguish
+    # legacy installations from explicitly saved (including empty) scopes.
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[table for table in Base.metadata.tables.values() if table.name != "discord_webhook_modsets"],
+    )
     migrate_schema(engine)
     with SessionLocal() as db:
         bootstrap_admin(db)
