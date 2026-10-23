@@ -18,21 +18,20 @@ export function AddModDialog({
 }) {
   const [modId, setModId] = React.useState("");
   const [currentVersion, setCurrentVersion] = React.useState("");
-  const [targetModsetId, setTargetModsetId] = React.useState<number>(() => activeModsetId ?? modsets[0]?.id ?? 0);
+  const [targetModsetId, setTargetModsetId] = React.useState<number>(() =>
+    modsets.some(modset => modset.id === activeModsetId) ? activeModsetId! : modsets[0]?.id ?? 0);
 
   React.useEffect(() => {
     if (activeModsetId && modsets.some((modset) => modset.id === activeModsetId)) {
       setTargetModsetId(activeModsetId);
       return;
     }
-    if (modsets[0]?.id) {
-      setTargetModsetId(modsets[0].id);
-    }
+    setTargetModsetId(modsets[0]?.id ?? 0);
   }, [activeModsetId, modsets]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!targetModsetId) return;
+    if (!modsets.some(modset => modset.id === targetModsetId)) return;
     await onSubmit(modId, currentVersion.trim() || null, targetModsetId);
     setModId("");
     setCurrentVersion("");

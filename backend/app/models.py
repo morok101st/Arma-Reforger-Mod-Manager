@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Table, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, JSON, String, Table, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -92,6 +92,7 @@ class User(Base):
 
     active_modset: Mapped["ModSet | None"] = relationship(back_populates="active_users", foreign_keys="User.active_modset_id")
     owned_modsets: Mapped[list["ModSet"]] = relationship(back_populates="owner", foreign_keys="ModSet.owner_user_id")
+    group_memberships: Mapped[list["GroupMembership"]] = relationship(cascade="all, delete-orphan", back_populates="user")
 
 
 class ModSet(Base):
@@ -100,6 +101,7 @@ class ModSet(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Legacy 0.2.4 column retained for non-destructive upgrades; never grants access.
     shared: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -107,6 +109,40 @@ class ModSet(Base):
     user_mods: Mapped[list[UserMod]] = relationship(back_populates="modset", cascade="all, delete-orphan")
     active_users: Mapped[list[User]] = relationship(back_populates="active_modset", foreign_keys="User.active_modset_id")
     owner: Mapped["User | None"] = relationship(back_populates="owned_modsets", foreign_keys="ModSet.owner_user_id")
+    group_permissions: Mapped[list["ModSetGroupPermission"]] = relationship(cascade="all, delete-orphan", back_populates="modset")
+
+
+class Group(Base):
+    __tablename__ = "groups"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    description: Mapped[str] = mapped_column(Text, default="", server_default="")
+    memberships: Mapped[list["GroupMembership"]] = relationship(cascade="all, delete-orphan", back_populates="group")
+    modset_permissions: Mapped[list["ModSetGroupPermission"]] = relationship(cascade="all, delete-orphan", back_populates="group")
+
+
+class GroupMembership(Base):
+    __tablename__ = "group_memberships"
+
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True)
+    group: Mapped[Group] = relationship(back_populates="memberships")
+    user: Mapped[User] = relationship(back_populates="group_memberships")
+
+
+Index("uq_groups_name_lower", func.lower(Group.name), unique=True)
+
+
+class ModSetGroupPermission(Base):
+    __tablename__ = "modset_group_permissions"
+    __table_args__ = (CheckConstraint("permission IN ('read', 'write')", name="ck_modset_group_permission"),)
+
+    modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True, index=True)
+    permission: Mapped[str] = mapped_column(String(8))
+    group: Mapped[Group] = relationship(back_populates="modset_permissions")
+    modset: Mapped[ModSet] = relationship(back_populates="group_permissions")
 
 
 class DiscordWebhook(Base):

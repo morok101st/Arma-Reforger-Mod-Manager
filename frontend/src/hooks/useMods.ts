@@ -43,6 +43,8 @@ export function useMods({
   const refreshCompletionTimersRef = React.useRef<Map<string, number>>(new Map());
   const [modsetActivityPage, setModsetActivityPage] = React.useState(0);
   const [canPageForwardModsetActivity, setCanPageForwardModsetActivity] = React.useState(false);
+  const modsRequestRef = React.useRef(0);
+  const activityRequestRef = React.useRef(0);
 
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery, statusFilter), [mods, searchQuery, statusFilter]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
@@ -54,19 +56,27 @@ export function useMods({
   );
 
   const loadMods = React.useCallback(async () => {
+    const requestId = ++modsRequestRef.current;
     if (!activeModsetId) {
       setMods([]);
       setModsetActivity([]);
       setSelectedId(null);
       return [];
     }
-    const data = await api.listMods(activeModsetId);
-    setMods(data);
-    setSelectedId((current) => (current && data.some((mod) => mod.id === current) ? current : data[0]?.id ?? null));
-    return data;
+    try {
+      const data = await api.listMods(activeModsetId);
+      if (requestId !== modsRequestRef.current) return [];
+      setMods(data);
+      setSelectedId((current) => (current && data.some((mod) => mod.id === current) ? current : data[0]?.id ?? null));
+      return data;
+    } catch (error) {
+      if (requestId === modsRequestRef.current) { setMods([]); setSelectedId(null); }
+      throw error;
+    }
   }, [activeModsetId, api]);
 
   const loadModsetActivity = React.useCallback(async (page = 0) => {
+    const requestId = ++activityRequestRef.current;
     if (!activeModsetId) {
       setModsetActivity([]);
       setCanPageForwardModsetActivity(false);
@@ -74,7 +84,14 @@ export function useMods({
       return [];
     }
     const offset = page * MODSET_ACTIVITY_PAGE_SIZE;
-    const data = await api.listModsetActivity(activeModsetId, MODSET_ACTIVITY_PAGE_SIZE + 1, offset);
+    let data: ModsetActivity[];
+    try {
+      data = await api.listModsetActivity(activeModsetId, MODSET_ACTIVITY_PAGE_SIZE + 1, offset);
+    } catch (error) {
+      if (requestId === activityRequestRef.current) setModsetActivity([]);
+      throw error;
+    }
+    if (requestId !== activityRequestRef.current) return [];
     const visible = data.slice(0, MODSET_ACTIVITY_PAGE_SIZE);
     setModsetActivity(visible);
     setCanPageForwardModsetActivity(data.length > MODSET_ACTIVITY_PAGE_SIZE);
@@ -89,7 +106,15 @@ export function useMods({
   }, [api]);
 
   React.useEffect(() => {
+    setMods([]);
+    setSelectedId(null);
+    setModsetActivity([]);
+  }, [activeModsetId]);
+
+  React.useEffect(() => {
     if (!authUser) {
+      modsRequestRef.current++;
+      activityRequestRef.current++;
       setMods([]);
       setModsetActivity([]);
       setSchedulerStatus(null);

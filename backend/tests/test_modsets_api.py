@@ -194,10 +194,10 @@ class ModsetsApiTestCase(ApiTestCase):
                 self.assertEqual(first_mapping.current_version, "1.0.0")
                 self.assertEqual(second_mapping.current_version, "2.0.0")
 
-    def test_private_modset_is_hidden_until_shared(self) -> None:
+    def test_private_modset_is_hidden_until_group_access_is_granted(self) -> None:
         with TestClient(app_main.app) as admin_client, TestClient(app_main.app) as user_client:
             self.login_admin(admin_client)
-            self._create_user("alice", "very-secure-alice-pass")
+            alice = self._create_user("alice", "very-secure-alice-pass")
             login_response = user_client.post("/auth/login", json={"username": "alice", "password": "very-secure-alice-pass"})
             self.assertEqual(login_response.status_code, 200, login_response.text)
 
@@ -210,9 +210,10 @@ class ModsetsApiTestCase(ApiTestCase):
             visible_ids = [entry["id"] for entry in visible_for_user.json()]
             self.assertNotIn(modset_id, visible_ids)
 
-            shared = admin_client.patch(f"/modsets/{modset_id}", json={"name": "Private Server", "shared": True})
-            self.assertEqual(shared.status_code, 200, shared.text)
-            self.assertTrue(shared.json()["shared"])
+            group = admin_client.post("/admin/groups", json={"name": "Editors", "user_ids": [alice.id]})
+            self.assertEqual(group.status_code, 201)
+            grant = admin_client.put(f"/modsets/{modset_id}/group-permissions", json={"entries": [{"group_id": group.json()["id"], "permission": "write"}]})
+            self.assertEqual(grant.status_code, 200, grant.text)
 
             visible_after_share = user_client.get("/modsets")
             self.assertEqual(visible_after_share.status_code, 200)
@@ -238,7 +239,7 @@ class ModsetsApiTestCase(ApiTestCase):
         with TestClient(app_main.app) as client:
             self.login_admin(client)
 
-            created = client.post("/modsets", json={"name": "Training Shared", "shared": True})
+            created = client.post("/modsets", json={"name": "Training Source"})
             self.assertEqual(created.status_code, 201, created.text)
             source_id = created.json()["id"]
 
@@ -271,7 +272,7 @@ class ModsetsApiTestCase(ApiTestCase):
             payload = duplicate.json()
             duplicate_id = payload["id"]
 
-            self.assertEqual(payload["name"], "Training Shared (copy)")
+            self.assertEqual(payload["name"], "Training Source (copy)")
             self.assertFalse(payload["shared"])
 
             with self.SessionLocal() as db:

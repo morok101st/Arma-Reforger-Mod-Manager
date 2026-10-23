@@ -16,6 +16,7 @@ def migrate_schema(engine: Engine) -> None:
     if "user_mods" not in inspector.get_table_names():
         _migrate_mod_versions(engine, inspector)
         _migrate_users(engine, inspector)
+        _migrate_groups(engine)
         return
 
     user_mod_columns = {column["name"] for column in inspector.get_columns("user_mods")}
@@ -46,7 +47,7 @@ def migrate_schema(engine: Engine) -> None:
     if "shared" not in modset_columns and "modsets" in inspector.get_table_names():
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE modsets ADD COLUMN shared BOOLEAN NOT NULL DEFAULT false"))
-    if "modsets" in inspector.get_table_names():
+    if "owner_user_id" not in modset_columns and "modsets" in inspector.get_table_names():
         _backfill_modset_ownership(engine)
 
     if dialect == "postgresql" and "modsets" in inspector.get_table_names():
@@ -66,11 +67,35 @@ def migrate_schema(engine: Engine) -> None:
     _migrate_user_mod_load_order(engine)
 
     inspector = inspect(engine)
-    _backfill_dependency_origin(engine)
+    if "dependency_origin" not in user_mod_columns:
+        _backfill_dependency_origin(engine)
     _migrate_discord_webhooks(engine, inspector)
     _migrate_discord_webhook_modsets(engine, inspector)
     _migrate_mod_versions(engine, inspector)
     _migrate_users(engine, inspector)
+    _migrate_groups(engine)
+
+
+def _migrate_groups(engine: Engine) -> None:
+    """Add group sharing atomically, without changing any existing data."""
+    from app.models import Group, GroupMembership, ModSetGroupPermission
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            # sqlite3 otherwise autocommits DDL until the first DML statement.
+            connection.exec_driver_sql("BEGIN")
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(674293501)"))
+        connection.execute(text(
+            "CREATE TABLE IF NOT EXISTS schema_migrations ("
+            "version VARCHAR(120) PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        ))
+        version = "001_group_sharing"
+        if connection.execute(text("SELECT version FROM schema_migrations WHERE version = :version"), {"version": version}).first():
+            return
+        for table in (Group.__table__, GroupMembership.__table__, ModSetGroupPermission.__table__):
+            table.create(bind=connection, checkfirst=True)
+        connection.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})
 
 
 def _migrate_user_mods_postgres(engine: Engine) -> None:
@@ -272,13 +297,14 @@ def _migrate_users(engine: Engine, inspector) -> None:
                 )
             )
 
-    with engine.begin() as connection:
-        default_modset_id = connection.execute(text("SELECT id FROM modsets ORDER BY id LIMIT 1")).scalar()
-        if default_modset_id is not None:
-            connection.execute(
-                text("UPDATE users SET active_modset_id = :modset_id WHERE active_modset_id IS NULL"),
-                {"modset_id": int(default_modset_id)},
-            )
+    if "active_modset_id" not in user_columns:
+        with engine.begin() as connection:
+            default_modset_id = connection.execute(text("SELECT id FROM modsets ORDER BY id LIMIT 1")).scalar()
+            if default_modset_id is not None:
+                connection.execute(
+                    text("UPDATE users SET active_modset_id = :modset_id WHERE active_modset_id IS NULL"),
+                    {"modset_id": int(default_modset_id)},
+                )
 
     if engine.dialect.name == "postgresql":
         inspector = inspect(engine)
@@ -313,7 +339,7 @@ def _ensure_default_modset(engine: Engine) -> None:
         count = connection.execute(text("SELECT COUNT(*) FROM modsets")).scalar() or 0
         if int(count) > 0:
             return
-        connection.execute(text("INSERT INTO modsets (name, shared) VALUES ('Default', true)"))
+        connection.execute(text("INSERT INTO modsets (name, shared) VALUES ('Default', false)"))
 
 
 def _backfill_modset_ownership(engine: Engine) -> None:
@@ -324,7 +350,7 @@ def _backfill_modset_ownership(engine: Engine) -> None:
         if owner_id is None:
             return
         connection.execute(
-            text("UPDATE modsets SET owner_user_id = :owner_id, shared = true WHERE owner_user_id IS NULL"),
+            text("UPDATE modsets SET owner_user_id = :owner_id WHERE owner_user_id IS NULL"),
             {"owner_id": int(owner_id)},
         )
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Mod, ModSet, User, UserMod
+from app.models import Mod, ModSet, ModSetGroupPermission, User, UserMod
+from app.modset_permissions import accessible_modset_filter, modset_capabilities, require_modset_permission, set_modset_group_permissions
 from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetLoadOrderUpdate, ModSetRead, ModSetUpdate
 
 
@@ -27,118 +28,59 @@ class ModSetLastDeleteError(ModSetError):
     pass
 
 
-def _accessible_modset_filter(user: User):
-    return or_(ModSet.shared.is_(True), ModSet.owner_user_id == user.id)
-
-
 def list_modsets(db: Session, user: User) -> list[ModSetRead]:
-    rows = db.execute(
-        select(
-            ModSet.id,
-            ModSet.name,
-            ModSet.shared,
-            ModSet.owner_user_id,
-            User.username.label("owner_username"),
-            ModSet.created_at,
-            ModSet.updated_at,
-            func.count(UserMod.mod_id).label("tracked_mods_count"),
-        )
-        .outerjoin(UserMod, UserMod.modset_id == ModSet.id)
-        .outerjoin(User, User.id == ModSet.owner_user_id)
-        .where(_accessible_modset_filter(user))
-        .group_by(ModSet.id, ModSet.name, ModSet.created_at, ModSet.updated_at)
-        .group_by(ModSet.shared, ModSet.owner_user_id, User.username)
-        .order_by(func.lower(ModSet.name), ModSet.id)
-    ).all()
-    return [
-        ModSetRead(
-            id=row.id,
-            name=row.name,
-            tracked_mods_count=int(row.tracked_mods_count or 0),
-            shared=bool(row.shared),
-            owner_username=row.owner_username,
-            is_owner=bool(row.owner_user_id == user.id),
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
-        for row in rows
-    ]
+    return _list_modsets(db, user)
 
 
 def list_modsets_for_admin(db: Session) -> list[ModSetRead]:
-    rows = db.execute(
-        select(
-            ModSet.id,
-            ModSet.name,
-            ModSet.shared,
-            ModSet.owner_user_id,
-            User.username.label("owner_username"),
-            ModSet.created_at,
-            ModSet.updated_at,
-            func.count(UserMod.mod_id).label("tracked_mods_count"),
-        )
-        .outerjoin(UserMod, UserMod.modset_id == ModSet.id)
-        .outerjoin(User, User.id == ModSet.owner_user_id)
-        .group_by(ModSet.id, ModSet.name, ModSet.created_at, ModSet.updated_at)
-        .group_by(ModSet.shared, ModSet.owner_user_id, User.username)
-        .order_by(func.lower(ModSet.name), ModSet.id)
-    ).all()
-    return [
-        ModSetRead(
-            id=row.id,
-            name=row.name,
-            tracked_mods_count=int(row.tracked_mods_count or 0),
-            shared=bool(row.shared),
-            owner_username=row.owner_username,
-            is_owner=False,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
-        for row in rows
-    ]
+    # This directory is for webhook administration, not a grant of modset access.
+    return _list_modsets(db)
 
 
-def ensure_default_modset(db: Session) -> ModSet:
-    existing = db.scalar(select(ModSet).where(func.lower(ModSet.name) == "default").order_by(ModSet.id).limit(1))
-    if existing:
-        if not existing.shared:
-            existing.shared = True
-            db.commit()
-            db.refresh(existing)
-        return existing
-    modset = ModSet(name="Default", shared=True)
-    db.add(modset)
-    db.commit()
-    db.refresh(modset)
-    return modset
+def _list_modsets(db: Session, user: User | None = None) -> list[ModSetRead]:
+    count = select(func.count(UserMod.id)).where(UserMod.modset_id == ModSet.id).scalar_subquery()
+    group_access = select(ModSetGroupPermission.modset_id).where(ModSetGroupPermission.modset_id == ModSet.id).exists()
+    columns = [ModSet, User.username.label("owner_username"), count.label("tracked_mods_count"), group_access.label("has_group_access")]
+    if user is not None:
+        columns.append(accessible_modset_filter(user, write=True).label("can_edit"))
+    query = select(*columns).outerjoin(User, User.id == ModSet.owner_user_id)
+    if user is not None:
+        query = query.where(accessible_modset_filter(user))
+    rows = db.execute(query.order_by(func.lower(ModSet.name), ModSet.id)).all()
+    return [ModSetRead(
+        id=row.ModSet.id, name=row.ModSet.name,
+        tracked_mods_count=row.tracked_mods_count, owner_username=row.owner_username,
+        is_owner=bool(user and row.ModSet.owner_user_id == user.id),
+        can_edit=bool(user and row.can_edit),
+        can_delete=bool(user and (user.role == "admin" or row.ModSet.owner_user_id == user.id)),
+        can_manage_access=bool(user and (user.role == "admin" or row.ModSet.owner_user_id == user.id)),
+        has_group_access=row.has_group_access,
+        created_at=row.ModSet.created_at, updated_at=row.ModSet.updated_at,
+    ) for row in rows]
 
 
-def ensure_user_active_modset(db: Session, user: User) -> ModSet:
+def ensure_user_active_modset(db: Session, user: User) -> ModSet | None:
     if user.active_modset_id:
-        current = db.get(ModSet, user.active_modset_id)
-        if current and _is_modset_accessible(user, current):
+        current = _get_accessible_modset(db, user, user.active_modset_id)
+        if current:
             return current
-    fallback = db.scalar(
-        select(ModSet)
-        .where(_accessible_modset_filter(user))
-        .order_by(func.lower(ModSet.name), ModSet.id)
-        .limit(1)
-    )
-    if not fallback:
-        fallback = ensure_default_modset(db)
-    user.active_modset_id = fallback.id
-    db.commit()
-    db.refresh(user)
+    fallback = db.scalar(select(ModSet).where(accessible_modset_filter(user))
+                         .order_by(func.lower(ModSet.name), ModSet.id).limit(1))
+    fallback_id = fallback.id if fallback else None
+    if user.active_modset_id != fallback_id:
+        user.active_modset_id = fallback_id
+        db.commit()
+        db.refresh(user)
     return fallback
 
 
-def resolve_modset_id(db: Session, user: User, requested_modset_id: int | None) -> int:
-    if requested_modset_id is not None:
-        modset = _get_accessible_modset(db, user, requested_modset_id)
-        if not modset:
-            raise ModSetNotFoundError("Modset not found")
-        return modset.id
-    return ensure_user_active_modset(db, user).id
+def resolve_modset_id(db: Session, user: User, requested_modset_id: int | None, *, write: bool = False) -> int:
+    if requested_modset_id is None:
+        active = ensure_user_active_modset(db, user)
+        if active is None:
+            raise ModSetNotFoundError("No accessible modset")
+        requested_modset_id = active.id
+    return require_modset_permission(db, user, requested_modset_id, "write" if write else "read").id
 
 
 def create_modset(db: Session, user: User, payload: ModSetCreate) -> ModSetRead:
@@ -146,7 +88,7 @@ def create_modset(db: Session, user: User, payload: ModSetCreate) -> ModSetRead:
     existing = db.scalar(select(ModSet).where(func.lower(ModSet.name) == name.casefold()))
     if existing:
         raise ModSetConflictError("Modset name already exists")
-    modset = ModSet(name=name, owner_user_id=user.id, shared=payload.shared)
+    modset = ModSet(name=name, owner_user_id=user.id)
     db.add(modset)
     db.commit()
     db.refresh(modset)
@@ -189,30 +131,25 @@ def duplicate_modset(db: Session, user: User, modset_id: int) -> ModSetRead:
 
 
 def update_modset(db: Session, user: User, modset_id: int, payload: ModSetUpdate) -> ModSetRead:
-    modset = _get_accessible_modset(db, user, modset_id)
-    if not modset:
-        raise ModSetNotFoundError("Modset not found")
+    modset = require_modset_permission(db, user, modset_id, "write")
+    if payload.group_permissions is not None:
+        require_modset_permission(db, user, modset_id, "manage")
 
     name = payload.name.strip()
     existing = db.scalar(select(ModSet).where(func.lower(ModSet.name) == name.casefold(), ModSet.id != modset_id))
     if existing:
         raise ModSetConflictError("Modset name already exists")
 
-    if payload.shared is not None and modset.owner_user_id != user.id:
-        raise ModSetPermissionError("Only the owner can change sharing")
-
+    if payload.group_permissions is not None:
+        set_modset_group_permissions(db, modset_id, payload.group_permissions)
     modset.name = name
-    if payload.shared is not None:
-        modset.shared = payload.shared
     db.commit()
     db.refresh(modset)
     return _modset_to_read(db, modset, user)
 
 
 def update_modset_load_order(db: Session, user: User, modset_id: int, payload: ModSetLoadOrderUpdate) -> None:
-    modset = _get_accessible_modset(db, user, modset_id)
-    if not modset:
-        raise ModSetNotFoundError("Modset not found")
+    require_modset_permission(db, user, modset_id, "write")
 
     entries_by_mod_id = {entry.mod_id: entry.load_order for entry in payload.entries}
     if len(entries_by_mod_id) != len(payload.entries):
@@ -233,9 +170,7 @@ def update_modset_load_order(db: Session, user: User, modset_id: int, payload: M
 
 
 def delete_modset(db: Session, user: User, modset_id: int) -> None:
-    modset = _get_accessible_modset(db, user, modset_id)
-    if not modset:
-        raise ModSetNotFoundError("Modset not found")
+    modset = require_modset_permission(db, user, modset_id, "delete")
 
     count = db.scalar(select(func.count()).select_from(ModSet)) or 0
     if count <= 1:
@@ -293,11 +228,7 @@ def ensure_accessible_modset(db: Session, user: User, modset_id: int) -> ModSet:
 
 
 def _get_accessible_modset(db: Session, user: User, modset_id: int) -> ModSet | None:
-    return db.scalar(select(ModSet).where(ModSet.id == modset_id, _accessible_modset_filter(user)))
-
-
-def _is_modset_accessible(user: User, modset: ModSet) -> bool:
-    return bool(modset.shared or modset.owner_user_id == user.id)
+    return db.scalar(select(ModSet).where(ModSet.id == modset_id, accessible_modset_filter(user)))
 
 
 def _build_copy_name(db: Session, base_name: str) -> str:
@@ -319,9 +250,10 @@ def _modset_to_read(db: Session, modset: ModSet, user: User) -> ModSetRead:
         id=modset.id,
         name=modset.name,
         tracked_mods_count=int(tracked_mods_count),
-        shared=bool(modset.shared),
         owner_username=modset.owner.username if modset.owner else None,
         is_owner=bool(modset.owner_user_id == user.id),
+        **modset_capabilities(db, user, modset),
+        has_group_access=db.scalar(select(ModSetGroupPermission.modset_id).where(ModSetGroupPermission.modset_id == modset.id).limit(1)) is not None,
         created_at=modset.created_at,
         updated_at=modset.updated_at,
     )

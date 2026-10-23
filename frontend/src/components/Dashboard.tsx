@@ -7,6 +7,7 @@ import { Info, StatusIcon } from "./common";
 import { ExportOrderSection } from "./ExportOrderSection";
 
 export function Dashboard({
+  canEdit,
   mods,
   modsetActivity,
   schedulerStatus,
@@ -22,6 +23,7 @@ export function Dashboard({
   updateModLoadOrder,
   updateModsetLoadOrder,
 }: {
+  canEdit: boolean;
   mods: Mod[];
   modsetActivity: ModsetActivity[];
   schedulerStatus: SchedulerStatus | null;
@@ -121,14 +123,14 @@ export function Dashboard({
         </section>
       </div>
 
-      <ExportOrderSection
+      {canEdit && <ExportOrderSection
         activeModsetName={activeModsetName}
         mods={mods}
         loading={loading}
         error={error}
         updateModLoadOrder={updateModLoadOrder}
         updateModsetLoadOrder={updateModsetLoadOrder}
-      />
+      />}
 
       <section className="dashboard-card activity-card">
         <div className="section-title-row">
