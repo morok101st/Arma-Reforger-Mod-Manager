@@ -171,6 +171,10 @@ def _migrate_discord_webhook_modsets(engine: Engine, inspector) -> None:
     table_names = set(inspector.get_table_names())
     if "discord_webhooks" not in table_names or "modsets" not in table_names:
         return
+    # Existing scopes are authoritative, even when no modsets are selected.
+    # Only installations predating the scope table need the all-modsets backfill.
+    if "discord_webhook_modsets" in table_names:
+        return
     if "discord_webhook_modsets" not in table_names:
         with engine.begin() as connection:
             if engine.dialect.name == "postgresql":
