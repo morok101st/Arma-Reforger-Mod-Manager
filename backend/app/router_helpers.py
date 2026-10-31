@@ -17,6 +17,7 @@ def audit_event(
     actor: User | None = None,
     entity_id: str | None = None,
     detail: dict[str, Any] | None = None,
+    commit: bool = True,
 ) -> None:
     record_audit(
         db,
@@ -26,6 +27,7 @@ def audit_event(
         actor=actor,
         request=request,
         detail=detail or {},
+        commit=commit,
     )
 
 

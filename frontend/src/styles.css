@@ -1236,7 +1236,7 @@ button:disabled {
 .health-summary-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .health-summary {
@@ -2471,3 +2471,7 @@ summary:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-
 .resource-loading { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--md-sys-color-on-surface-variant); font-size: 14px; }
 .resource-loading svg { flex-shrink: 0; }
 @media (max-width: 600px) { .resource-error { align-items: stretch; flex-direction: column; } .resource-error > button { width: 100%; min-height: 44px; } }
+
+.health-summary.unknown { background: var(--md-sys-color-surface-container-high); border-color: var(--md-sys-color-outline); }
+.health-fill.unknown { background: var(--md-sys-color-on-surface-variant); }
+@media (min-width: 901px) and (max-width: 1200px) { .health-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

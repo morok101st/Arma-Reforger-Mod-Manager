@@ -83,6 +83,7 @@ export function Dashboard({
           <HealthSummary onClick={() => onFilterStatus("UP_TO_DATE")} label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
           <HealthSummary onClick={() => onFilterStatus("UPDATE_AVAILABLE")} label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
           <HealthSummary onClick={() => onFilterStatus("NOT_INSTALLED")} label="No installed version" value={stats.notInstalled} total={stats.total} tone="neutral" />
+          <HealthSummary onClick={() => onFilterStatus("UNKNOWN")} label="No latest version" value={stats.unknown} total={stats.total} tone="unknown" />
         </div>
       </section>
 
@@ -105,7 +106,7 @@ export function Dashboard({
               ))}
             </div>
           ) : (
-            <p className="muted">No updates or missing installed versions detected.</p>
+            <p className="muted">No updates or missing latest versions to review.</p>
           )}
         </section>
 
@@ -205,7 +206,7 @@ export function Dashboard({
   );
 }
 
-function HealthSummary({ onClick, label, value, total, tone }: { onClick: () => void; label: string; value: number; total: number; tone: "ok" | "warn" | "neutral" }) {
+function HealthSummary({ onClick, label, value, total, tone }: { onClick: () => void; label: string; value: number; total: number; tone: "ok" | "warn" | "neutral" | "unknown" }) {
   const percent = total > 0 ? Math.round((value / total) * 100) : 0;
 
   return (

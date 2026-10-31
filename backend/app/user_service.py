@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 
 from app.auth import SESSION_TTL_SECONDS, hash_password
-from app.models import User
+from app.models import Group, GroupMembership, User
 from app.schemas_auth import AuthUserRead
 from app.schemas_users import UserCreate, UserRead, UserUpdate
 
@@ -73,10 +73,17 @@ def create_user(db: Session, payload: UserCreate) -> UserRead:
     return user_to_read(user)
 
 
-def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserRead | None:
+def update_user(db: Session, user_id: int, payload: UserUpdate, *, commit: bool = True) -> UserRead | None:
     user = db.get(User, user_id)
     if not user:
         return None
+
+    # Validate all membership references before changing the account or password.
+    group_ids = set(payload.group_ids) if payload.group_ids is not None else None
+    if group_ids is not None:
+        found = set(db.scalars(select(Group.id).where(Group.id.in_(group_ids))).all())
+        if found != group_ids:
+            raise ValueError("One or more selected groups do not exist")
 
     revoke_sessions = False
     if payload.password is not None:
@@ -91,9 +98,16 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserRead | No
     if revoke_sessions:
         user.session_version = int(getattr(user, "session_version", 0) or 0) + 1
 
-    db.commit()
-    db.refresh(user)
+    if group_ids is not None:
+        existing = {membership.group_id: membership for membership in user.group_memberships}
+        user.group_memberships = [existing[group_id] if group_id in existing else GroupMembership(group_id=group_id)
+                                  for group_id in sorted(group_ids)]
+
+    if commit:
+        db.commit()
+        db.refresh(user)
     return user_to_read(user)
+
 
 
 def delete_user(db: Session, user_id: int) -> UserRead | None:

@@ -1,3 +1,4 @@
+import type { UserAccountUpdate } from "../types";
 import type {
   AuditLog,
   AuthConfig,
@@ -237,7 +238,7 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request("/users", { method: "POST", json: { username, password, role } });
       return readJsonOrThrow<UserAccount>(response, "Could not create user.");
     },
-    async updateUserAccount(userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) {
+    async updateUserAccount(userId: number, payload: UserAccountUpdate) {
       const response = await request(`/users/${userId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<UserAccount>(response, "Could not update user.");
     },

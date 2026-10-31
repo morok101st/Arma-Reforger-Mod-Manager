@@ -28,7 +28,7 @@ export function statusLabel(status: ModStatus) {
   if (status === "NOT_INSTALLED") return "No installed version";
   if (status === "UPDATE_AVAILABLE") return "Update available";
   if (status === "UP_TO_DATE") return "Up to date";
-  return "Status unknown";
+  return "No latest version";
 }
 
 export function auditActionLabel(action: string) {
@@ -137,12 +137,8 @@ export function getDashboardStats(mods: Mod[]) {
     .sort((left, right) => timestamp(right.last_checked) - timestamp(left.last_checked))
     .slice(0, 5);
   const attentionMods = [...mods]
-    .filter((mod) => mod.status !== "UP_TO_DATE")
-    .sort((left, right) => {
-      const missingVersionRank = Number(right.status === "NOT_INSTALLED") - Number(left.status === "NOT_INSTALLED");
-      if (missingVersionRank !== 0) return missingVersionRank;
-      return statusPriority(left.status) - statusPriority(right.status) || compareByName(left, right);
-    })
+    .filter((mod) => mod.status === "UPDATE_AVAILABLE" || mod.status === "UNKNOWN")
+    .sort((left, right) => statusPriority(left.status) - statusPriority(right.status) || compareByName(left, right))
     .slice(0, 6);
 
   const summaryText =

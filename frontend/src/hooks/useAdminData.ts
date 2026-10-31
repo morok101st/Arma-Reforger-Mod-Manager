@@ -1,3 +1,4 @@
+import type { UserAccountUpdate } from "../types";
 import React from "react";
 import { useLoadState } from "./useLoadState";
 
@@ -19,7 +20,7 @@ export function useAdminData({
     updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => Promise<DiscordWebhook>;
     deleteDiscordWebhook: (webhookId: number) => Promise<void>;
     testDiscordWebhook: (webhookId: number) => Promise<{ sent: boolean }>;
-    updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<UserAccount>;
+    updateUserAccount: (userId: number, payload: UserAccountUpdate) => Promise<UserAccount>;
     deleteUser: (userId: number) => Promise<void>;
     resetUserPassword: (userId: number, password: string) => Promise<void>;
   };
@@ -88,7 +89,7 @@ export function useAdminData({
   );
 
   const updateUserAccount = React.useCallback(
-    async (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => {
+    async (userId: number, payload: UserAccountUpdate) => {
       const updated = await api.updateUserAccount(userId, payload);
       await refreshAdminData();
       return updated;

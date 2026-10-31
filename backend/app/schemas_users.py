@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schema_enums import UserRole
 
@@ -20,6 +20,16 @@ class UserUpdate(BaseModel):
     password: str | None = Field(default=None, min_length=12, max_length=256)
     role: UserRole | None = None
     is_active: bool | None = None
+    group_ids: list[int] | None = None
+
+    @field_validator("group_ids")
+    @classmethod
+    def validate_group_ids(cls, value: list[int] | None) -> list[int]:
+        if value is None:
+            raise ValueError("Use an empty list to remove all group memberships")
+        if len(value) != len(set(value)):
+            raise ValueError("Duplicate group IDs are not allowed")
+        return value
 
 
 class UserRead(BaseModel):

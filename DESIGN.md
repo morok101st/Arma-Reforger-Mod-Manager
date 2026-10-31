@@ -77,3 +77,11 @@ All selects use the shared Select component: neutral raised surface, rounded pop
 Lists distinguish first load, successful empty data and failed requests. Each resource has a scoped request state and a read-only Retry action that replays its latest arguments, including a failed audit page. Failed data never renders as an empty list or zero-valued dashboard. Cached data stays stable during automatic background refresh; failed refreshes remain visible until recovery. Dependent membership/scope forms cannot save while their prerequisite lists are unavailable.
 
 Responses from an old account, role or modset scope cannot update current lists. A successful write is not retried when its subsequent list refresh fails; the list reports that read failure separately. Browser checks cover resource failures/recovery, retained drafts, exact audit retry offset, late responses, successful writes with failed reloads and mobile drawer recovery, alongside existing healthy workflows.
+
+## Dashboard status semantics
+
+Version health covers all four states, including No latest version with its own filter. Needs attention includes only updates and unknown states, with updates first. No installed version is an intentional neutral state and never creates a warning or displaces updates in the attention preview. Summary layout uses four columns on wide screens, two on medium desktops and stacked entries on mobile.
+
+## Atomic user editing
+
+The user editor saves changed memberships, role, account status and an optional password in one PATCH request. Account changes, membership changes and the success audit entry commit together; validation or persistence failures roll them all back. Failed submissions retain the draft for correction and retry. Unchanged fields are omitted. Existing clients and separate membership/password endpoints remain supported; no database migration is required.

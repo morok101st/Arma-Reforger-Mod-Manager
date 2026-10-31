@@ -68,8 +68,8 @@ export function Sidebar({
               { value: "all", label: "All" },
               { value: "UP_TO_DATE", label: "Up to date" },
               { value: "UPDATE_AVAILABLE", label: "Update available" },
-              { value: "NOT_INSTALLED", label: "No version" },
-              { value: "UNKNOWN", label: "Status unknown" },
+              { value: "NOT_INSTALLED", label: "No installed version" },
+              { value: "UNKNOWN", label: "No latest version" },
             ]}
             onChange={onStatusFilterChange}
             ariaLabel="Filter by status"

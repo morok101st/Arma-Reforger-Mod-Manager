@@ -1,3 +1,4 @@
+import type { UserAccountUpdate } from "../types";
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
@@ -18,7 +19,6 @@ export function UserAdmin({
   onSectionChange,
   actionError,
   groups,
-  saveUserGroups,
   groupError,
   groupManagement,
   users,
@@ -34,7 +34,6 @@ export function UserAdmin({
   updateUserAccount,
   deleteUser,
   deleteDiscordWebhook,
-  resetUserPassword,
   testDiscordWebhook,
   loadAuditLogs,
   auditLogPage,
@@ -49,7 +48,6 @@ export function UserAdmin({
   onSectionChange: (section: AdminSection) => void;
   actionError: string | null;
   groups: UserGroup[];
-  saveUserGroups: (userId: number, groupIds: number[]) => Promise<void>;
   groupError: string | null;
   groupManagement: React.ReactNode;
   users: UserAccount[];
@@ -62,10 +60,9 @@ export function UserAdmin({
   createDiscordWebhook: (payload: { name: string; webhook_url: string; is_active: boolean; modset_ids?: number[] }) => Promise<unknown>;
   createUser: (username: string, password: string, role: UserRole) => Promise<void>;
   updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => Promise<unknown>;
-  updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<void>;
+  updateUserAccount: (userId: number, payload: UserAccountUpdate) => Promise<void>;
   deleteUser: (userId: number) => Promise<void>;
   deleteDiscordWebhook: (webhookId: number) => Promise<void>;
-  resetUserPassword: (userId: number, password: string) => Promise<void>;
   testDiscordWebhook: (webhookId: number) => Promise<void>;
   loadAuditLogs: () => Promise<void>;
   auditLogPage: number;
@@ -128,16 +125,13 @@ export function UserAdmin({
     setFormError(null);
     if (!editUser) return;
     const originalGroupIds = groups.filter(group => group.user_ids.includes(editUser.id)).map(group => group.id);
-    if (originalGroupIds.length !== editGroupIds.length || originalGroupIds.some(id => !editGroupIds.includes(id))) {
-      await saveUserGroups(editUser.id, editGroupIds);
-    }
-    if (editRole !== editUser.role || editIsActive !== editUser.is_active) {
-      await updateUserAccount(editUser.id, { role: editRole, is_active: editIsActive });
-    }
-    if (resetPassword.length >= 12) {
-      await resetUserPassword(editUser.id, resetPassword);
-      setResetPassword("");
-    }
+    const payload: UserAccountUpdate = {};
+    if (originalGroupIds.length !== editGroupIds.length || originalGroupIds.some(id => !editGroupIds.includes(id))) payload.group_ids = editGroupIds;
+    if (editRole !== editUser.role) payload.role = editRole;
+    if (editIsActive !== editUser.is_active) payload.is_active = editIsActive;
+    if (resetPassword.length >= 12) payload.password = resetPassword;
+    if (Object.keys(payload).length > 0) await updateUserAccount(editUser.id, payload);
+    setResetPassword("");
     setEditUserId(null);
   }
 

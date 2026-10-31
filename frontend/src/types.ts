@@ -36,6 +36,11 @@ export type UserAccount = {
   email: string | null;
 };
 
+export type UserAccountUpdate = Partial<Pick<UserAccount, "role" | "is_active">> & {
+  group_ids?: number[];
+  password?: string;
+};
+
 export type DiscordWebhook = {
   id: number;
   name: string;

@@ -1,3 +1,4 @@
+import type { UserAccountUpdate } from "../types";
 import type { GroupPermission } from "../types";
 import React from "react";
 
@@ -30,7 +31,7 @@ export function useAppActions({
     updateDiscordWebhook: (webhookId: number, payload: { name?: string; webhook_url?: string; is_active?: boolean; modset_ids?: number[] }) => Promise<DiscordWebhook>;
     deleteDiscordWebhook: (webhookId: number) => Promise<void>;
     testDiscordWebhook: (webhookId: number) => Promise<{ sent: boolean }>;
-    updateUserAccount: (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => Promise<unknown>;
+    updateUserAccount: (userId: number, payload: UserAccountUpdate) => Promise<unknown>;
     deleteUser: (userId: number) => Promise<void>;
     resetUserPassword: (userId: number, password: string) => Promise<void>;
     loadAuditLogs: () => Promise<unknown>;
@@ -120,7 +121,7 @@ export function useAppActions({
   );
 
   const updateUserAccount = React.useCallback(
-    async (userId: number, payload: Partial<Pick<UserAccount, "role" | "is_active">>) => {
+    async (userId: number, payload: UserAccountUpdate) => {
       await action.run(() => admin.updateUserAccount(userId, payload), { rethrow: true });
     },
     [action, admin],

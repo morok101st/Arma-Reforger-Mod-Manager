@@ -269,7 +269,6 @@ export function App() {
             onSectionChange={section => { setAdminSection(section); detailRef.current?.scrollTo({ top: 0 }); }}
             actionError={actions.error}
             groups={groups.groups}
-            saveUserGroups={groups.saveUserGroups}
             groupError={groups.error}
             groupManagement={<GroupAdmin data={groups} users={admin.users} usersLoad={admin.loadStates.users} />}
             users={admin.users}
@@ -285,7 +284,6 @@ export function App() {
             updateUserAccount={actions.updateUserAccount}
             deleteUser={actions.deleteUser}
             deleteDiscordWebhook={actions.deleteDiscordWebhook}
-            resetUserPassword={actions.resetUserPassword}
             testDiscordWebhook={actions.testDiscordWebhook}
             loadAuditLogs={() => admin.loadAuditLogs(admin.auditLogPage).then(() => undefined)}
             auditLogPage={admin.auditLogPage}

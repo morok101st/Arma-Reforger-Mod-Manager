@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.audit import list_audit_logs
@@ -257,38 +258,43 @@ def api_update_user(
                 detail={"reason": exc.detail},
             )
             raise
-    updated = update_user(db, user_id, payload)
-    if not updated:
+    if not target:
         fail_with_audit(
-            db,
-            action="user_update_failed",
-            entity_type="user",
-            entity_id=str(user_id),
-            actor=current_user,
-            request=request,
-            status_code=404,
-            detail_message="User not found",
-            audit_detail={"reason": "user_not_found"},
+            db, action="user_update_failed", entity_type="user", entity_id=str(user_id), actor=current_user,
+            request=request, status_code=404, detail_message="User not found", audit_detail={"reason": "user_not_found"},
         )
-    audit_event(
-        db,
-        action="user_updated",
-        entity_type="user",
-        entity_id=str(user_id),
-        actor=current_user,
-        request=request,
-        detail={
-            "username": updated.username,
-            "role_changed": payload.role is not None,
-            "old_role": old_role,
-            "new_role": updated.role if payload.role is not None else None,
-            "active_changed": payload.is_active is not None,
-            "old_active": old_active,
-            "new_active": updated.is_active if payload.is_active is not None else None,
-            "password_changed": payload.password is not None,
-        },
-    )
+    try:
+        updated = update_user(db, user_id, payload, commit=False)
+        assert updated is not None
+        audit_event(
+            db, action="user_updated", entity_type="user", entity_id=str(user_id), actor=current_user, request=request,
+            detail={
+                "username": updated.username,
+                "role_changed": payload.role is not None,
+                "old_role": old_role,
+                "new_role": updated.role if payload.role is not None else None,
+                "active_changed": payload.is_active is not None,
+                "old_active": old_active,
+                "new_active": updated.is_active if payload.is_active is not None else None,
+                "password_changed": payload.password is not None,
+                "groups_changed": payload.group_ids is not None,
+                "group_ids": sorted(payload.group_ids) if payload.group_ids is not None else None,
+            }, commit=False,
+        )
+        db.commit()
+    except (ValueError, IntegrityError) as exc:
+        db.rollback()
+        message = str(exc) if isinstance(exc, ValueError) else "User update conflicts with existing data"
+        fail_with_audit(
+            db, action="user_update_failed", entity_type="user", entity_id=str(user_id), actor=current_user,
+            request=request, status_code=400 if isinstance(exc, ValueError) else 409,
+            detail_message=message, audit_detail={"reason": message},
+        )
+    except Exception:
+        db.rollback()
+        raise
     return updated
+
 
 
 @router.patch("/users/{user_id}/password", response_model=UserRead)

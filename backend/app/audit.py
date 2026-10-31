@@ -15,6 +15,7 @@ def record_audit(
     actor: User | None = None,
     request: Request | None = None,
     detail: dict[str, object] | None = None,
+    commit: bool = True,
 ) -> None:
     db.add(
         AuditLog(
@@ -28,7 +29,8 @@ def record_audit(
             user_agent=_user_agent(request),
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def list_audit_logs(db: Session, limit: int = 100, offset: int = 0) -> list[AuditLogRead]:
