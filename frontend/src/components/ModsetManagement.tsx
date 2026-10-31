@@ -1,3 +1,5 @@
+import type { LoadState } from "../hooks/useLoadState";
+import { ResourceStatus } from "./ResourceStatus";
 import type { GroupPermission } from "../types";
 import React from "react";
 import { Copy, Download, Layers3, MoreHorizontal, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
@@ -8,6 +10,8 @@ import { ModsetEditDialog } from "./ModsetEditDialog";
 import { CustomSelect, Dialog } from "./common";
 
 export function ModsetManagement({
+  loadState,
+  groupsLoad,
   api,
   groups,
   onAccessChanged,
@@ -22,6 +26,8 @@ export function ModsetManagement({
   activateModset,
   exportModset,
 }: {
+  loadState: LoadState;
+  groupsLoad: LoadState;
   api: ReturnType<typeof createApiClient>;
   groups: GroupSummary[];
   onAccessChanged: () => Promise<unknown>;
@@ -85,9 +91,11 @@ export function ModsetManagement({
     <>
       <header className="modsets-heading">
         <div><h2>Modsets</h2><p className="muted">Open a workspace, export your server configuration or manage group access.</p></div>
-        <button className="primary-button compact" onClick={openCreateDialog} disabled={loading} type="button"><Plus size={18} /> Create modset</button>
+        <button className="primary-button compact" onClick={openCreateDialog} disabled={loading || !loadState.loaded || Boolean(loadState.error)} type="button"><Plus size={18} /> Create modset</button>
       </header>
       {error && <p className="error-box" role="alert">{error}</p>}
+      <ResourceStatus state={loadState} label="modsets" />
+      {loadState.loaded && !loadState.error && <>
       <div className="modsets-filters">
         <label>Search modsets<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or owner" /></label>
         <label>Show<CustomSelect value={scope} onChange={setScope} ariaLabel="Filter modsets" options={[{value:"all",label:"All modsets"},{value:"mine",label:"Owned by me"},{value:"groups",label:"With group access"}]} /></label>
@@ -117,9 +125,11 @@ export function ModsetManagement({
       </table>}
       {modsets.length > 0 && modsets.filter(matches).length === 0 && <div className="modsets-empty"><h3>No matching modsets</h3><p className="muted">Try a different name, owner or filter.</p><button className="secondary-button compact" type="button" onClick={() => { setSearch(""); setScope("all"); }}>Clear filters</button></div>}
 
+      </>}
       {showCreateDialog && (
         <Dialog title="Create modset" onClose={closeCreateDialog}>
           <form className="dialog-form" onSubmit={handleCreate}>
+            <ResourceStatus state={loadState} label="modsets" />
             <label>
               Name
               <input autoFocus maxLength={120} disabled={loading} value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
@@ -129,7 +139,7 @@ export function ModsetManagement({
               <button className="secondary-button compact" onClick={closeCreateDialog} type="button">
                 Cancel
               </button>
-              <button className="primary-button compact" disabled={loading || !newName.trim()}>
+              <button className="primary-button compact" disabled={loading || !loadState.loaded || Boolean(loadState.error) || !newName.trim()}>
                 Create
               </button>
             </div>
@@ -137,12 +147,13 @@ export function ModsetManagement({
         </Dialog>
       )}
 
-      {editModset && <ModsetEditDialog key={editModset.id} modset={editModset} groups={groups} api={api}
+      {editModset && <ModsetEditDialog key={editModset.id} modset={editModset} groups={groups} groupsLoad={groupsLoad} modsetsLoad={loadState} api={api}
         updateModset={updateModset} onClose={closeEditDialog} onSaved={onAccessChanged} />}
 
       {deleteModsetTarget && (
         <Dialog title={`Delete modset ${deleteModsetTarget.name}`} onClose={() => setDeleteModsetId(null)}>
           <div className="dialog-form">
+            <ResourceStatus state={loadState} label="modsets" />
             {deleteModsetTarget.tracked_mods_count > 0 ? (
               <div className="danger-callout">
                 <TriangleAlert className="status-icon warn" size={20} />
@@ -164,7 +175,7 @@ export function ModsetManagement({
               </button>
               <button
                 className="secondary-button compact danger-button"
-                disabled={loading}
+                disabled={loading || !loadState.loaded || Boolean(loadState.error)}
                 onClick={() => {
                   deleteModset(deleteModsetTarget.id)
                     .then(() => setDeleteModsetId(null))

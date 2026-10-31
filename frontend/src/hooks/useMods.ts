@@ -1,4 +1,5 @@
 import React from "react";
+import { useLoadState } from "./useLoadState";
 
 import { changelogEntriesFromVersions, dependencyKey, filterMods, findTrackedDependency, sortMods } from "../lib/utils";
 import type { AuthUser, Mod, ModsetActivity, ModStatusFilter, SchedulerStatus, SortMode } from "../types";
@@ -28,6 +29,10 @@ export function useMods({
   authUser: AuthUser | null;
   activeModsetId: number | null;
 }) {
+  const scope = authUser && activeModsetId ? `${authUser.id}:${authUser.role}:${activeModsetId}` : null;
+  const modsLoad = useLoadState(scope);
+  const activityLoad = useLoadState(scope);
+  const schedulerLoad = useLoadState(authUser ? `${authUser.id}:${authUser.role}` : null);
   const [mods, setMods] = React.useState<Mod[]>([]);
   const [modsetActivity, setModsetActivity] = React.useState<ModsetActivity[]>([]);
   const [schedulerStatus, setSchedulerStatus] = React.useState<SchedulerStatus | null>(null);
@@ -43,8 +48,6 @@ export function useMods({
   const refreshCompletionTimersRef = React.useRef<Map<string, number>>(new Map());
   const [modsetActivityPage, setModsetActivityPage] = React.useState(0);
   const [canPageForwardModsetActivity, setCanPageForwardModsetActivity] = React.useState(false);
-  const modsRequestRef = React.useRef(0);
-  const activityRequestRef = React.useRef(0);
 
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery, statusFilter), [mods, searchQuery, statusFilter]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
@@ -56,54 +59,23 @@ export function useMods({
   );
 
   const loadMods = React.useCallback(async () => {
-    const requestId = ++modsRequestRef.current;
-    if (!activeModsetId) {
-      setMods([]);
-      setModsetActivity([]);
-      setSelectedId(null);
-      return [];
-    }
-    try {
-      const data = await api.listMods(activeModsetId);
-      if (requestId !== modsRequestRef.current) return [];
+    if (!authUser || !activeModsetId) return [];
+    return modsLoad.run(() => api.listMods(activeModsetId), data => {
       setMods(data);
-      setSelectedId((current) => (current && data.some((mod) => mod.id === current) ? current : data[0]?.id ?? null));
-      return data;
-    } catch (error) {
-      if (requestId === modsRequestRef.current) { setMods([]); setSelectedId(null); }
-      throw error;
-    }
-  }, [activeModsetId, api]);
+      setSelectedId(current => current && data.some(mod => mod.id === current) ? current : data[0]?.id ?? null);
+    });
+  }, [activeModsetId, api, authUser?.id, modsLoad.run]);
 
   const loadModsetActivity = React.useCallback(async (page = 0) => {
-    const requestId = ++activityRequestRef.current;
-    if (!activeModsetId) {
-      setModsetActivity([]);
-      setCanPageForwardModsetActivity(false);
-      setModsetActivityPage(0);
-      return [];
-    }
-    const offset = page * MODSET_ACTIVITY_PAGE_SIZE;
-    let data: ModsetActivity[];
-    try {
-      data = await api.listModsetActivity(activeModsetId, MODSET_ACTIVITY_PAGE_SIZE + 1, offset);
-    } catch (error) {
-      if (requestId === activityRequestRef.current) setModsetActivity([]);
-      throw error;
-    }
-    if (requestId !== activityRequestRef.current) return [];
-    const visible = data.slice(0, MODSET_ACTIVITY_PAGE_SIZE);
-    setModsetActivity(visible);
-    setCanPageForwardModsetActivity(data.length > MODSET_ACTIVITY_PAGE_SIZE);
-    setModsetActivityPage(page);
-    return visible;
-  }, [activeModsetId, api]);
+    if (!authUser || !activeModsetId) return [];
+    return activityLoad.run(() => api.listModsetActivity(activeModsetId, MODSET_ACTIVITY_PAGE_SIZE + 1, page * MODSET_ACTIVITY_PAGE_SIZE), data => {
+      setModsetActivity(data.slice(0, MODSET_ACTIVITY_PAGE_SIZE));
+      setCanPageForwardModsetActivity(data.length > MODSET_ACTIVITY_PAGE_SIZE);
+      setModsetActivityPage(page);
+    });
+  }, [activeModsetId, api, authUser?.id, activityLoad.run]);
 
-  const loadSchedulerStatus = React.useCallback(async () => {
-    const status = await api.getSchedulerStatus();
-    setSchedulerStatus(status);
-    return status;
-  }, [api]);
+  const loadSchedulerStatus = React.useCallback(() => schedulerLoad.run(() => api.getSchedulerStatus(), setSchedulerStatus), [api, schedulerLoad.run]);
 
   React.useEffect(() => {
     setMods([]);
@@ -113,8 +85,6 @@ export function useMods({
 
   React.useEffect(() => {
     if (!authUser) {
-      modsRequestRef.current++;
-      activityRequestRef.current++;
       setMods([]);
       setModsetActivity([]);
       setSchedulerStatus(null);
@@ -155,7 +125,7 @@ export function useMods({
       if (!modsetId) throw new Error("No active modset selected.");
       const created = await api.createMod(id, currentVersion, modsetId);
       if (modsetId === activeModsetId) {
-        await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+        await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
         setSelectedId(created.id);
       }
       return created;
@@ -180,7 +150,7 @@ export function useMods({
       setRefreshingModKeys((current) => new Set(current).add(refreshKey));
       try {
         await api.refreshMod(id, activeModsetId);
-        await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+        await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
         setCompletedRefreshKeys((current) => new Set(current).add(refreshKey));
         const timer = window.setTimeout(() => {
           setCompletedRefreshKeys((current) => {
@@ -218,7 +188,7 @@ export function useMods({
       if (!activeModsetId) return;
       await api.deleteMod(id, activeModsetId, options);
       setSelectedId(null);
-      await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+      await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
     },
     [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage],
   );
@@ -229,7 +199,7 @@ export function useMods({
       const normalizedVersion = nextVersion.trim();
       if (!activeModsetId) return null;
       const updated = await api.updateMod(selected.id, { current_version: normalizedVersion || null }, activeModsetId, options);
-      await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+      await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
       setSelectedId(updated.id);
       setInstalledVersionEdit(updated.current_version ?? "");
       setSaveState("saved");
@@ -244,7 +214,7 @@ export function useMods({
     const normalizedLoadOrder = Number.parseInt(String(loadOrder), 10);
     if (!Number.isFinite(normalizedLoadOrder)) return null;
     await api.updateModsetLoadOrder(activeModsetId, [{ mod_id: modId, load_order: normalizedLoadOrder }]);
-    await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+    await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
     setSaveState("saved");
     window.setTimeout(() => setSaveState("idle"), 3000);
     return null;
@@ -253,7 +223,7 @@ export function useMods({
   const updateModsetLoadOrder = React.useCallback(async (entries: { mod_id: string; load_order: number }[]) => {
     if (!activeModsetId || entries.length === 0) return;
     await api.updateModsetLoadOrder(activeModsetId, entries);
-    await Promise.all([loadMods(), loadModsetActivity(modsetActivityPage)]);
+    await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
     setSaveState("saved");
     window.setTimeout(() => setSaveState("idle"), 3000);
   }, [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage]);
@@ -278,6 +248,7 @@ export function useMods({
   }, []);
 
   return {
+    loadStates: { mods: modsLoad, activity: activityLoad, scheduler: schedulerLoad },
     mods,
     modsetActivity,
     modsetActivityPage,

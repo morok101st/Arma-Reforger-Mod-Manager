@@ -8,6 +8,7 @@ import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
 import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect, focusableElements } from "./components/common";
+import { ResourceStatus } from "./components/ResourceStatus";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin, type AdminSection } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
@@ -29,9 +30,14 @@ export function App() {
   });
   const activeModset = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId);
   const activeModsetName = activeModset?.name ?? "No modset selected";
-  const canEdit = activeModset?.can_edit ?? false;
+  const modsetsReady = modsets.loadState.loaded && !modsets.loadState.error;
+  const modsReady = mods.loadStates.mods.loaded && !mods.loadStates.mods.error;
+  const canEdit = Boolean(modsetsReady && modsReady && activeModset?.can_edit);
   const openSidebar = React.useCallback(() => setMobileSidebarOpen(true), []);
   const closeSidebar = React.useCallback(() => setMobileSidebarOpen(false), []);
+  React.useEffect(() => {
+    if (mobileSidebarOpen && (!modsetsReady || !activeModset)) closeSidebar();
+  }, [mobileSidebarOpen, modsetsReady, activeModset?.id, closeSidebar]);
   const handleShowDashboard = React.useCallback(() => {
     closeSidebar();
     view.showDashboardView();
@@ -143,7 +149,7 @@ export function App() {
   const authUser = auth.authUser;
 
   return (
-    <main className={`app-shell redesigned-shell ${view.showModsetAdmin || view.showUserAdmin ? "management-shell" : ""} ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
+    <main className={`app-shell redesigned-shell ${view.showModsetAdmin || view.showUserAdmin || !modsetsReady || !activeModset ? "management-shell" : ""} ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
       <a className="skip-link" href="#workspace-content" onClick={() => detailRef.current?.focus()}>Skip to content</a>
       <header className="app-navigation">
         <a className="navigation-brand" href="/" onClick={event => { event.preventDefault(); handleShowDashboard(); }}><img src="/icon.png" alt="" /><strong>ARMM</strong></a>
@@ -165,7 +171,8 @@ export function App() {
         </div></details>
       </header>
       {mobileSidebarOpen && <button className="sidebar-backdrop" aria-label="Close mod list" onClick={closeSidebar} type="button" />}
-      {!view.showModsetAdmin && !view.showUserAdmin && <Sidebar
+      {!view.showModsetAdmin && !view.showUserAdmin && modsetsReady && activeModset && <Sidebar
+        loadState={mods.loadStates.mods}
         isMobileDrawerOpen={mobileSidebarOpen}
         loading={actions.loading}
         showDashboard={view.showDashboard}
@@ -187,6 +194,7 @@ export function App() {
 
       {view.showAddModDialog && (
         <AddModDialog
+          modsetsLoad={modsets.loadState}
           loading={actions.loading}
           modsets={modsets.modsets.filter(modset => modset.can_edit)}
           activeModsetId={modsets.activeModsetId}
@@ -198,19 +206,25 @@ export function App() {
       <section className="detail" id="workspace-content" tabIndex={-1} aria-label="Workspace content" ref={detailRef}>
         {!view.showModsetAdmin && !view.showUserAdmin && <header className="workspace-toolbar">
           <div className="workspace-context">
-            <button className="icon-button mobile-drawer-button" onClick={openSidebar} type="button" aria-label="Open mod list"><Menu size={18} /></button>
+            <button className="icon-button mobile-drawer-button" onClick={openSidebar} disabled={!modsetsReady || !activeModset} type="button" aria-label="Open mod list"><Menu size={18} /></button>
             <label>Active modset<CustomSelect<number> value={modsets.activeModsetId ?? 0}
-              options={modsets.modsets.length ? modsets.modsets.map(set => ({ value: set.id, label: set.name })) : [{ value: 0, label: "No accessible modset" }]}
-              onChange={id => { handleActivateModset(id); view.showDashboardView(); }} disabled={actions.loading || !modsets.modsets.length} ariaLabel="Active modset" /></label>
+              options={!modsetsReady ? [{ value: 0, label: modsets.loadState.error ? "Modsets unavailable" : "Loading modsets…" }] : modsets.modsets.length ? [...(!activeModset ? [{ value: 0, label: "Select a modset" }] : []), ...modsets.modsets.map(set => ({ value: set.id, label: set.name }))] : [{ value: 0, label: "No accessible modset" }]}
+              onChange={id => { if (id) { handleActivateModset(id); view.showDashboardView(); } }} disabled={actions.loading || !modsetsReady || !modsets.modsets.length} ariaLabel="Active modset" /></label>
           </div>
           <div className="workspace-actions">
-            <button className="secondary-button compact" type="button" disabled={!activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export JSON</button>
+            <button className="secondary-button compact" type="button" disabled={!modsetsReady || !modsReady || !activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export JSON</button>
             <button className="primary-button compact" type="button" disabled={!canEdit || actions.loading} onClick={handleShowAddMod}><Plus size={16} /> Add mod</button>
           </div>
         </header>}
         {actions.error && !view.showModsetAdmin && !view.showUserAdmin && <p className="error-box" role="alert">{actions.error}</p>}
-        {view.showDashboard ? (
+        {!view.showModsetAdmin && !view.showUserAdmin && <ResourceStatus state={modsets.loadState} label="modsets" />}
+        {!view.showModsetAdmin && !view.showUserAdmin && !modsetsReady ? null
+        : !view.showModsetAdmin && !view.showUserAdmin && !activeModset ? <div className="placeholder"><h2>{modsets.modsets.length ? "Select a modset" : "No accessible modset"}</h2><p>{modsets.modsets.length ? "Choose an active modset above to open its workspace." : "Create a modset in Modsets or ask its owner for group access."}</p></div>
+        : !view.showModsetAdmin && !view.showUserAdmin && !modsReady ? <ResourceStatus state={mods.loadStates.mods} label="mods" />
+        : view.showDashboard ? (
           <Dashboard
+            activityLoad={mods.loadStates.activity}
+            schedulerLoad={mods.loadStates.scheduler}
             onFilterStatus={status => { mods.setSearchQuery(""); mods.setStatusFilter(status); if (window.matchMedia("(max-width: 900px)").matches) openSidebar(); }}
             canEdit={canEdit}
             mods={mods.mods}
@@ -230,6 +244,8 @@ export function App() {
           />
         ) : view.showModsetAdmin ? (
           <ModsetManagement
+            loadState={modsets.loadState}
+            groupsLoad={groups.loadState}
             api={auth.api}
             groups={groups.directory}
             onAccessChanged={refreshAccess}
@@ -247,13 +263,15 @@ export function App() {
         ) : view.showUserAdmin ? (
           <>
           <UserAdmin
+            loadStates={admin.loadStates}
+            groupsLoad={groups.loadState}
             section={adminSection}
             onSectionChange={section => { setAdminSection(section); detailRef.current?.scrollTo({ top: 0 }); }}
             actionError={actions.error}
             groups={groups.groups}
             saveUserGroups={groups.saveUserGroups}
             groupError={groups.error}
-            groupManagement={<GroupAdmin data={groups} users={admin.users} />}
+            groupManagement={<GroupAdmin data={groups} users={admin.users} usersLoad={admin.loadStates.users} />}
             users={admin.users}
             webhooks={admin.discordWebhooks}
             modsets={admin.modsets}

@@ -2463,3 +2463,11 @@ summary:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-
 .select-option[aria-selected="true"] { color: var(--md-sys-color-on-primary-container); }
 .select-option[data-active="true"] { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 @media (pointer: coarse) { .select-option { min-height: 44px; } }
+
+.resource-error { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid var(--md-sys-color-error); border-radius: 12px; color: var(--md-sys-color-on-surface); overflow-wrap: anywhere; }
+.resource-error > div { min-width: 0; }
+.resource-error p { margin: 6px 0 0; color: var(--md-sys-color-on-surface-variant); font-size: 14px; }
+.resource-error > button { flex-shrink: 0; }
+.resource-loading { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--md-sys-color-on-surface-variant); font-size: 14px; }
+.resource-loading svg { flex-shrink: 0; }
+@media (max-width: 600px) { .resource-error { align-items: stretch; flex-direction: column; } .resource-error > button { width: 100%; min-height: 44px; } }

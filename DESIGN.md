@@ -71,3 +71,9 @@ Main navigation, administration navigation, selected mods and the active modset 
 ## Dropdowns
 
 All selects use the shared Select component: neutral raised surface, rounded popup, gold active option and a checkmark for the saved value. Arrow keys, Home/End, typeahead, Enter, Tab and Escape are supported. Popup placement flips above when needed and stays inside viewport bounds. Popups remain in the nearest modal subtree so they work with native-dialog focus containment and mobile drawers. Pointer and keyboard selection, numeric values, modal Escape and sampled axe checks are verified in Chromium.
+
+## Resource loading and recovery
+
+Lists distinguish first load, successful empty data and failed requests. Each resource has a scoped request state and a read-only Retry action that replays its latest arguments, including a failed audit page. Failed data never renders as an empty list or zero-valued dashboard. Cached data stays stable during automatic background refresh; failed refreshes remain visible until recovery. Dependent membership/scope forms cannot save while their prerequisite lists are unavailable.
+
+Responses from an old account, role or modset scope cannot update current lists. A successful write is not retried when its subsequent list refresh fails; the list reports that read failure separately. Browser checks cover resource failures/recovery, retained drafts, exact audit retry offset, late responses, successful writes with failed reloads and mobile drawer recovery, alongside existing healthy workflows.

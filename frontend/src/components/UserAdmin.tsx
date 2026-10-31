@@ -1,4 +1,6 @@
 import React from "react";
+import type { LoadState } from "../hooks/useLoadState";
+import { ResourceStatus } from "./ResourceStatus";
 import { Pencil, Plus, RefreshCw, Save, Users, UsersRound, Webhook, ScrollText } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
@@ -10,6 +12,8 @@ import type { UserGroup } from "../types";
 export type AdminSection = "account" | "users" | "groups" | "discord" | "audit";
 
 export function UserAdmin({
+  loadStates,
+  groupsLoad,
   section,
   onSectionChange,
   actionError,
@@ -39,6 +43,8 @@ export function UserAdmin({
   previousAuditLogPage,
   nextAuditLogPage,
 }: {
+  loadStates: { users: LoadState; modsets: LoadState; webhooks: LoadState; audit: LoadState };
+  groupsLoad: LoadState;
   section: AdminSection;
   onSectionChange: (section: AdminSection) => void;
   actionError: string | null;
@@ -190,13 +196,16 @@ export function UserAdmin({
         <>
           {effectiveSection === "users" && <section className="content-section admin-section">
             <div className="section-title-row">
-              <h3>Users <span className="section-count">{users.length}</span></h3>
+              <h3>Users {loadStates.users.loaded && !loadStates.users.error && <span className="section-count">{users.length}</span>}</h3>
               <button className="primary-button compact" onClick={() => { setFormError(null); setShowCreateUserDialog(true); }} type="button">
                 <Plus size={18} />
                 Create user
               </button>
             </div>
 
+            <ResourceStatus state={loadStates.users} label="users" />
+            {groupsLoad.error && <ResourceStatus state={groupsLoad} label="group memberships" />}
+            {loadStates.users.loaded && !loadStates.users.error && <>
             <label className="admin-search">Search users<input type="search" value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="Username" /></label>
             <div className="user-list">
               {users.filter(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())).map((user) => (
@@ -209,7 +218,7 @@ export function UserAdmin({
                       {groups.some(group => group.user_ids.includes(user.id)) && ` · Groups: ${groups.filter(group => group.user_ids.includes(user.id)).map(group => group.name).join(", ")}`}
                     </small>
                   </div>
-                  <button className="secondary-button compact" disabled={loading} onClick={() => openEditUser(user)} type="button">
+                  <button className="secondary-button compact" disabled={loading || !groupsLoad.loaded || Boolean(groupsLoad.error)} onClick={() => openEditUser(user)} type="button">
                     <Pencil size={16} />
                     Edit
                   </button>
@@ -217,11 +226,15 @@ export function UserAdmin({
               ))}
             </div>
             {!users.some(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())) && <p className="muted">No users match this search.</p>}
+            </>}
           </section>}
 
           {effectiveSection === "groups" && groupManagement}
 
-          {effectiveSection === "discord" && <DiscordWebhookAdmin
+          {effectiveSection === "discord" && <>
+            <ResourceStatus state={loadStates.webhooks} label="Discord webhooks" />
+            <ResourceStatus state={loadStates.modsets} label="notification modsets" />
+            {loadStates.webhooks.loaded && !loadStates.webhooks.error && loadStates.modsets.loaded && !loadStates.modsets.error && <DiscordWebhookAdmin
             error={actionError}
             webhooks={webhooks}
             modsets={modsets}
@@ -230,7 +243,7 @@ export function UserAdmin({
             updateDiscordWebhook={updateDiscordWebhook}
             deleteDiscordWebhook={deleteDiscordWebhook}
             testDiscordWebhook={testDiscordWebhook}
-          />}
+          />}</>}
 
           {showCreateUserDialog && (
             <Dialog title="Create user" onClose={() => setShowCreateUserDialog(false)}>
@@ -273,7 +286,8 @@ export function UserAdmin({
               <form className="dialog-form" onSubmit={event => { handleEditUser(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not save user.")); }}>
                 {formError && <p className="error-box" role="alert">{formError}</p>}
                 {actionError && !formError && <p className="error-box" role="alert">{actionError}</p>}
-                {groupError && <p role="alert">{groupError}</p>}
+                <ResourceStatus state={groupsLoad} label="group memberships" />
+                {groupError && !groupsLoad.error && <p role="alert">{groupError}</p>}
                 <fieldset className="group-options"><legend>Groups</legend>
                   {groups.length === 0 && <p className="muted">No groups available. Create groups in the Groups section.</p>}
                   {groups.map(group => <label className="checkbox-row" key={group.id}>
@@ -335,7 +349,7 @@ export function UserAdmin({
                   </button>
                   <button
                     className="primary-button compact"
-                    disabled={loading || (resetPassword.length > 0 && resetPassword.length < 12)}
+                    disabled={loading || !groupsLoad.loaded || Boolean(groupsLoad.error) || (resetPassword.length > 0 && resetPassword.length < 12)}
                     type="submit"
                   >
                     Save
@@ -377,6 +391,8 @@ export function UserAdmin({
                 Refresh
               </button>
             </div>
+            <ResourceStatus state={loadStates.audit} label="audit log" />
+            {loadStates.audit.loaded && !loadStates.audit.error && <>
             <div className="audit-filters" aria-label="Audit filters">
               {(["all", "auth", "user", "mod", "integration", "failures"] as AuditFilter[]).map((filter) => (
                 <button className={auditFilter === filter ? "active" : ""} aria-pressed={auditFilter === filter} key={filter} onClick={() => setAuditFilter(filter)} type="button">
@@ -404,14 +420,15 @@ export function UserAdmin({
             <div className="list-pagination">
               <span className="muted">{`Page ${auditLogPage + 1}`}</span>
               <div className="dialog-actions">
-                <button className="secondary-button compact" disabled={!canPageBackAuditLogs} onClick={previousAuditLogPage} type="button">
+                <button className="secondary-button compact" disabled={loadStates.audit.loading || !canPageBackAuditLogs} onClick={previousAuditLogPage} type="button">
                   Previous
                 </button>
-                <button className="secondary-button compact" disabled={!canPageForwardAuditLogs} onClick={nextAuditLogPage} type="button">
+                <button className="secondary-button compact" disabled={loadStates.audit.loading || !canPageForwardAuditLogs} onClick={nextAuditLogPage} type="button">
                   Next
                 </button>
               </div>
             </div>
+            </>}
           </section>}
         </>
       )}

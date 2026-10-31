@@ -1,9 +1,12 @@
 import React from "react";
+import type { LoadState } from "../hooks/useLoadState";
+import { ResourceStatus } from "./ResourceStatus";
 import { ArrowLeft, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, ModStatusFilter, SortMode } from "../types";
 
 export function Sidebar({
+  loadState,
   isMobileDrawerOpen,
   loading,
   showDashboard,
@@ -22,6 +25,7 @@ export function Sidebar({
   onOpenMod,
   onClose,
 }: {
+  loadState: LoadState;
   isMobileDrawerOpen: boolean; loading: boolean; showDashboard: boolean; showModsetAdmin: boolean; showUserAdmin: boolean;
   searchQuery: string; statusFilter: ModStatusFilter; sortMode: SortMode; mods: Mod[]; totalModsCount: number; selectedModId: string | null;
   onShowDashboard: () => void; onSearchChange: (value: string) => void; onStatusFilterChange: (value: ModStatusFilter) => void;
@@ -49,7 +53,7 @@ export function Sidebar({
 
   return <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management" role={isMobileDrawerOpen ? "dialog" : undefined} aria-modal={isMobileDrawerOpen || undefined}>
     <button className="icon-button drawer-close" onClick={onClose} type="button" aria-label="Close mod list"><X size={18} /></button>
-    <div className="mod-browser-heading"><h2>Mods <span>{totalModsCount}</span></h2>
+    <div className="mod-browser-heading"><h2>Mods {loadState.loaded && !loadState.error && <span>{totalModsCount}</span>}</h2>
       <button className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>
     </div>
     {!showDashboard && <button className="workspace-overview" type="button" onClick={onShowDashboard}><ArrowLeft size={16} /> Back to overview</button>}
@@ -89,6 +93,8 @@ export function Sidebar({
       </div>
 
     </div>
+    <ResourceStatus state={loadState} label="mods" announce={false} />
+    {loadState.loaded && !loadState.error && <>
     <p className="browser-result-count" aria-live="polite">{mods.length} of {totalModsCount} mods</p>
 
       <div className="mod-list">
@@ -127,5 +133,6 @@ export function Sidebar({
         {totalModsCount === 0 && <p className="empty">No mods tracked yet.</p>}
         {totalModsCount > 0 && mods.length === 0 && <p className="empty">No mods match the current filters.</p>}
       </div>
+    </>}
   </section>;
 }

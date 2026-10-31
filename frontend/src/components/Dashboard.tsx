@@ -1,4 +1,6 @@
 import React from "react";
+import type { LoadState } from "../hooks/useLoadState";
+import { ResourceStatus } from "./ResourceStatus";
 import { Activity, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, TriangleAlert } from "lucide-react";
 
 import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
@@ -7,6 +9,8 @@ import { Info, StatusIcon } from "./common";
 import { ExportOrderSection } from "./ExportOrderSection";
 
 export function Dashboard({
+  activityLoad,
+  schedulerLoad,
   onFilterStatus,
   canEdit,
   mods,
@@ -24,6 +28,8 @@ export function Dashboard({
   updateModLoadOrder,
   updateModsetLoadOrder,
 }: {
+  activityLoad: LoadState;
+  schedulerLoad: LoadState;
   onFilterStatus: (status: ModStatusFilter) => void;
   canEdit: boolean;
   mods: Mod[];
@@ -60,13 +66,14 @@ export function Dashboard({
         <Info
           label="Auto schedule"
           value={
-            schedulerStatus
+            schedulerLoad.error ? "Unavailable" : !schedulerLoad.loaded ? "Loading…" : schedulerStatus
               ? `${schedulerStatus.automatic_run_times.map(formatScheduleTime).join(" / ")} (${schedulerStatus.scheduler_timezone})`
               : null
           }
         />
       </div>
 
+      <ResourceStatus state={schedulerLoad} label="update schedule" />
       <section className="dashboard-card version-health-card">
         <div className="section-title-row">
           <h3>Version health</h3>
@@ -150,6 +157,8 @@ export function Dashboard({
         </div>
         {isActivityExpanded && (
           <div id={activityContentId}>
+            <ResourceStatus state={activityLoad} label="modset changelog" />
+            {activityLoad.loaded && !activityLoad.error && <>
             {modsetActivity.length > 0 ? (
               <div className="compact-list activity-list">
                 {modsetActivity.map((entry) => {
@@ -180,14 +189,15 @@ export function Dashboard({
             <div className="list-pagination">
               <span className="muted">{`Page ${modsetActivityPage + 1}`}</span>
               <div className="dialog-actions">
-                <button className="secondary-button compact" disabled={!canPageBackModsetActivity} onClick={previousModsetActivityPage} type="button">
+                <button className="secondary-button compact" disabled={activityLoad.loading || !canPageBackModsetActivity} onClick={previousModsetActivityPage} type="button">
                   Previous
                 </button>
-                <button className="secondary-button compact" disabled={!canPageForwardModsetActivity} onClick={nextModsetActivityPage} type="button">
+                <button className="secondary-button compact" disabled={activityLoad.loading || !canPageForwardModsetActivity} onClick={nextModsetActivityPage} type="button">
                   Next
                 </button>
               </div>
             </div>
+            </>}
           </div>
         )}
       </section>

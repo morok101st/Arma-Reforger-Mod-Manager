@@ -1,5 +1,6 @@
 import type { GroupPermission } from "../types";
 import React from "react";
+import { useLoadState } from "./useLoadState";
 
 import type { AuthUser, Modset, ModsetExport } from "../types";
 
@@ -20,6 +21,7 @@ export function useModsets({
   authUser: AuthUser | null;
   setAuthUser: (value: AuthUser | null) => void;
 }) {
+  const loadState = useLoadState(authUser ? `${authUser.id}:${authUser.role}` : null);
   const [modsets, setModsets] = React.useState<Modset[]>([]);
   const [activeModsetId, setActiveModsetId] = React.useState<number | null>(null);
 
@@ -29,13 +31,13 @@ export function useModsets({
       setActiveModsetId(null);
       return [];
     }
-    const data = await api.listModsets();
-    setModsets(data);
-    const authActive = authUser.active_modset_id;
-    const fallback = data[0]?.id ?? null;
-    setActiveModsetId(authActive && data.some((entry) => entry.id === authActive) ? authActive : fallback);
-    return data;
-  }, [api, authUser]);
+    return loadState.run(() => api.listModsets(), data => {
+      setModsets(data);
+      const authActive = authUser.active_modset_id;
+      const fallback = data[0]?.id ?? null;
+      setActiveModsetId(authActive && data.some(entry => entry.id === authActive) ? authActive : fallback);
+    });
+  }, [api, authUser, loadState.run]);
 
   React.useEffect(() => {
     loadModsets().catch(() => null);
@@ -64,7 +66,7 @@ export function useModsets({
   const createModset = React.useCallback(
     async (name: string) => {
       const created = await api.createModset(name);
-      await loadModsets();
+      await loadModsets().catch(() => null);
       return created;
     },
     [api, loadModsets],
@@ -73,7 +75,7 @@ export function useModsets({
   const updateModset = React.useCallback(
     async (modsetId: number, name: string, permissions?: GroupPermission[]) => {
       const updated = await api.updateModset(modsetId, name, permissions);
-      await loadModsets();
+      await loadModsets().catch(() => null);
       return updated;
     },
     [api, loadModsets],
@@ -84,7 +86,7 @@ export function useModsets({
       const user = await api.deleteModset(modsetId);
       setAuthUser(user);
       setActiveModsetId(user.active_modset_id);
-      await loadModsets();
+      await loadModsets().catch(() => null);
       return user;
     },
     [api, loadModsets, setAuthUser],
@@ -93,13 +95,14 @@ export function useModsets({
   const duplicateModset = React.useCallback(
     async (modsetId: number) => {
       const duplicated = await api.duplicateModset(modsetId);
-      await loadModsets();
+      await loadModsets().catch(() => null);
       return duplicated;
     },
     [api, loadModsets],
   );
 
   return {
+    loadState,
     modsets,
     activeModsetId,
     loadModsets,

@@ -1,15 +1,19 @@
 import React from "react";
+import type { LoadState } from "../hooks/useLoadState";
+import { ResourceStatus } from "./ResourceStatus";
 
 import type { Modset } from "../types";
 import { CustomSelect, Dialog } from "./common";
 
 export function AddModDialog({
+  modsetsLoad,
   loading,
   modsets,
   activeModsetId,
   onClose,
   onSubmit,
 }: {
+  modsetsLoad: LoadState;
   loading: boolean;
   modsets: Modset[];
   activeModsetId: number | null;
@@ -29,7 +33,7 @@ export function AddModDialog({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!modsets.some(modset => modset.id === targetModsetId)) return;
+    if (!modsetsLoad.loaded || modsetsLoad.error || !modsets.some(modset => modset.id === targetModsetId)) return;
     setError(null);
     try {
       await onSubmit(modId, currentVersion.trim() || null, targetModsetId);
@@ -43,6 +47,7 @@ export function AddModDialog({
   return (
     <Dialog title="Add mod" onClose={onClose}>
       <form className="dialog-form" onSubmit={handleSubmit}>
+        <ResourceStatus state={modsetsLoad} label="target modsets" />
         <label>
           Workshop ID
           <input autoFocus disabled={loading} value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
@@ -57,7 +62,7 @@ export function AddModDialog({
             value={targetModsetId}
             options={modsets.map((modset) => ({ value: modset.id, label: modset.name }))}
             onChange={setTargetModsetId}
-            disabled={loading || modsets.length === 0}
+            disabled={loading || !modsetsLoad.loaded || Boolean(modsetsLoad.error) || modsets.length === 0}
             ariaLabel="Target modset"
           />
         </label>
@@ -66,7 +71,7 @@ export function AddModDialog({
           <button className="secondary-button compact" onClick={onClose} type="button">
             Cancel
           </button>
-          <button className="primary-button compact" disabled={loading || !modId.trim() || !targetModsetId}>
+          <button className="primary-button compact" disabled={loading || !modsetsLoad.loaded || Boolean(modsetsLoad.error) || !modId.trim() || !targetModsetId}>
             Add
           </button>
         </div>

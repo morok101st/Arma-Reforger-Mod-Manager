@@ -1,4 +1,5 @@
 import React from "react";
+import { useLoadState } from "./useLoadState";
 
 import type { AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
 
@@ -24,6 +25,11 @@ export function useAdminData({
   };
   authUser: AuthUser | null;
 }) {
+  const scope = authUser?.role === "admin" ? String(authUser.id) : null;
+  const usersLoad = useLoadState(scope);
+  const modsetsLoad = useLoadState(scope);
+  const webhooksLoad = useLoadState(scope);
+  const auditLoad = useLoadState(scope);
   const [users, setUsers] = React.useState<UserAccount[]>([]);
   const [modsets, setModsets] = React.useState<Modset[]>([]);
   const [discordWebhooks, setDiscordWebhooks] = React.useState<DiscordWebhook[]>([]);
@@ -31,33 +37,17 @@ export function useAdminData({
   const [auditLogPage, setAuditLogPage] = React.useState(0);
   const [canPageForwardAuditLogs, setCanPageForwardAuditLogs] = React.useState(false);
 
-  const loadUsers = React.useCallback(async () => {
-    const data = await api.listUsers();
-    setUsers(data);
-    return data;
-  }, [api]);
+  const loadUsers = React.useCallback(() => usersLoad.run(() => api.listUsers(), setUsers), [api, usersLoad.run]);
 
-  const loadAuditLogs = React.useCallback(async (page = 0) => {
-    const offset = page * AUDIT_LOG_PAGE_SIZE;
-    const data = await api.listAuditLogs(AUDIT_LOG_PAGE_SIZE + 1, offset);
-    const visible = data.slice(0, AUDIT_LOG_PAGE_SIZE);
-    setAuditLogs(visible);
-    setCanPageForwardAuditLogs(data.length > AUDIT_LOG_PAGE_SIZE);
-    setAuditLogPage(page);
-    return visible;
-  }, [api]);
+  const loadAuditLogs = React.useCallback((page = 0) => auditLoad.run(
+    () => api.listAuditLogs(AUDIT_LOG_PAGE_SIZE + 1, page * AUDIT_LOG_PAGE_SIZE), data => {
+      setAuditLogs(data.slice(0, AUDIT_LOG_PAGE_SIZE));
+      setCanPageForwardAuditLogs(data.length > AUDIT_LOG_PAGE_SIZE);
+      setAuditLogPage(page);
+    }), [api, auditLoad.run]);
 
-  const loadModsets = React.useCallback(async () => {
-    const data = await api.listAdminModsets();
-    setModsets(data);
-    return data;
-  }, [api]);
-
-  const loadDiscordWebhooks = React.useCallback(async () => {
-    const data = await api.listDiscordWebhooks();
-    setDiscordWebhooks(data);
-    return data;
-  }, [api]);
+  const loadModsets = React.useCallback(() => modsetsLoad.run(() => api.listAdminModsets(), setModsets), [api, modsetsLoad.run]);
+  const loadDiscordWebhooks = React.useCallback(() => webhooksLoad.run(() => api.listDiscordWebhooks(), setDiscordWebhooks), [api, webhooksLoad.run]);
 
   React.useEffect(() => {
     if (authUser?.role !== "admin") {
@@ -76,7 +66,7 @@ export function useAdminData({
   }, [authUser, loadUsers, loadModsets, loadDiscordWebhooks, loadAuditLogs]);
 
   const refreshAdminData = React.useCallback(async () => {
-    await Promise.all([loadUsers(), loadModsets(), loadDiscordWebhooks(), loadAuditLogs(auditLogPage)]);
+    await Promise.allSettled([loadUsers(), loadModsets(), loadDiscordWebhooks(), loadAuditLogs(auditLogPage)]);
   }, [auditLogPage, loadAuditLogs, loadDiscordWebhooks, loadModsets, loadUsers]);
 
   const createUser = React.useCallback(
@@ -159,6 +149,7 @@ export function useAdminData({
   }, [auditLogPage, canPageForwardAuditLogs, loadAuditLogs]);
 
   return {
+    loadStates: { users: usersLoad, modsets: modsetsLoad, webhooks: webhooksLoad, audit: auditLoad },
     users,
     modsets,
     discordWebhooks,
