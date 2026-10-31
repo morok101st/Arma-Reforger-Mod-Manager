@@ -7,7 +7,7 @@ import { Dashboard } from "./components/Dashboard";
 import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
 import { ModsetManagement } from "./components/ModsetManagement";
-import { CustomSelect } from "./components/common";
+import { CustomSelect, focusableElements } from "./components/common";
 import { ModsetEditDialog } from "./components/ModsetEditDialog";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin, type AdminSection } from "./components/UserAdmin";
@@ -54,7 +54,7 @@ export function App() {
   const handleActivateModset = React.useCallback(
     (modsetId: number) => {
       closeSidebar();
-      actions.activateModset(modsetId);
+      actions.activateModset(modsetId).catch(() => null);
     },
     [actions, closeSidebar],
   );
@@ -68,10 +68,33 @@ export function App() {
 
   React.useEffect(() => {
     if (!mobileSidebarOpen) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeSidebar(); };
+    const panel = document.querySelector<HTMLElement>(".sidebar");
+    if (!panel) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const background = [document.querySelector<HTMLElement>(".app-navigation"), detailRef.current].filter((node): node is HTMLElement => Boolean(node));
+    const previousInert = background.map(node => node.inert);
+    background.forEach(node => { node.inert = true; });
+    const focusable = () => focusableElements(panel);
+    focusable()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); closeSidebar(); }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items[items.length - 1]?.focus(); }
+      else if (!event.shiftKey && document.activeElement === items[items.length - 1]) { event.preventDefault(); items[0].focus(); }
+    };
+    const media = window.matchMedia("(max-width: 900px)");
+    const onResize = () => { if (!media.matches) closeSidebar(); };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [mobileSidebarOpen, closeSidebar]);
+    media.addEventListener("change", onResize);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      media.removeEventListener("change", onResize);
+      background.forEach((node, index) => { node.inert = previousInert[index]; });
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [mobileSidebarOpen, closeSidebar, detailRef]);
 
   React.useEffect(() => {
     if (!mobileSidebarOpen) {
@@ -123,6 +146,7 @@ export function App() {
 
   return (
     <main className={`app-shell redesigned-shell ${view.showModsetAdmin || view.showUserAdmin ? "management-shell" : ""} ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
+      <a className="skip-link" href="#workspace-content" onClick={() => detailRef.current?.focus()}>Skip to content</a>
       <header className="app-navigation">
         <a className="navigation-brand" href="/" onClick={event => { event.preventDefault(); handleShowDashboard(); }}><img src="/icon.png" alt="" /><strong>ARMM</strong></a>
         <nav aria-label="Main navigation">
@@ -173,7 +197,7 @@ export function App() {
         />
       )}
 
-      <section className="detail" aria-label="Mod Details" ref={detailRef}>
+      <section className="detail" id="workspace-content" tabIndex={-1} aria-label="Workspace content" ref={detailRef}>
         {!view.showModsetAdmin && !view.showUserAdmin && <header className="workspace-toolbar">
           <div className="workspace-context">
             <button className="icon-button mobile-drawer-button" onClick={openSidebar} type="button" aria-label="Open mod list"><Menu size={18} /></button>
@@ -228,7 +252,7 @@ export function App() {
           <>
           <UserAdmin
             section={adminSection}
-            onSectionChange={setAdminSection}
+            onSectionChange={section => { setAdminSection(section); detailRef.current?.scrollTo({ top: 0 }); }}
             actionError={actions.error}
             groups={groups.groups}
             saveUserGroups={groups.saveUserGroups}

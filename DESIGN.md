@@ -18,7 +18,7 @@ Spacing scale: 4, 8, 12, 16, 24, 32px. Corners: controls 8px, panels 12px, dialo
 
 ## Interaction
 
-Visible accent focus outlines, hover states, themed selection and caret colors, reduced-motion support. Primary buttons stay still on hover. Complete keyboard interaction for dialogs and selects follows in the component phase.
+Visible accent focus outlines, hover states, themed selection and caret colors, reduced-motion support. Primary buttons stay still on hover. Native modal dialogs contain focus, close on Escape and restore focus. Native selects provide keyboard navigation and mobile pickers.
 
 ## Review scope
 
@@ -34,7 +34,7 @@ The mod browser prioritizes search, an overview link, result count and mod list.
 
 Below 900px the browser becomes a closable drawer. Global navigation remains visible, actions wrap and management stays full width. The drawer closes on mod selection, its close button, backdrop or Escape. At 600px and below, navigation icons stack above labels.
 
-The remaining administration subsection split, mod-detail redesign and full shared-component keyboard pass belong to later phases.
+The mod-detail, administration and shared keyboard rules below complete this workspace structure.
 
 ## Mod details (phase three)
 
@@ -55,3 +55,11 @@ At narrower widths the same rows become labeled stacked records; phone actions s
 Replace the Security feed with focused Users, Groups, Discord and Audit log sections. A left section navigator becomes a four-item grid on smaller screens. Only the selected section renders. Personal Account settings are reached independently through the account menu; regular users see only their own account settings.
 
 Users and groups have local search. Membership editors preserve selections while filtering members. User, password and webhook form errors stay visible in dialogs. Role, session, OIDC, membership and webhook-scope APIs retain their semantics. Webhook dialog drafts initialize when opened, so background list reloads cannot overwrite selected modsets. Account session information uses a compact summary instead of metric cards. Audit filters expose selection state; refresh and paging remain available. Phone actions stack consistently.
+
+## Quality and keyboard access (phase six)
+
+Shared dialogs use native showModal with an accessible title, browser-managed background inertness, focus containment, Escape and focus return. Shared select fields use native controls while preserving numeric/string values. The mobile mod drawer contains keyboard focus, makes background navigation/content inert, restores the opener and closes when resized to desktop. A skip link leads to the content region. Mobile fields use 16px text to avoid focus zoom.
+
+Add-mod failures keep entered data and show an inline error. A selected target modset survives background reloads while still writable. Administration section changes return to the top. Existing permissions and backend behavior remain unchanged.
+
+Validation: TypeScript/Vite build and headless Chromium scenarios at 320–1440px in both themes. Exercised keyboard focus cycles, Escape/return, native select values, error-preserved drafts, permission boundaries and existing management workflows. Axe WCAG A/AA checks reported no violations on sampled workspace and modal states. Physical-device and manual screen-reader testing are not part of this validation.

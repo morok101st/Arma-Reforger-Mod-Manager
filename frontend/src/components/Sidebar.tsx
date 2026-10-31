@@ -47,7 +47,7 @@ export function Sidebar({
   }, [selectedModId, showDashboard, showModsetAdmin, showUserAdmin, mods]);
 
 
-  return <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management">
+  return <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management" role={isMobileDrawerOpen ? "dialog" : undefined} aria-modal={isMobileDrawerOpen || undefined}>
     <button className="icon-button drawer-close" onClick={onClose} type="button" aria-label="Close mod list"><X size={18} /></button>
     <div className="mod-browser-heading"><h2>Mods <span>{totalModsCount}</span></h2>
       <button className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>

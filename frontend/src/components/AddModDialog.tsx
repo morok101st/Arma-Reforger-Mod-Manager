@@ -16,25 +16,28 @@ export function AddModDialog({
   onClose: () => void;
   onSubmit: (modId: string, currentVersion: string | null, modsetId: number) => Promise<void>;
 }) {
+  const [error, setError] = React.useState<string | null>(null);
   const [modId, setModId] = React.useState("");
   const [currentVersion, setCurrentVersion] = React.useState("");
   const [targetModsetId, setTargetModsetId] = React.useState<number>(() =>
     modsets.some(modset => modset.id === activeModsetId) ? activeModsetId! : modsets[0]?.id ?? 0);
 
   React.useEffect(() => {
-    if (activeModsetId && modsets.some((modset) => modset.id === activeModsetId)) {
-      setTargetModsetId(activeModsetId);
-      return;
-    }
-    setTargetModsetId(modsets[0]?.id ?? 0);
+    setTargetModsetId(current => modsets.some(modset => modset.id === current) ? current
+      : modsets.some(modset => modset.id === activeModsetId) ? activeModsetId! : modsets[0]?.id ?? 0);
   }, [activeModsetId, modsets]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!modsets.some(modset => modset.id === targetModsetId)) return;
-    await onSubmit(modId, currentVersion.trim() || null, targetModsetId);
-    setModId("");
-    setCurrentVersion("");
+    setError(null);
+    try {
+      await onSubmit(modId, currentVersion.trim() || null, targetModsetId);
+      setModId("");
+      setCurrentVersion("");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not add mod. Check the Workshop ID and try again.");
+    }
   }
 
   return (
@@ -42,11 +45,11 @@ export function AddModDialog({
       <form className="dialog-form" onSubmit={handleSubmit}>
         <label>
           Workshop ID
-          <input autoFocus value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
+          <input autoFocus disabled={loading} value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
         </label>
         <label>
           Installed version
-          <input value={currentVersion} onChange={(event) => setCurrentVersion(event.target.value)} placeholder="optional" />
+          <input disabled={loading} value={currentVersion} onChange={(event) => setCurrentVersion(event.target.value)} placeholder="optional" />
         </label>
         <label>
           Modset
@@ -58,6 +61,7 @@ export function AddModDialog({
             ariaLabel="Target modset"
           />
         </label>
+        {error && <p className="error-box" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button className="secondary-button compact" onClick={onClose} type="button">
             Cancel
