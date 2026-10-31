@@ -49,3 +49,9 @@ The layout collapses from paired relationship columns to a single column on phon
 Search by name or owner; filter all, owned or group-access modsets. Desktop rows separate name, owner, access, mod count and actions. The name is an explicit workspace link; rows do not nest buttons inside another interactive control. Active selection is labeled. Edit and Export stay visible; Duplicate and Delete use a secondary actions disclosure. Readers retain copy/export, the last-modset safeguard and delete confirmation remain.
 
 At narrower widths the same rows become labeled stacked records; phone actions stack at full width. The edit dialog stages name and permissions in one save, with native keyboard-accessible permission selects, optional group search and retry after a permission-loading failure. Filtering groups never removes staged or existing grants. Errors remain visible inside create/delete dialogs.
+
+## Administration (phase five)
+
+Replace the Security feed with focused Users, Groups, Discord and Audit log sections. A left section navigator becomes a four-item grid on smaller screens. Only the selected section renders. Personal Account settings are reached independently through the account menu; regular users see only their own account settings.
+
+Users and groups have local search. Membership editors preserve selections while filtering members. User, password and webhook form errors stay visible in dialogs. Role, session, OIDC, membership and webhook-scope APIs retain their semantics. Webhook dialog drafts initialize when opened, so background list reloads cannot overwrite selected modsets. Account session information uses a compact summary instead of metric cards. Audit filters expose selection state; refresh and paging remain available. Phone actions stack consistently.

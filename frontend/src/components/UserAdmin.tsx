@@ -1,5 +1,5 @@
 import React from "react";
-import { Pencil, Plus, RefreshCw, Save } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Save, Users, UsersRound, Webhook, ScrollText } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
@@ -7,7 +7,12 @@ import { CustomSelect, Dialog, Info } from "./common";
 import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
 import type { UserGroup } from "../types";
 
+export type AdminSection = "account" | "users" | "groups" | "discord" | "audit";
+
 export function UserAdmin({
+  section,
+  onSectionChange,
+  actionError,
   groups,
   saveUserGroups,
   groupError,
@@ -34,6 +39,9 @@ export function UserAdmin({
   previousAuditLogPage,
   nextAuditLogPage,
 }: {
+  section: AdminSection;
+  onSectionChange: (section: AdminSection) => void;
+  actionError: string | null;
   groups: UserGroup[];
   saveUserGroups: (userId: number, groupIds: number[]) => Promise<void>;
   groupError: string | null;
@@ -60,6 +68,9 @@ export function UserAdmin({
   previousAuditLogPage: () => void;
   nextAuditLogPage: () => void;
 }) {
+  const effectiveSection = currentUser.role === "admin" ? section : "account";
+  const [userSearch, setUserSearch] = React.useState("");
+  const [formError, setFormError] = React.useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newOwnPassword, setNewOwnPassword] = React.useState("");
   const [newUsername, setNewUsername] = React.useState("");
@@ -79,6 +90,7 @@ export function UserAdmin({
 
   async function handleOwnPasswordChange(event: React.FormEvent) {
     event.preventDefault();
+    setFormError(null);
     await changeOwnPassword(currentPassword, newOwnPassword);
     setCurrentPassword("");
     setNewOwnPassword("");
@@ -86,6 +98,7 @@ export function UserAdmin({
 
   async function handleCreateUser(event: React.FormEvent) {
     event.preventDefault();
+    setFormError(null);
     if (!newUsername.trim() || !newPassword) return;
     await createUser(newUsername.trim(), newPassword, newRole);
     setNewUsername("");
@@ -95,6 +108,7 @@ export function UserAdmin({
   }
 
   function openEditUser(user: UserAccount) {
+    setFormError(null);
     setEditUserId(user.id);
     setEditRole(user.role);
     setEditIsActive(user.is_active);
@@ -105,6 +119,7 @@ export function UserAdmin({
 
   async function handleEditUser(event: React.FormEvent) {
     event.preventDefault();
+    setFormError(null);
     if (!editUser) return;
     const originalGroupIds = groups.filter(group => group.user_ids.includes(editUser.id)).map(group => group.id);
     if (originalGroupIds.length !== editGroupIds.length || originalGroupIds.some(id => !editGroupIds.includes(id))) {
@@ -122,14 +137,17 @@ export function UserAdmin({
 
   return (
     <>
-      <header className="detail-header">
-        <div>
-          <p>{currentUser.role === "admin" ? "Administration" : "Account"}</p>
-          <h2>Security</h2>
-        </div>
+      <header className="administration-heading"><h2>{effectiveSection === "account" ? "Account settings" : "Administration"}</h2>
+        <p className="muted">{effectiveSection === "account" ? "Your session, sign-in method and password." : "Manage people, permissions and update notifications."}</p>
       </header>
+      <div className={`admin-workspace ${effectiveSection === "account" ? "account-workspace" : ""}`}>
+        {currentUser.role === "admin" && effectiveSection !== "account" && <nav className="admin-navigation" aria-label="Administration sections">
+          {([{id:"users",label:"Users",icon:Users},{id:"groups",label:"Groups",icon:UsersRound},{id:"discord",label:"Discord",icon:Webhook},{id:"audit",label:"Audit log",icon:ScrollText}] as const).map(item => <button type="button" key={item.id} aria-current={effectiveSection === item.id ? "page" : undefined} onClick={() => { setFormError(null); onSectionChange(item.id); }}><item.icon size={18} />{item.label}</button>)}
+        </nav>}
+        <div className="admin-content">
+        {actionError && <p className="error-box" role="alert">{actionError}</p>}
+        {effectiveSection === "account" && <section className="content-section admin-section session-section">
 
-      <section className="content-section admin-section session-section">
         <h3>Session</h3>
         <div className="metrics session-metrics">
           <Info label="Signed in as" value={currentUser.username} />
@@ -139,7 +157,7 @@ export function UserAdmin({
         </div>
 
         {currentUser.has_local_password ? (
-          <form className="user-form session-form" onSubmit={handleOwnPasswordChange}>
+          <form className="user-form session-form" onSubmit={event => { handleOwnPasswordChange(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not change password.")); }}>
             <label>
               Current password
               <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
@@ -156,7 +174,7 @@ export function UserAdmin({
             </label>
             <button className="primary-button compact" disabled={loading || !currentPassword || newOwnPassword.length < 12}>
               <Save size={18} />
-              Change
+              Change password
             </button>
           </form>
         ) : (
@@ -165,21 +183,23 @@ export function UserAdmin({
             <p className="muted">This account signs in through OIDC and has no local ARMM password.</p>
           </div>
         )}
-      </section>
+        {formError && <p className="error-box" role="alert">{formError}</p>}
+      </section>}
 
       {currentUser.role === "admin" && (
         <>
-          <section className="content-section admin-section">
+          {effectiveSection === "users" && <section className="content-section admin-section">
             <div className="section-title-row">
-              <h3>Users</h3>
-              <button className="primary-button compact" onClick={() => setShowCreateUserDialog(true)} type="button">
+              <h3>Users <span className="section-count">{users.length}</span></h3>
+              <button className="primary-button compact" onClick={() => { setFormError(null); setShowCreateUserDialog(true); }} type="button">
                 <Plus size={18} />
                 Create user
               </button>
             </div>
 
+            <label className="admin-search">Search users<input type="search" value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="Username" /></label>
             <div className="user-list">
-              {users.map((user) => (
+              {users.filter(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())).map((user) => (
                 <article className="user-row" key={user.id}>
                   <div>
                     <strong>{user.username}</strong>
@@ -196,11 +216,13 @@ export function UserAdmin({
                 </article>
               ))}
             </div>
-          </section>
+            {!users.some(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())) && <p className="muted">No users match this search.</p>}
+          </section>}
 
-          {groupManagement}
+          {effectiveSection === "groups" && groupManagement}
 
-          <DiscordWebhookAdmin
+          {effectiveSection === "discord" && <DiscordWebhookAdmin
+            error={actionError}
             webhooks={webhooks}
             modsets={modsets}
             loading={loading}
@@ -208,11 +230,12 @@ export function UserAdmin({
             updateDiscordWebhook={updateDiscordWebhook}
             deleteDiscordWebhook={deleteDiscordWebhook}
             testDiscordWebhook={testDiscordWebhook}
-          />
+          />}
 
           {showCreateUserDialog && (
             <Dialog title="Create user" onClose={() => setShowCreateUserDialog(false)}>
-              <form className="dialog-form" onSubmit={handleCreateUser}>
+              <form className="dialog-form" onSubmit={event => { handleCreateUser(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not create user.")); }}>
+                {formError && <p className="error-box" role="alert">{formError}</p>}
                 <label>
                   Username
                   <input autoFocus value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
@@ -247,7 +270,9 @@ export function UserAdmin({
 
           {editUser && (
             <Dialog title={`Edit user ${editUser.username}`} onClose={() => setEditUserId(null)}>
-              <form className="dialog-form" onSubmit={event => { handleEditUser(event).catch(() => null); }}>
+              <form className="dialog-form" onSubmit={event => { handleEditUser(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not save user.")); }}>
+                {formError && <p className="error-box" role="alert">{formError}</p>}
+                {actionError && !formError && <p className="error-box" role="alert">{actionError}</p>}
                 {groupError && <p role="alert">{groupError}</p>}
                 <fieldset className="group-options"><legend>Groups</legend>
                   {groups.length === 0 && <p className="muted">No groups available. Create groups in the Groups section.</p>}
@@ -344,7 +369,7 @@ export function UserAdmin({
             </Dialog>
           )}
 
-          <section className="content-section admin-section">
+          {effectiveSection === "audit" && <section className="content-section admin-section">
             <div className="section-title-row">
               <h3>Audit log</h3>
               <button className="secondary-button compact" disabled={loading} onClick={() => loadAuditLogs().catch(() => null)} type="button">
@@ -354,7 +379,7 @@ export function UserAdmin({
             </div>
             <div className="audit-filters" aria-label="Audit filters">
               {(["all", "auth", "user", "mod", "integration", "failures"] as AuditFilter[]).map((filter) => (
-                <button className={auditFilter === filter ? "active" : ""} key={filter} onClick={() => setAuditFilter(filter)} type="button">
+                <button className={auditFilter === filter ? "active" : ""} aria-pressed={auditFilter === filter} key={filter} onClick={() => setAuditFilter(filter)} type="button">
                   {auditFilterLabel(filter)}
                 </button>
               ))}
@@ -387,9 +412,11 @@ export function UserAdmin({
                 </button>
               </div>
             </div>
-          </section>
+          </section>}
         </>
       )}
+        </div>
+      </div>
     </>
   );
 }

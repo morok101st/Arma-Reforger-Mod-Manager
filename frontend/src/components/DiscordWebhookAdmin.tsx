@@ -5,6 +5,7 @@ import type { DiscordWebhook, Modset } from "../types";
 import { Dialog } from "./common";
 
 export function DiscordWebhookAdmin({
+  error,
   webhooks,
   modsets,
   loading,
@@ -13,6 +14,7 @@ export function DiscordWebhookAdmin({
   deleteDiscordWebhook,
   testDiscordWebhook,
 }: {
+  error: string | null;
   webhooks: DiscordWebhook[];
   modsets: Modset[];
   loading: boolean;
@@ -37,26 +39,6 @@ export function DiscordWebhookAdmin({
 
   const editWebhook = webhooks.find((webhook) => webhook.id === editWebhookId) ?? null;
   const deleteWebhook = webhooks.find((webhook) => webhook.id === deleteWebhookId) ?? null;
-
-  React.useEffect(() => {
-    if (!editWebhook) {
-      setEditName("");
-      setEditWebhookUrl("");
-      setEditIsActive(true);
-      setEditModsetIds([]);
-      return;
-    }
-    setEditName(editWebhook.name);
-    setEditWebhookUrl("");
-    setEditIsActive(editWebhook.is_active);
-    setEditModsetIds(editWebhook.modset_ids);
-  }, [editWebhook]);
-
-  React.useEffect(() => {
-    if (showCreateDialog) {
-      setCreateModsetIds(modsets.map((modset) => modset.id));
-    }
-  }, [modsets, showCreateDialog]);
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -158,6 +140,7 @@ export function DiscordWebhookAdmin({
             className="primary-button compact"
             disabled={loading}
             onClick={() => {
+              setCreateModsetIds(modsets.map(modset => modset.id));
               setShowCreateDialog(true);
               setTestSuccessName(null);
             }}
@@ -168,7 +151,7 @@ export function DiscordWebhookAdmin({
           </button>
         </div>
         <p className="muted">
-          Configure one or more Discord webhook targets for update alerts. Webhooks stay server-side and do not require code changes.
+          Choose where scheduled mod updates are sent and which modsets trigger notifications.
         </p>
 
         <div className="webhook-list">
@@ -209,6 +192,10 @@ export function DiscordWebhookAdmin({
                   disabled={loading}
                   onClick={() => {
                     setTestSuccessName(null);
+                    setEditName(webhook.name);
+                    setEditWebhookUrl("");
+                    setEditIsActive(webhook.is_active);
+                    setEditModsetIds([...webhook.modset_ids]);
                     setEditWebhookId(webhook.id);
                   }}
                   type="button"
@@ -245,7 +232,8 @@ export function DiscordWebhookAdmin({
 
       {showCreateDialog && (
         <Dialog title="Add Discord webhook" onClose={() => setShowCreateDialog(false)}>
-          <form className="dialog-form" onSubmit={handleCreate}>
+          <form className="dialog-form" onSubmit={event => { handleCreate(event).catch(() => null); }}>
+            {error && <p className="error-box" role="alert">{error}</p>}
             <label>
               Name
               <input autoFocus value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder="Discord alerts" />
@@ -277,7 +265,8 @@ export function DiscordWebhookAdmin({
 
       {editWebhook && (
         <Dialog title={`Edit webhook ${editWebhook.name}`} onClose={() => setEditWebhookId(null)}>
-          <form className="dialog-form" onSubmit={handleEdit}>
+          <form className="dialog-form" onSubmit={event => { handleEdit(event).catch(() => null); }}>
+            {error && <p className="error-box" role="alert">{error}</p>}
             <label>
               Name
               <input autoFocus value={editName} onChange={(event) => setEditName(event.target.value)} />
@@ -313,6 +302,7 @@ export function DiscordWebhookAdmin({
       {deleteWebhook && (
         <Dialog title={`Delete webhook ${deleteWebhook.name}`} onClose={() => setDeleteWebhookId(null)}>
           <div className="dialog-form">
+            {error && <p className="error-box" role="alert">{error}</p>}
             <div className="danger-callout">
               <TriangleAlert className="status-icon warn" size={20} />
               <div>

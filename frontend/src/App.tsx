@@ -10,12 +10,13 @@ import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect } from "./components/common";
 import { ModsetEditDialog } from "./components/ModsetEditDialog";
 import { Sidebar } from "./components/Sidebar";
-import { UserAdmin } from "./components/UserAdmin";
+import { UserAdmin, type AdminSection } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
 import { GroupAdmin } from "./components/GroupAdmin";
 
 export function App() {
   const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
+  const [adminSection, setAdminSection] = React.useState<AdminSection>("users");
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const [editingModset, setEditingModset] = React.useState(false);
   const deepLinkRef = React.useRef(() => {
@@ -43,8 +44,9 @@ export function App() {
   }, [closeSidebar, view]);
   const handleToggleSecurity = React.useCallback(() => {
     closeSidebar();
+    setAdminSection(auth.authUser?.role === "admin" ? "users" : "account");
     view.toggleSecurityView();
-  }, [closeSidebar, view]);
+  }, [closeSidebar, view, auth.authUser?.role]);
   const handleShowAddMod = React.useCallback(() => {
     closeSidebar();
     view.openAddModDialog();
@@ -136,7 +138,7 @@ export function App() {
           <button type="button" onClick={() => actions.updateThemePreference(authUser.theme_preference === "dark" ? "light" : "dark")}>
             {authUser.theme_preference === "dark" ? <Sun size={16} /> : <Moon size={16} />} {authUser.theme_preference === "dark" ? "Light mode" : "Dark mode"}
           </button>
-          <button type="button" onClick={handleToggleSecurity}><Shield size={16} /> Account settings</button>
+          <button type="button" onClick={() => { closeSidebar(); setAdminSection("account"); view.toggleSecurityView(); }}><Shield size={16} /> Account settings</button>
           <button type="button" onClick={actions.logout}><LogOut size={16} /> Sign out</button>
         </div></details>
       </header>
@@ -225,6 +227,9 @@ export function App() {
         ) : view.showUserAdmin ? (
           <>
           <UserAdmin
+            section={adminSection}
+            onSectionChange={setAdminSection}
+            actionError={actions.error}
             groups={groups.groups}
             saveUserGroups={groups.saveUserGroups}
             groupError={groups.error}

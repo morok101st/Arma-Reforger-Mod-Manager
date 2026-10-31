@@ -2406,3 +2406,50 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   .modset-more-label { display: inline; }
   .modsets-table tr.current { padding-inline: 0; }
 }
+
+/* Phase five: task-focused administration and separate account settings. */
+.administration-heading p { margin: 12px 0 0; }
+.admin-workspace { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 40px; align-items: start; }
+.admin-navigation { display: grid; gap: 6px; position: sticky; top: 0; }
+.admin-navigation button { display: flex; align-items: center; gap: 10px; padding: 12px 14px; min-height: 44px; background: transparent; color: var(--md-sys-color-on-surface-variant); border: 0; border-radius: 8px; cursor: pointer; text-align: left; font-weight: 600; }
+.admin-navigation button[aria-current="page"] { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+.admin-navigation button:hover { background: var(--md-sys-color-surface-hover); color: var(--md-sys-color-on-surface); }
+.admin-content { min-width: 0; display: grid; gap: 24px; }
+.admin-content .admin-section { border: 0; border-radius: 0; background: transparent; padding: 0; min-width: 0; }
+.admin-content .section-title-row { align-items: center; }
+.admin-content .section-title-row h3 { display: flex; align-items: center; gap: 6px; }
+.admin-search { max-width: 360px; gap: 8px; }
+.admin-content .user-list { gap: 0; }
+.admin-content .user-row { border: 0; border-bottom: 1px solid var(--md-sys-color-outline-variant); border-radius: 0; background: transparent; padding: 18px 0; }
+.admin-content .user-row > div { min-width: 0; overflow-wrap: anywhere; }
+.admin-content .user-row small { line-height: 1.6; margin-top: 6px; }
+.admin-content .user-row:hover { background: transparent; }
+.account-workspace { grid-template-columns: minmax(0, 850px); }
+.account-workspace .session-metrics { gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+.account-workspace .info { padding: 0; min-height: 0; border: 0; background: transparent; }
+.admin-content .audit-row { border: 0; border-bottom: 1px solid var(--md-sys-color-outline-variant); border-radius: 0; background: transparent; padding: 16px 0; }
+.admin-content .audit-filters { gap: 8px; }
+.admin-content .audit-filters button { border-radius: 8px; }
+.admin-content .webhook-row { min-width: 0; }
+.admin-content .dialog-actions { flex-wrap: wrap; }
+.admin-content .dialog-actions button { min-width: 0; }
+@media (max-width: 1100px) {
+  .admin-workspace { grid-template-columns: 160px minmax(0, 1fr); gap: 24px; }
+  .account-workspace { grid-template-columns: minmax(0, 850px); }
+}
+@media (max-width: 900px) {
+  .admin-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .admin-navigation { position: static; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .admin-navigation button { justify-content: center; padding: 10px 6px; font-size: 13px; }
+  .admin-navigation button svg { flex-shrink: 0; }
+}
+@media (max-width: 600px) {
+  .admin-navigation button { flex-direction: column; gap: 6px; font-size: 12px; }
+  .admin-content .section-title-row { align-items: stretch; flex-direction: column; gap: 16px; }
+  .admin-content .section-title-row > button { width: 100%; }
+  .admin-content .user-row > button { width: 100%; min-height: 44px; }
+  .admin-content .session-form, .admin-content .metrics.session-metrics { grid-template-columns: 1fr; }
+  .admin-content .dialog-actions { flex-direction: column; align-items: stretch; }
+  .admin-content .dialog-actions button { min-height: 44px; width: 100%; }
+  .admin-search { max-width: none; }
+}
