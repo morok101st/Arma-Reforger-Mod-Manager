@@ -18,7 +18,7 @@ Spacing scale: 4, 8, 12, 16, 24, 32px. Corners: controls 8px, panels 12px, dialo
 
 ## Interaction
 
-Visible accent focus outlines, hover states, themed selection and caret colors, reduced-motion support. Primary buttons stay still on hover. Native modal dialogs contain focus, close on Escape and restore focus. Native selects provide keyboard navigation and mobile pickers.
+Visible accent focus outlines, hover states, themed selection and caret colors, reduced-motion support. Primary buttons stay still on hover. Native modal dialogs contain focus, close on Escape and restore focus. Themed select-only comboboxes provide keyboard navigation, typeahead and a consistent popup.
 
 ## Review scope
 
@@ -28,7 +28,7 @@ Desktop/mobile and both themes. This documents phase one, not completion of the 
 
 A global header carries the logo, labeled Workspace/Modsets/Administration navigation and a separate account menu. Regular users see Settings in place of Administration. Repeated navigation stays on the selected section. Management pages use the full content width.
 
-The desktop workspace has a 310px mod browser and flexible detail area. A sticky context toolbar owns the active modset selector and Export JSON, Edit modset and Add mod actions. Edit reuses the existing combined name/permissions dialog. Export remains available to readers; editing and adding require write access.
+The desktop workspace has a 310px mod browser and flexible detail area. A sticky context toolbar owns the active modset selector and Export JSON and Add mod actions. Modset name and group permissions are edited only through the Modsets area, using the combined edit dialog. Export remains available to readers; editing and adding require write access.
 
 The mod browser prioritizes search, an overview link, result count and mod list. Status and sorting controls are expandable; an active status filter remains visible. Zero dependency counts are omitted. Version-health summaries filter the browser, clear search and open the mobile drawer. Up-to-date is now a supported filter.
 
@@ -48,7 +48,7 @@ The layout collapses from paired relationship columns to a single column on phon
 
 Search by name or owner; filter all, owned or group-access modsets. Desktop rows separate name, owner, access, mod count and actions. The name is an explicit workspace link; rows do not nest buttons inside another interactive control. Active selection is labeled. Edit and Export stay visible; Duplicate and Delete use a secondary actions disclosure. Readers retain copy/export, the last-modset safeguard and delete confirmation remain.
 
-At narrower widths the same rows become labeled stacked records; phone actions stack at full width. The edit dialog stages name and permissions in one save, with native keyboard-accessible permission selects, optional group search and retry after a permission-loading failure. Filtering groups never removes staged or existing grants. Errors remain visible inside create/delete dialogs.
+At narrower widths the same rows become labeled stacked records; phone actions stack at full width. The edit dialog stages name and permissions in one save, with shared keyboard-accessible permission selects, optional group search and retry after a permission-loading failure. Filtering groups never removes staged or existing grants. Errors remain visible inside create/delete dialogs.
 
 ## Administration (phase five)
 
@@ -58,8 +58,16 @@ Users and groups have local search. Membership editors preserve selections while
 
 ## Quality and keyboard access (phase six)
 
-Shared dialogs use native showModal with an accessible title, browser-managed background inertness, focus containment, Escape and focus return. Shared select fields use native controls while preserving numeric/string values. The mobile mod drawer contains keyboard focus, makes background navigation/content inert, restores the opener and closes when resized to desktop. A skip link leads to the content region. Mobile fields use 16px text to avoid focus zoom.
+Shared dialogs use native showModal with an accessible title, browser-managed background inertness, focus containment, Escape and focus return. Shared select fields use themed select-only comboboxes while preserving numeric/string values. The mobile mod drawer contains keyboard focus, makes background navigation/content inert, restores the opener and closes when resized to desktop. A skip link leads to the content region. Mobile fields use 16px text to avoid focus zoom.
 
 Add-mod failures keep entered data and show an inline error. A selected target modset survives background reloads while still writable. Administration section changes return to the top. Existing permissions and backend behavior remain unchanged.
 
-Validation: TypeScript/Vite build and headless Chromium scenarios at 320–1440px in both themes. Exercised keyboard focus cycles, Escape/return, native select values, error-preserved drafts, permission boundaries and existing management workflows. Axe WCAG A/AA checks reported no violations on sampled workspace and modal states. Physical-device and manual screen-reader testing are not part of this validation.
+Validation: TypeScript/Vite build and headless Chromium scenarios at 320–1440px in both themes. Exercised keyboard focus cycles, Escape/return, select values, error-preserved drafts, permission boundaries and existing management workflows. Axe WCAG A/AA checks reported no violations on sampled workspace and modal states. Physical-device and manual screen-reader testing are not part of this validation.
+
+## Selected state
+
+Main navigation, administration navigation, selected mods and the active modset row share the primary-container background and on-primary-container text. Selection stays visible while hovered. Selected mods have no accent outline; keyboard focus remains a separate visible outline.
+
+## Dropdowns
+
+All selects use the shared Select component: neutral raised surface, rounded popup, gold active option and a checkmark for the saved value. Arrow keys, Home/End, typeahead, Enter, Tab and Escape are supported. Popup placement flips above when needed and stays inside viewport bounds. Popups remain in the nearest modal subtree so they work with native-dialog focus containment and mobile drawers. Pointer and keyboard selection, numeric values, modal Escape and sampled axe checks are verified in Chromium.

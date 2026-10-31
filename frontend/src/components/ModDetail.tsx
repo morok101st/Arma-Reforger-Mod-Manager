@@ -369,7 +369,8 @@ export function ModDetail({
           {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : <CheckCircle2 size={16} />}
           {refreshing ? "Checking Workshop and verifying the latest version…" : "Update check completed."}
         </p>}
-      {canEdit && <div className="version-editor">
+      <div className="version-editor">
+        {canEdit && <>
         <label>
           Set installed version
           <CustomSelect<string>
@@ -401,8 +402,7 @@ export function ModDetail({
           </button>
         )}
 
-      </div>}
-        <div className="mod-copy-action">
+        </>}
         <button
           className="secondary-button compact"
           disabled={loading || !canCopyModJson}
@@ -413,8 +413,8 @@ export function ModDetail({
           {modJsonCopied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
           {modJsonCopied ? "Copied" : "Copy JSON"}
         </button>
-          {!canCopyModJson && <span className="muted">JSON copy requires an installed version.</span>}
-        </div>
+      </div>
+        {!canCopyModJson && <p className="muted mod-copy-hint">JSON copy requires an installed version.</p>}
         {copyError && <p className="error-box" role="alert">{copyError}</p>}
         {saveState === "saved" && <p className="mod-feedback" role="status"><CheckCircle2 size={16} /> Installed version saved.</p>}
       </section>

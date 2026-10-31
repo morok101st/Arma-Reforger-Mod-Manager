@@ -5,7 +5,7 @@ import { Copy, Download, Layers3, MoreHorizontal, Pencil, Plus, Trash2, Triangle
 import type { GroupSummary, Modset } from "../types";
 import type { createApiClient } from "../lib/api";
 import { ModsetEditDialog } from "./ModsetEditDialog";
-import { Dialog } from "./common";
+import { CustomSelect, Dialog } from "./common";
 
 export function ModsetManagement({
   api,
@@ -90,9 +90,7 @@ export function ModsetManagement({
       {error && <p className="error-box" role="alert">{error}</p>}
       <div className="modsets-filters">
         <label>Search modsets<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or owner" /></label>
-        <label>Show<select className="permission-select" aria-label="Filter modsets" value={scope} onChange={event => setScope(event.target.value)}>
-          <option value="all">All modsets</option><option value="mine">Owned by me</option><option value="groups">With group access</option>
-        </select></label>
+        <label>Show<CustomSelect value={scope} onChange={setScope} ariaLabel="Filter modsets" options={[{value:"all",label:"All modsets"},{value:"mine",label:"Owned by me"},{value:"groups",label:"With group access"}]} /></label>
         <span className="muted" role="status">{modsets.filter(matches).length} of {modsets.length} modsets</span>
       </div>
       {modsets.length === 0 ? <div className="modsets-empty"><Layers3 size={28} /><h3>No accessible modsets</h3><p className="muted">Create a modset or ask its owner for group access.</p></div> : <table className="modsets-table" aria-label="Modsets">

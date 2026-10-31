@@ -68,29 +68,6 @@ export function Info({ label, value, href }: { label: string; value: string | nu
   );
 }
 
-export function CustomSelect<T extends string | number>({
-  value,
-  options,
-  onChange,
-  disabled = false,
-  ariaLabel,
-}: {
-  value: T;
-  options: Array<{ value: T; label: string }>;
-  onChange: (value: T) => void;
-  disabled?: boolean;
-  ariaLabel: string;
-}) {
-  // Native selection provides keyboard navigation, typeahead and mobile pickers.
-  const selected = options.find(option => option.value === value) ?? options[0];
-  return <select className="custom-select-trigger" aria-label={ariaLabel}
-    value={selected ? String(selected.value) : ""} disabled={disabled || options.length === 0}
-    onChange={event => {
-      const option = options.find(option => String(option.value) === event.target.value);
-      if (option) onChange(option.value);
-    }}>
-    {options.map(option => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}
-  </select>;
-}
+export { CustomSelect } from "./Select";
 
 export { UNKNOWN_VALUE, statusLabel };

@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Home, Layers3, LogOut, Menu, Moon, Pencil, Plus, Shield, Sun, User } from "lucide-react";
+import { Download, Home, Layers3, LogOut, Menu, Moon, Plus, Shield, Sun, User } from "lucide-react";
 
 import { AddModDialog } from "./components/AddModDialog";
 import { AuthFrame } from "./components/AuthFrame";
@@ -8,7 +8,6 @@ import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
 import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect, focusableElements } from "./components/common";
-import { ModsetEditDialog } from "./components/ModsetEditDialog";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin, type AdminSection } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
@@ -18,7 +17,6 @@ export function App() {
   const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
   const [adminSection, setAdminSection] = React.useState<AdminSection>("users");
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
-  const [editingModset, setEditingModset] = React.useState(false);
   const deepLinkRef = React.useRef(() => {
     const params = new URLSearchParams(window.location.search);
     const modsetParam = params.get("modset");
@@ -207,11 +205,9 @@ export function App() {
           </div>
           <div className="workspace-actions">
             <button className="secondary-button compact" type="button" disabled={!activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export JSON</button>
-            <button className="secondary-button compact" type="button" disabled={!canEdit || actions.loading} onClick={() => setEditingModset(true)}><Pencil size={16} /> Edit modset</button>
             <button className="primary-button compact" type="button" disabled={!canEdit || actions.loading} onClick={handleShowAddMod}><Plus size={16} /> Add mod</button>
           </div>
         </header>}
-        {editingModset && activeModset && <ModsetEditDialog key={activeModset.id} modset={activeModset} groups={groups.directory} api={auth.api} updateModset={actions.updateModset} onClose={() => setEditingModset(false)} onSaved={refreshAccess} />}
         {actions.error && !view.showModsetAdmin && !view.showUserAdmin && <p className="error-box" role="alert">{actions.error}</p>}
         {view.showDashboard ? (
           <Dashboard
