@@ -1,4 +1,5 @@
 import React from "react";
+import { rememberLoginDestination } from "../lib/navigation";
 import { Shield } from "lucide-react";
 
 export function LoginForm({
@@ -39,7 +40,7 @@ export function LoginForm({
         Sign in
       </button>
       {oidcEnabled && (
-        <button className="secondary-button" onClick={() => window.location.assign(oidcLoginUrl)} disabled={loading} type="button">
+        <button className="secondary-button" onClick={() => { rememberLoginDestination(); window.location.assign(oidcLoginUrl); }} disabled={loading} type="button">
           <Shield size={18} />
           Sign in with OIDC
         </button>

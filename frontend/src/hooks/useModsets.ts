@@ -8,7 +8,9 @@ export function useModsets({
   api,
   authUser,
   setAuthUser,
+  requestedModsetId,
 }: {
+  requestedModsetId: number | null;
   api: {
     listModsets: () => Promise<Modset[]>;
     createModset: (name: string) => Promise<Modset>;
@@ -23,19 +25,18 @@ export function useModsets({
 }) {
   const loadState = useLoadState(authUser ? `${authUser.id}:${authUser.role}` : null);
   const [modsets, setModsets] = React.useState<Modset[]>([]);
-  const [activeModsetId, setActiveModsetId] = React.useState<number | null>(null);
+  const preferredModsetId = requestedModsetId ?? authUser?.active_modset_id;
+  const accessibleModsetId = modsets.find(set => set.id === preferredModsetId)?.id ?? null;
+  const activeModsetId = !authUser || !loadState.loaded ? null
+    : requestedModsetId !== null ? accessibleModsetId : accessibleModsetId ?? modsets[0]?.id ?? null;
 
   const loadModsets = React.useCallback(async () => {
     if (!authUser) {
       setModsets([]);
-      setActiveModsetId(null);
       return [];
     }
     return loadState.run(() => api.listModsets(), data => {
       setModsets(data);
-      const authActive = authUser.active_modset_id;
-      const fallback = data[0]?.id ?? null;
-      setActiveModsetId(authActive && data.some(entry => entry.id === authActive) ? authActive : fallback);
     });
   }, [api, authUser, loadState.run]);
 
@@ -43,21 +44,10 @@ export function useModsets({
     loadModsets().catch(() => null);
   }, [loadModsets]);
 
-  React.useEffect(() => {
-    if (!authUser) {
-      setActiveModsetId(null);
-      return;
-    }
-    if (authUser.active_modset_id !== activeModsetId) {
-      setActiveModsetId(authUser.active_modset_id);
-    }
-  }, [activeModsetId, authUser]);
-
   const activateModset = React.useCallback(
     async (modsetId: number) => {
       const user = await api.activateModset(modsetId);
       setAuthUser(user);
-      setActiveModsetId(user.active_modset_id);
       return user;
     },
     [api, setAuthUser],
@@ -85,7 +75,6 @@ export function useModsets({
     async (modsetId: number) => {
       const user = await api.deleteModset(modsetId);
       setAuthUser(user);
-      setActiveModsetId(user.active_modset_id);
       await loadModsets().catch(() => null);
       return user;
     },

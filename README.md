@@ -312,4 +312,6 @@ Errors such as `relation "tracked_mods" does not exist` or `column a.details doe
 
 - Backend tests: `python -m unittest discover -s tests -v` (inside `backend`)
 - Frontend build: `npm run build` (inside `frontend`)
+- Frontend navigation tests: `npm test` (inside `frontend`, after `npm install`).
+- Browser navigation tests: start the frontend with `VITE_API_BASE_URL=/api npm run dev`, run `npx playwright install --with-deps chromium`, then `ARMM_TEST_URL=http://localhost:5173 npm run test:browser` inside `frontend`. The tests mock API responses and do not modify real application data. Optional screenshots: set `ARMM_TEST_SCREENSHOTS` to an output directory.
 - CI runs both on push/PR to `main`.

@@ -85,3 +85,11 @@ Version health covers all four states, including No latest version with its own 
 ## Atomic user editing
 
 The user editor saves changed memberships, role, account status and an optional password in one PATCH request. Account changes, membership changes and the success audit entry commit together; validation or persistence failures roll them all back. Failed submissions retain the draft for correction and retry. Unchanged fields are omitted. Existing clients and separate membership/password endpoints remain supported; no database migration is required.
+
+## URL navigation
+
+The URL owns the current view, administration section, modset and explicit mod selection. Workspace URLs use `?modset=ID&mod=WORKSHOP_ID`; management uses `?view=modsets`, `?view=admin&section=users|groups|discord|audit` or `?view=account`, retaining modset context. Normal navigation adds history entries; filling missing modset context replaces the current entry. Back/forward restores the route and closes transient navigation UI.
+
+Explicit URL selections take precedence over the account's last active modset and sidebar filters. They survive loading failures and retries. Opening a link or traversing history does not change the account's stored default; explicit modset switches still save it. Missing or inaccessible targets show a recovery action rather than a different mod. Late activation/mutation results cannot redirect a newer navigation. Existing Discord query links remain supported. Local login preserves the URL; OIDC temporarily stores the local destination in same-tab session storage with a 15-minute expiry.
+
+Validation includes unit tests for route parsing/serialization and login destinations, plus Chromium scenarios for reload, copied links, history, both login paths, delayed/failed reads, permission boundaries and mobile drawer recovery. Search, filters, sort order and editor drafts are not part of the URL.

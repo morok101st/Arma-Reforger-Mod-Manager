@@ -10,7 +10,9 @@ export function useMods({
   api,
   authUser,
   activeModsetId,
+  requestedModId,
 }: {
+  requestedModId: string | null;
   api: {
     listMods: (modsetId?: number | null) => Promise<Mod[]>;
     listModsetActivity: (modsetId: number, limit?: number, offset?: number) => Promise<ModsetActivity[]>;
@@ -51,7 +53,9 @@ export function useMods({
 
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery, statusFilter), [mods, searchQuery, statusFilter]);
   const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
-  const selected = sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
+  // An explicit URL selection is independent of sidebar search/filter/sort.
+  const selected = requestedModId ? mods.find(mod => mod.id === requestedModId) ?? null
+    : sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
   const changelogEntries = React.useMemo(() => changelogEntriesFromVersions(selected?.versions ?? []), [selected?.versions]);
   const trackedDependencyMatches = React.useMemo(
     () => new Map((selected?.dependencies ?? []).map((dependency) => [dependencyKey(dependency), findTrackedDependency(dependency, mods)])),

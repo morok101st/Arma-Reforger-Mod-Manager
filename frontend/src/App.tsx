@@ -10,34 +10,31 @@ import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect, focusableElements } from "./components/common";
 import { ResourceStatus } from "./components/ResourceStatus";
 import { Sidebar } from "./components/Sidebar";
-import { UserAdmin, type AdminSection } from "./components/UserAdmin";
+import { UserAdmin } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
 import { GroupAdmin } from "./components/GroupAdmin";
 
 export function App() {
   const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
-  const [adminSection, setAdminSection] = React.useState<AdminSection>("users");
+  const adminSection = view.adminSection;
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
-  const deepLinkRef = React.useRef(() => {
-    const params = new URLSearchParams(window.location.search);
-    const modsetParam = params.get("modset");
-    const modParam = params.get("mod");
-    const modsetId = modsetParam ? Number(modsetParam) : null;
-    return {
-      modsetId: Number.isInteger(modsetId) && modsetId ? modsetId : null,
-      modId: modParam?.trim() || null,
-    };
-  });
   const activeModset = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId);
   const activeModsetName = activeModset?.name ?? "No modset selected";
   const modsetsReady = modsets.loadState.loaded && !modsets.loadState.error;
   const modsReady = mods.loadStates.mods.loaded && !mods.loadStates.mods.error;
-  const canEdit = Boolean(modsetsReady && modsReady && activeModset?.can_edit);
+  const routeError = view.route.invalid ? "This link is not valid."
+    : view.route.view === "admin" && auth.authUser && auth.authUser.role !== "admin" ? "You do not have access to this administration page."
+    : !view.showModsetAdmin && !view.showUserAdmin && modsetsReady && view.route.modsetId && !activeModset
+      ? "This modset no longer exists or you do not have access to it."
+    : !view.showModsetAdmin && !view.showUserAdmin && modsReady && activeModset && view.route.modId && !mods.selected
+      ? "This mod is no longer tracked in this modset." : null;
+  const canEdit = Boolean(!routeError && modsetsReady && modsReady && activeModset?.can_edit);
   const openSidebar = React.useCallback(() => setMobileSidebarOpen(true), []);
   const closeSidebar = React.useCallback(() => setMobileSidebarOpen(false), []);
   React.useEffect(() => {
     if (mobileSidebarOpen && (!modsetsReady || !activeModset)) closeSidebar();
   }, [mobileSidebarOpen, modsetsReady, activeModset?.id, closeSidebar]);
+  React.useEffect(() => { closeSidebar(); detailRef.current?.scrollTo({ top: 0 }); }, [view.route, closeSidebar, detailRef]);
   const handleShowDashboard = React.useCallback(() => {
     closeSidebar();
     view.showDashboardView();
@@ -48,20 +45,22 @@ export function App() {
   }, [closeSidebar, view]);
   const handleToggleSecurity = React.useCallback(() => {
     closeSidebar();
-    setAdminSection(auth.authUser?.role === "admin" ? "users" : "account");
-    view.toggleSecurityView();
+    if (auth.authUser?.role === "admin") view.toggleSecurityView();
+    else view.showAccountView();
   }, [closeSidebar, view, auth.authUser?.role]);
   const handleShowAddMod = React.useCallback(() => {
     closeSidebar();
     view.openAddModDialog();
   }, [closeSidebar, view]);
-  const handleActivateModset = React.useCallback(
-    (modsetId: number) => {
-      closeSidebar();
-      actions.activateModset(modsetId).catch(() => null);
-    },
-    [actions, closeSidebar],
-  );
+  const activateAndOpenModset = React.useCallback(async (modsetId: number) => {
+    const version = view.getNavigationVersion();
+    await actions.activateModset(modsetId);
+    if (view.getNavigationVersion() === version) view.openModset(modsetId);
+  }, [actions, view]);
+  const handleActivateModset = React.useCallback((modsetId: number) => {
+    closeSidebar();
+    activateAndOpenModset(modsetId).catch(() => null);
+  }, [activateAndOpenModset, closeSidebar]);
   const handleOpenMod = React.useCallback(
     (id: string) => {
       closeSidebar();
@@ -109,25 +108,6 @@ export function App() {
     return () => document.body.classList.remove("drawer-open");
   }, [mobileSidebarOpen]);
 
-  React.useEffect(() => {
-    const deepLink = deepLinkRef.current();
-    if (!auth.authUser || (!deepLink.modsetId && !deepLink.modId)) {
-      return;
-    }
-
-    if (deepLink.modsetId && modsets.activeModsetId !== deepLink.modsetId && modsets.modsets.some((modset) => modset.id === deepLink.modsetId)) {
-      actions.activateModset(deepLink.modsetId).catch(() => null);
-      return;
-    }
-
-    if (deepLink.modId && mods.mods.some((mod) => mod.id === deepLink.modId)) {
-      openMod(deepLink.modId);
-      view.openModView();
-      deepLinkRef.current = () => ({ modsetId: null, modId: null });
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [actions, auth.authUser, modsets.activeModsetId, modsets.modsets, mods.mods, openMod, view]);
-
   if (!auth.authChecked) {
     return <AuthFrame title="Checking session" subtitle="Please wait." />;
   }
@@ -166,7 +146,7 @@ export function App() {
           <button type="button" onClick={() => actions.updateThemePreference(authUser.theme_preference === "dark" ? "light" : "dark")}>
             {authUser.theme_preference === "dark" ? <Sun size={16} /> : <Moon size={16} />} {authUser.theme_preference === "dark" ? "Light mode" : "Dark mode"}
           </button>
-          <button type="button" onClick={() => { closeSidebar(); setAdminSection("account"); view.toggleSecurityView(); }}><Shield size={16} /> Account settings</button>
+          <button type="button" onClick={() => { closeSidebar(); view.showAccountView(); }}><Shield size={16} /> Account settings</button>
           <button type="button" onClick={actions.logout}><LogOut size={16} /> Sign out</button>
         </div></details>
       </header>
@@ -209,7 +189,7 @@ export function App() {
             <button className="icon-button mobile-drawer-button" onClick={openSidebar} disabled={!modsetsReady || !activeModset} type="button" aria-label="Open mod list"><Menu size={18} /></button>
             <label>Active modset<CustomSelect<number> value={modsets.activeModsetId ?? 0}
               options={!modsetsReady ? [{ value: 0, label: modsets.loadState.error ? "Modsets unavailable" : "Loading modsets…" }] : modsets.modsets.length ? [...(!activeModset ? [{ value: 0, label: "Select a modset" }] : []), ...modsets.modsets.map(set => ({ value: set.id, label: set.name }))] : [{ value: 0, label: "No accessible modset" }]}
-              onChange={id => { if (id) { handleActivateModset(id); view.showDashboardView(); } }} disabled={actions.loading || !modsetsReady || !modsets.modsets.length} ariaLabel="Active modset" /></label>
+              onChange={id => { if (id) { handleActivateModset(id); } }} disabled={actions.loading || !modsetsReady || !modsets.modsets.length} ariaLabel="Active modset" /></label>
           </div>
           <div className="workspace-actions">
             <button className="secondary-button compact" type="button" disabled={!modsetsReady || !modsReady || !activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export JSON</button>
@@ -218,7 +198,10 @@ export function App() {
         </header>}
         {actions.error && !view.showModsetAdmin && !view.showUserAdmin && <p className="error-box" role="alert">{actions.error}</p>}
         {!view.showModsetAdmin && !view.showUserAdmin && <ResourceStatus state={modsets.loadState} label="modsets" />}
-        {!view.showModsetAdmin && !view.showUserAdmin && !modsetsReady ? null
+        {routeError ? <div className="placeholder" role="alert"><h2>Page unavailable</h2><p>{routeError}</p>
+          <button type="button" className="secondary-button" onClick={() => view.navigate({ view: "workspace", section: "users", modId: null,
+            modsetId: activeModset?.id ?? modsets.modsets[0]?.id ?? null })}>Back to overview</button>
+        </div> : !view.showModsetAdmin && !view.showUserAdmin && !modsetsReady ? null
         : !view.showModsetAdmin && !view.showUserAdmin && !activeModset ? <div className="placeholder"><h2>{modsets.modsets.length ? "Select a modset" : "No accessible modset"}</h2><p>{modsets.modsets.length ? "Choose an active modset above to open its workspace." : "Create a modset in Modsets or ask its owner for group access."}</p></div>
         : !view.showModsetAdmin && !view.showUserAdmin && !modsReady ? <ResourceStatus state={mods.loadStates.mods} label="mods" />
         : view.showDashboard ? (
@@ -257,16 +240,16 @@ export function App() {
             updateModset={actions.updateModset}
             duplicateModset={actions.duplicateModset}
             deleteModset={actions.deleteModset}
-            activateModset={async id => { await actions.activateModset(id); view.showDashboardView(); }}
+            activateModset={activateAndOpenModset}
             exportModset={actions.exportModset}
           />
         ) : view.showUserAdmin ? (
           <>
-          <UserAdmin
+          <UserAdmin key={adminSection}
             loadStates={admin.loadStates}
             groupsLoad={groups.loadState}
             section={adminSection}
-            onSectionChange={section => { setAdminSection(section); detailRef.current?.scrollTo({ top: 0 }); }}
+            onSectionChange={section => { view.setAdminSection(section); detailRef.current?.scrollTo({ top: 0 }); }}
             actionError={actions.error}
             groups={groups.groups}
             groupError={groups.error}

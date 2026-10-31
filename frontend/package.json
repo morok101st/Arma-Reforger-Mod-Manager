@@ -2,7 +2,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/navigation.test.cjs",
+    "test:browser": "node tests/navigation.browser.cjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -14,7 +16,7 @@
   "devDependencies": {
     "typescript": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "playwright": "1.64.1"
   }
 }
-

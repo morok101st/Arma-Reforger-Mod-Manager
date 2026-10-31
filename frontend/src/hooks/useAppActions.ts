@@ -11,6 +11,7 @@ export function useAppActions({
   mods,
   modsets,
   closeAddModDialog,
+  getNavigationVersion,
   openModView,
   showDashboardView,
 }: {
@@ -37,7 +38,7 @@ export function useAppActions({
     loadAuditLogs: () => Promise<unknown>;
   };
   mods: {
-    addMod: (modId: string, currentVersion: string | null, modsetId?: number) => Promise<unknown>;
+    addMod: (modId: string, currentVersion: string | null, modsetId?: number) => Promise<{ id: string }>;
     refreshMod: (id: string) => Promise<unknown>;
     removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
@@ -52,8 +53,9 @@ export function useAppActions({
     deleteModset: (modsetId: number) => Promise<unknown>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
   };
+  getNavigationVersion: () => number;
   closeAddModDialog: () => void;
-  openModView: () => void;
+  openModView: (id?: string, modsetId?: number) => void;
   showDashboardView: () => void;
 }) {
   const action = useAsyncAction();
@@ -164,16 +166,19 @@ export function useAppActions({
 
   const addMod = React.useCallback(
     async (modId: string, currentVersion: string | null, modsetId: number) => {
+      const version = getNavigationVersion();
       await action.run(
         async () => {
-          await mods.addMod(modId.trim(), currentVersion, modsetId);
-          openModView();
-          closeAddModDialog();
+          const created = await mods.addMod(modId.trim(), currentVersion, modsetId);
+          if (getNavigationVersion() === version) {
+            openModView(created.id, modsetId);
+            closeAddModDialog();
+          }
         },
         { rethrow: true },
       );
     },
-    [action, closeAddModDialog, mods, openModView],
+    [action, closeAddModDialog, getNavigationVersion, mods, openModView],
   );
 
   const refreshMod = React.useCallback(async (id: string) => {
@@ -181,8 +186,12 @@ export function useAppActions({
   }, [action, mods]);
 
   const removeMod = React.useCallback(async (id: string, options?: { deactivateOrphanDependencies?: boolean }) => {
-    await action.run(() => mods.removeMod(id, options));
-  }, [action, mods]);
+    const version = getNavigationVersion();
+    await action.run(async () => {
+      await mods.removeMod(id, options);
+      if (getNavigationVersion() === version) showDashboardView();
+    });
+  }, [action, getNavigationVersion, mods, showDashboardView]);
 
   const updateInstalledVersion = React.useCallback(async (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => {
     await action.run(() => mods.updateInstalledVersion(nextVersion, options));

@@ -11,9 +11,9 @@ import { useGroups } from "./useGroups";
 export function useAppController() {
   const detailRef = React.useRef<HTMLElement | null>(null);
   const view = useWorkspaceView();
-  const auth = useAuth(view.showDashboardView);
-  const modsets = useModsets({ api: auth.api, authUser: auth.authUser, setAuthUser: auth.setAuthUser });
-  const mods = useMods({ api: auth.api, authUser: auth.authUser, activeModsetId: modsets.activeModsetId });
+  const auth = useAuth(view.closeAddModDialog);
+  const modsets = useModsets({ api: auth.api, authUser: auth.authUser, setAuthUser: auth.setAuthUser, requestedModsetId: view.route.modsetId });
+  const mods = useMods({ api: auth.api, authUser: auth.authUser, activeModsetId: modsets.activeModsetId, requestedModId: view.route.modId });
   const admin = useAdminData({ api: auth.api, authUser: auth.authUser });
   const refreshAccess = React.useCallback(async () => {
     const user = await auth.api.checkSession();
@@ -29,12 +29,20 @@ export function useAppController() {
     const timer = window.setInterval(refresh, 60000);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [Boolean(auth.authUser), refreshAccess]);
+  React.useEffect(() => {
+    if (auth.authUser && !view.route.invalid && view.route.modsetId === null && modsets.loadState.loaded
+      && !modsets.loadState.error && modsets.activeModsetId) {
+      view.navigate({ modsetId: modsets.activeModsetId }, true);
+    }
+  }, [auth.authUser, view.route.invalid, view.route.modsetId, view.navigate, modsets.loadState.loaded,
+    modsets.loadState.error, modsets.activeModsetId]);
   const actions = useAppActions({
     auth,
     admin,
     mods,
     modsets,
     closeAddModDialog: view.closeAddModDialog,
+    getNavigationVersion: view.getNavigationVersion,
     openModView: view.openModView,
     showDashboardView: view.showDashboardView,
   });
@@ -55,7 +63,7 @@ export function useAppController() {
   const openMod = React.useCallback(
     (id: string) => {
       mods.openMod(id);
-      view.openModView();
+      view.openModView(id);
     },
     [mods, view],
   );

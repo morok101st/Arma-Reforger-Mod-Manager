@@ -71,6 +71,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Test frontend navigation
+        run: npm test
+
       - name: Build frontend
         env:
           VITE_API_BASE_URL: /api
