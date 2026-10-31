@@ -1,6 +1,6 @@
 import type { GroupPermission } from "../types";
 import React from "react";
-import { Copy, Download, Pencil, Plus, Share2, TriangleAlert } from "lucide-react";
+import { Copy, Download, Layers3, MoreHorizontal, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import type { GroupSummary, Modset } from "../types";
 import type { createApiClient } from "../lib/api";
@@ -36,6 +36,9 @@ export function ModsetManagement({
   activateModset: (modsetId: number) => Promise<void>;
   exportModset: (modsetId: number, modsetName: string) => Promise<void>;
 }) {
+  const [search, setSearch] = React.useState("");
+  const [scope, setScope] = React.useState("all");
+  const [createError, setCreateError] = React.useState<string | null>(null);
   const [newName, setNewName] = React.useState("");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
@@ -48,8 +51,9 @@ export function ModsetManagement({
     event.preventDefault();
     const name = newName.trim();
     if (!name) return;
-    await createModset(name);
-    closeCreateDialog();
+    setCreateError(null);
+    try { await createModset(name); closeCreateDialog(); }
+    catch (error) { setCreateError(error instanceof Error ? error.message : "Could not create modset. Try again."); }
   }
 
   function openEditDialog(modset: Modset) {
@@ -58,6 +62,7 @@ export function ModsetManagement({
 
   function openCreateDialog() {
     setNewName("");
+    setCreateError(null);
     setShowCreateDialog(true);
   }
 
@@ -70,116 +75,58 @@ export function ModsetManagement({
     setEditModsetId(null);
   }
 
+  function matches(modset: Modset) {
+    const query = search.trim().toLocaleLowerCase();
+    return (!query || `${modset.name} ${modset.owner_username ?? ""}`.toLocaleLowerCase().includes(query))
+      && (scope !== "mine" || modset.is_owner) && (scope !== "groups" || modset.has_group_access);
+  }
+
   return (
     <>
-      <header className="detail-header">
-        <div>
-          <p>Modsets</p>
-          <h2>Modsets</h2>
-        </div>
+      <header className="modsets-heading">
+        <div><h2>Modsets</h2><p className="muted">Open a workspace, export your server configuration or manage group access.</p></div>
+        <button className="primary-button compact" onClick={openCreateDialog} disabled={loading} type="button"><Plus size={18} /> Create modset</button>
       </header>
-
-      {error && (
-        <div className="status-band update_available">
-          <TriangleAlert className="status-icon warn" size={20} />
-          <strong>Action failed</strong>
-          <span>{error}</span>
-        </div>
-      )}
-
-      <button className="primary-button compact" onClick={openCreateDialog} type="button">
-        <Plus size={18} />
-        Create modset
-      </button>
-
-      <div className="user-list">
-        {modsets.map((modset) => {
-          return (
-            <article
-              className={`user-row modset-edit-row ${modset.id === activeModsetId ? "active" : ""}`}
-              key={modset.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => activateModset(modset.id).catch(() => null)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  activateModset(modset.id).catch(() => null);
-                }
-              }}
-            >
-              <div>
-                <strong>{modset.name}</strong>
-                <small>
-                  {modset.tracked_mods_count} tracked mod{modset.tracked_mods_count === 1 ? "" : "s"} ·{" "}
-                  {modset.has_group_access ? (
-                    <span className="modset-sharing-state groups"><Share2 size={13} /> Group access</span>
-                  ) : "Private"}{" "}
-                  · {modset.is_owner ? "Owner: you" : `Owner: ${modset.owner_username ?? "unknown"}`}
-                  {!modset.can_edit && " · Read only"}
-                </small>
-              </div>
-              <div className="row-actions modset-row-actions">
-                <button
-                  className="secondary-button compact"
-                  disabled={loading || !modset.can_edit}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEditDialog(modset);
-                  }}
-                  type="button"
-                >
-                  <Pencil size={16} />
-                  Edit
-                </button>
-                <button
-                  className="secondary-button compact"
-                  disabled={loading}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    duplicateModset(modset.id).catch(() => null);
-                  }}
-                  type="button"
-                >
-                  <Copy size={16} />
-                  Duplicate
-                </button>
-                <button
-                  className="secondary-button compact danger-button"
-                  disabled={loading || !modset.can_delete || modsets.length <= 1}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setDeleteModsetId(modset.id);
-                  }}
-                  type="button"
-                >
-                  Delete
-                </button>
-                <button
-                  className="secondary-button compact"
-                  disabled={loading}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    exportModset(modset.id, modset.name).catch(() => null);
-                  }}
-                  type="button"
-                >
-                  <Download size={16} />
-                  Export
-                </button>
-              </div>
-            </article>
-          );
-        })}
+      {error && <p className="error-box" role="alert">{error}</p>}
+      <div className="modsets-filters">
+        <label>Search modsets<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or owner" /></label>
+        <label>Show<select className="permission-select" aria-label="Filter modsets" value={scope} onChange={event => setScope(event.target.value)}>
+          <option value="all">All modsets</option><option value="mine">Owned by me</option><option value="groups">With group access</option>
+        </select></label>
+        <span className="muted" role="status">{modsets.filter(matches).length} of {modsets.length} modsets</span>
       </div>
+      {modsets.length === 0 ? <div className="modsets-empty"><Layers3 size={28} /><h3>No accessible modsets</h3><p className="muted">Create a modset or ask its owner for group access.</p></div> : <table className="modsets-table" aria-label="Modsets">
+        <thead><tr><th scope="col">Modset</th><th scope="col">Owner</th><th scope="col">Access</th><th scope="col">Mods</th><th scope="col">Actions</th></tr></thead>
+        <tbody>{modsets.filter(matches).map(modset => <tr key={modset.id} className={modset.id === activeModsetId ? "current" : undefined}>
+          <td className="modset-name-cell"><button className="modset-open" type="button" disabled={loading} onClick={() => activateModset(modset.id).catch(() => null)} aria-label={`Open modset ${modset.name}`}>{modset.name}</button>
+            {modset.id === activeModsetId && <span className="modset-current">Active</span>}
+          </td>
+          <td><span className="mobile-cell-label">Owner</span>{modset.is_owner ? "You" : modset.owner_username ?? "Unknown"}</td>
+          <td><span className="mobile-cell-label">Access</span><span>{modset.has_group_access ? "Group access" : "Private"}</span><small>{modset.can_edit ? "Can edit" : "Read only"}</small></td>
+          <td className="modset-count"><span className="mobile-cell-label">Mods</span>{modset.tracked_mods_count}</td>
+          <td><div className="modset-actions">
+            <button className="secondary-button compact" type="button" disabled={loading || !modset.can_edit} onClick={() => openEditDialog(modset)}><Pencil size={16} /> Edit</button>
+            <button className="secondary-button compact" type="button" disabled={loading} onClick={() => exportModset(modset.id, modset.name).catch(() => null)}><Download size={16} /> Export</button>
+            <details className="modset-more" onClick={event => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+              <summary aria-label={`More actions for ${modset.name}`} title="More actions"><MoreHorizontal size={18} /><span className="modset-more-label">More actions</span></summary>
+              <div>
+                <button type="button" disabled={loading} onClick={() => duplicateModset(modset.id).catch(() => null)}><Copy size={16} /> Duplicate</button>
+                <button className="modset-delete-action" type="button" disabled={loading || !modset.can_delete || modsets.length <= 1} title={modsets.length <= 1 ? "The last modset cannot be deleted." : undefined} onClick={() => setDeleteModsetId(modset.id)}><Trash2 size={16} /> Delete</button>
+              </div>
+            </details>
+          </div></td>
+        </tr>)}</tbody>
+      </table>}
+      {modsets.length > 0 && modsets.filter(matches).length === 0 && <div className="modsets-empty"><h3>No matching modsets</h3><p className="muted">Try a different name, owner or filter.</p><button className="secondary-button compact" type="button" onClick={() => { setSearch(""); setScope("all"); }}>Clear filters</button></div>}
 
       {showCreateDialog && (
         <Dialog title="Create modset" onClose={closeCreateDialog}>
           <form className="dialog-form" onSubmit={handleCreate}>
             <label>
               Name
-              <input autoFocus value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
+              <input autoFocus maxLength={120} disabled={loading} value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
             </label>
+            {createError && <p className="error-box" role="alert">{createError}</p>}
             <div className="dialog-actions">
               <button className="secondary-button compact" onClick={closeCreateDialog} type="button">
                 Cancel
@@ -211,9 +158,8 @@ export function ModsetManagement({
             ) : (
               <p className="muted">Delete this modset?</p>
             )}
-            <p className="muted">
-              Delete <strong>{deleteModsetTarget.name}</strong> permanently?
-            </p>
+            <p className="muted">Delete <strong>{deleteModsetTarget.name}</strong> permanently? This cannot be undone.</p>
+            {error && <p className="error-box" role="alert">{error}</p>}
             <div className="dialog-actions">
               <button className="secondary-button compact" onClick={() => setDeleteModsetId(null)} type="button">
                 Cancel

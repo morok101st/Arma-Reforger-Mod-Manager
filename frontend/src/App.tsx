@@ -219,7 +219,7 @@ export function App() {
             updateModset={actions.updateModset}
             duplicateModset={actions.duplicateModset}
             deleteModset={actions.deleteModset}
-            activateModset={actions.activateModset}
+            activateModset={async id => { await actions.activateModset(id); view.showDashboardView(); }}
             exportModset={actions.exportModset}
           />
         ) : view.showUserAdmin ? (

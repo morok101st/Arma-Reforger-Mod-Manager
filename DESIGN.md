@@ -43,3 +43,9 @@ Lead with the mod name and a 16px Workshop ID with an adjacent icon that copies 
 Description, dependencies and Required by follow. Tracked dependencies remain navigable; untracked dependencies remain plain labels. Changelog entries expose expanded state and their content region. Technical metadata is a compact definition list directly under the mod name and Workshop ID, without a repeated latest version. Remove mod sits beside the upper actions with a subtle danger treatment and separation from routine controls. It is shown only to writers and preserves dependency safeguards and explicit follow-up choices.
 
 The layout collapses from paired relationship columns to a single column on phones; long names and IDs wrap. No backend/API or dependency semantics change.
+
+## Modset management (phase four)
+
+Search by name or owner; filter all, owned or group-access modsets. Desktop rows separate name, owner, access, mod count and actions. The name is an explicit workspace link; rows do not nest buttons inside another interactive control. Active selection is labeled. Edit and Export stay visible; Duplicate and Delete use a secondary actions disclosure. Readers retain copy/export, the last-modset safeguard and delete confirmation remain.
+
+At narrower widths the same rows become labeled stacked records; phone actions stack at full width. The edit dialog stages name and permissions in one save, with native keyboard-accessible permission selects, optional group search and retry after a permission-loading failure. Filtering groups never removes staged or existing grants. Errors remain visible inside create/delete dialogs.
