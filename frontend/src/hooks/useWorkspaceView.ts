@@ -21,7 +21,7 @@ export function useWorkspaceView() {
   const toggleSecurityView = React.useCallback(() => {
     setShowDashboard(false);
     setShowModsetAdmin(false);
-    setShowUserAdmin((value) => !value);
+    setShowUserAdmin(true);
   }, []);
 
   const openModView = React.useCallback(() => {

@@ -23,3 +23,15 @@ Visible accent focus outlines, hover states, themed selection and caret colors, 
 ## Review scope
 
 Desktop/mobile and both themes. This documents phase one, not completion of the full redesign.
+
+## Workspace and navigation (phase two)
+
+A global header carries the logo, labeled Workspace/Modsets/Administration navigation and a separate account menu. Regular users see Settings in place of Administration. Repeated navigation stays on the selected section. Management pages use the full content width.
+
+The desktop workspace has a 310px mod browser and flexible detail area. A sticky context toolbar owns the active modset selector and Export JSON, Edit modset and Add mod actions. Edit reuses the existing combined name/permissions dialog. Export remains available to readers; editing and adding require write access.
+
+The mod browser prioritizes search, an overview link, result count and mod list. Status and sorting controls are expandable; an active status filter remains visible. Zero dependency counts are omitted. Version-health summaries filter the browser, clear search and open the mobile drawer. Up-to-date is now a supported filter.
+
+Below 900px the browser becomes a closable drawer. Global navigation remains visible, actions wrap and management stays full width. The drawer closes on mod selection, its close button, backdrop or Escape. At 600px and below, navigation icons stack above labels.
+
+The remaining administration subsection split, mod-detail redesign and full shared-component keyboard pass belong to later phases.

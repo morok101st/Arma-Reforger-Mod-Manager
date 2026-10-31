@@ -2,11 +2,12 @@ import React from "react";
 import { Activity, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, TriangleAlert } from "lucide-react";
 
 import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
-import type { Mod, ModsetActivity, SchedulerStatus } from "../types";
+import type { Mod, ModsetActivity, ModStatusFilter, SchedulerStatus } from "../types";
 import { Info, StatusIcon } from "./common";
 import { ExportOrderSection } from "./ExportOrderSection";
 
 export function Dashboard({
+  onFilterStatus,
   canEdit,
   mods,
   modsetActivity,
@@ -23,6 +24,7 @@ export function Dashboard({
   updateModLoadOrder,
   updateModsetLoadOrder,
 }: {
+  onFilterStatus: (status: ModStatusFilter) => void;
   canEdit: boolean;
   mods: Mod[];
   modsetActivity: ModsetActivity[];
@@ -48,7 +50,7 @@ export function Dashboard({
     <>
       <header className="dashboard-hero">
         <div>
-          <h2>{`Overview - ${activeModsetName}`}</h2>
+          <h2>Overview</h2>
         </div>
       </header>
 
@@ -71,9 +73,9 @@ export function Dashboard({
           <BarChart3 size={20} />
         </div>
         <div className="health-summary-grid">
-          <HealthSummary label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
-          <HealthSummary label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
-          <HealthSummary label="No installed version" value={stats.notInstalled} total={stats.total} tone="neutral" />
+          <HealthSummary onClick={() => onFilterStatus("UP_TO_DATE")} label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
+          <HealthSummary onClick={() => onFilterStatus("UPDATE_AVAILABLE")} label="Update available" value={stats.updateAvailable} total={stats.total} tone="warn" />
+          <HealthSummary onClick={() => onFilterStatus("NOT_INSTALLED")} label="No installed version" value={stats.notInstalled} total={stats.total} tone="neutral" />
         </div>
       </section>
 
@@ -193,11 +195,11 @@ export function Dashboard({
   );
 }
 
-function HealthSummary({ label, value, total, tone }: { label: string; value: number; total: number; tone: "ok" | "warn" | "neutral" }) {
+function HealthSummary({ onClick, label, value, total, tone }: { onClick: () => void; label: string; value: number; total: number; tone: "ok" | "warn" | "neutral" }) {
   const percent = total > 0 ? Math.round((value / total) * 100) : 0;
 
   return (
-    <div className={`health-summary ${tone}`}>
+    <button type="button" onClick={onClick} className={`health-summary ${tone}`} aria-label={`Show ${label.toLowerCase()} mods: ${value}`}>
       <div className="health-summary-header">
         <span>{label}</span>
         <strong>{value}</strong>
@@ -206,6 +208,6 @@ function HealthSummary({ label, value, total, tone }: { label: string; value: nu
         <span className={`health-fill ${tone}`} style={{ width: `${percent}%` }} />
       </div>
       <small>{percent}% of tracked mods</small>
-    </div>
+    </button>
   );
 }

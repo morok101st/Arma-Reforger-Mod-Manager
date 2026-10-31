@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu } from "lucide-react";
+import { Download, Home, Layers3, LogOut, Menu, Moon, Pencil, Plus, Shield, Sun, User } from "lucide-react";
 
 import { AddModDialog } from "./components/AddModDialog";
 import { AuthFrame } from "./components/AuthFrame";
@@ -7,6 +7,8 @@ import { Dashboard } from "./components/Dashboard";
 import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
 import { ModsetManagement } from "./components/ModsetManagement";
+import { CustomSelect } from "./components/common";
+import { ModsetEditDialog } from "./components/ModsetEditDialog";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
@@ -15,6 +17,7 @@ import { GroupAdmin } from "./components/GroupAdmin";
 export function App() {
   const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  const [editingModset, setEditingModset] = React.useState(false);
   const deepLinkRef = React.useRef(() => {
     const params = new URLSearchParams(window.location.search);
     const modsetParam = params.get("modset");
@@ -60,6 +63,13 @@ export function App() {
     },
     [closeSidebar, openMod],
   );
+
+  React.useEffect(() => {
+    if (!mobileSidebarOpen) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeSidebar(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileSidebarOpen, closeSidebar]);
 
   React.useEffect(() => {
     if (!mobileSidebarOpen) {
@@ -110,18 +120,33 @@ export function App() {
   const authUser = auth.authUser;
 
   return (
-    <main className={`app-shell ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
+    <main className={`app-shell redesigned-shell ${view.showModsetAdmin || view.showUserAdmin ? "management-shell" : ""} ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
+      <header className="app-navigation">
+        <a className="navigation-brand" href="/" onClick={event => { event.preventDefault(); handleShowDashboard(); }}><img src="/icon.png" alt="" /><strong>ARMM</strong></a>
+        <nav aria-label="Main navigation">
+          <button type="button" aria-current={!view.showModsetAdmin && !view.showUserAdmin ? "page" : undefined} onClick={handleShowDashboard}><Home size={18} /> Workspace</button>
+          <button type="button" aria-current={view.showModsetAdmin ? "page" : undefined} onClick={handleShowModsetAdmin}><Layers3 size={18} /> Modsets</button>
+          <button type="button" aria-current={view.showUserAdmin ? "page" : undefined} onClick={handleToggleSecurity}><Shield size={18} /> {authUser.role === "admin" ? "Administration" : "Settings"}</button>
+        </nav>
+        <details className="account-menu" onKeyDown={event => {
+          if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); }
+        }} onClick={event => {
+          if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false;
+        }}><summary><User size={18} /><span>{authUser.username}</span></summary><div>
+          <button type="button" onClick={() => actions.updateThemePreference(authUser.theme_preference === "dark" ? "light" : "dark")}>
+            {authUser.theme_preference === "dark" ? <Sun size={16} /> : <Moon size={16} />} {authUser.theme_preference === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <button type="button" onClick={handleToggleSecurity}><Shield size={16} /> Account settings</button>
+          <button type="button" onClick={actions.logout}><LogOut size={16} /> Sign out</button>
+        </div></details>
+      </header>
       {mobileSidebarOpen && <button className="sidebar-backdrop" aria-label="Close mod list" onClick={closeSidebar} type="button" />}
-      <Sidebar
+      {!view.showModsetAdmin && !view.showUserAdmin && <Sidebar
         isMobileDrawerOpen={mobileSidebarOpen}
-        username={authUser.username}
-        themePreference={authUser.theme_preference}
         loading={actions.loading}
         showDashboard={view.showDashboard}
         showModsetAdmin={view.showModsetAdmin}
         showUserAdmin={view.showUserAdmin}
-        modsets={modsets.modsets}
-        activeModsetId={modsets.activeModsetId}
         searchQuery={mods.searchQuery}
         statusFilter={mods.statusFilter}
         sortMode={mods.sortMode}
@@ -129,17 +154,12 @@ export function App() {
         totalModsCount={mods.mods.length}
         selectedModId={mods.selected?.id ?? null}
         onShowDashboard={handleShowDashboard}
-        onShowModsetAdmin={handleShowModsetAdmin}
-        onToggleSecurity={handleToggleSecurity}
-        onToggleTheme={() => actions.updateThemePreference(authUser.theme_preference === "dark" ? "light" : "dark")}
-        onLogout={actions.logout}
-        onShowAddMod={handleShowAddMod}
-        onActivateModset={handleActivateModset}
         onSearchChange={mods.setSearchQuery}
         onStatusFilterChange={mods.setStatusFilter}
         onSortChange={mods.setSortMode}
         onOpenMod={handleOpenMod}
-      />
+        onClose={closeSidebar}
+      />}
 
       {view.showAddModDialog && (
         <AddModDialog
@@ -152,18 +172,24 @@ export function App() {
       )}
 
       <section className="detail" aria-label="Mod Details" ref={detailRef}>
-        <div className="mobile-toolbar">
-          <button className="icon-button mobile-drawer-button" onClick={openSidebar} type="button" aria-label="Open mod list">
-            <Menu size={18} />
-          </button>
-          <img className="app-logo app-logo-mobile" src="/icon.png" alt="ARMM" />
-          <div className="mobile-toolbar-title">
-            <p>{view.showDashboard ? "Overview" : view.showModsetAdmin ? "Modsets" : view.showUserAdmin ? "Security" : "Mods"}</p>
-            <strong>{activeModsetName}</strong>
+        {!view.showModsetAdmin && !view.showUserAdmin && <header className="workspace-toolbar">
+          <div className="workspace-context">
+            <button className="icon-button mobile-drawer-button" onClick={openSidebar} type="button" aria-label="Open mod list"><Menu size={18} /></button>
+            <label>Active modset<CustomSelect<number> value={modsets.activeModsetId ?? 0}
+              options={modsets.modsets.length ? modsets.modsets.map(set => ({ value: set.id, label: set.name })) : [{ value: 0, label: "No accessible modset" }]}
+              onChange={id => { handleActivateModset(id); view.showDashboardView(); }} disabled={actions.loading || !modsets.modsets.length} ariaLabel="Active modset" /></label>
           </div>
-        </div>
+          <div className="workspace-actions">
+            <button className="secondary-button compact" type="button" disabled={!activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export JSON</button>
+            <button className="secondary-button compact" type="button" disabled={!canEdit || actions.loading} onClick={() => setEditingModset(true)}><Pencil size={16} /> Edit modset</button>
+            <button className="primary-button compact" type="button" disabled={!canEdit || actions.loading} onClick={handleShowAddMod}><Plus size={16} /> Add mod</button>
+          </div>
+        </header>}
+        {editingModset && activeModset && <ModsetEditDialog key={activeModset.id} modset={activeModset} groups={groups.directory} api={auth.api} updateModset={actions.updateModset} onClose={() => setEditingModset(false)} onSaved={refreshAccess} />}
+        {actions.error && !view.showModsetAdmin && !view.showUserAdmin && <p className="error-box" role="alert">{actions.error}</p>}
         {view.showDashboard ? (
           <Dashboard
+            onFilterStatus={status => { mods.setSearchQuery(""); mods.setStatusFilter(status); if (window.matchMedia("(max-width: 900px)").matches) openSidebar(); }}
             canEdit={canEdit}
             mods={mods.mods}
             modsetActivity={mods.modsetActivity}

@@ -1,19 +1,14 @@
 import React from "react";
-import { Home, Layers3, Lock, LogOut, Moon, Pin, Plus, Shield, Sun } from "lucide-react";
-
+import { ArrowLeft, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
-import type { Mod, Modset, ModStatusFilter, SortMode, ThemePreference } from "../types";
+import type { Mod, ModStatusFilter, SortMode } from "../types";
 
 export function Sidebar({
   isMobileDrawerOpen,
-  username,
-  themePreference,
   loading,
   showDashboard,
   showModsetAdmin,
   showUserAdmin,
-  modsets,
-  activeModsetId,
   searchQuery,
   statusFilter,
   sortMode,
@@ -21,58 +16,23 @@ export function Sidebar({
   totalModsCount,
   selectedModId,
   onShowDashboard,
-  onShowModsetAdmin,
-  onToggleSecurity,
-  onLogout,
-  onToggleTheme,
-  onShowAddMod,
-  onActivateModset,
   onSearchChange,
   onStatusFilterChange,
   onSortChange,
   onOpenMod,
+  onClose,
 }: {
-  isMobileDrawerOpen: boolean;
-  username: string;
-  themePreference: ThemePreference;
-  loading: boolean;
-  showDashboard: boolean;
-  showModsetAdmin: boolean;
-  showUserAdmin: boolean;
-  modsets: Modset[];
-  activeModsetId: number | null;
-  searchQuery: string;
-  statusFilter: ModStatusFilter;
-  sortMode: SortMode;
-  mods: Mod[];
-  totalModsCount: number;
-  selectedModId: string | null;
-  onShowDashboard: () => void;
-  onShowModsetAdmin: () => void;
-  onToggleSecurity: () => void;
-  onLogout: () => void;
-  onToggleTheme: () => void;
-  onShowAddMod: () => void;
-  onActivateModset: (modsetId: number) => void;
-  onSearchChange: (value: string) => void;
-  onStatusFilterChange: (value: ModStatusFilter) => void;
-  onSortChange: (value: SortMode) => void;
-  onOpenMod: (id: string) => void;
+  isMobileDrawerOpen: boolean; loading: boolean; showDashboard: boolean; showModsetAdmin: boolean; showUserAdmin: boolean;
+  searchQuery: string; statusFilter: ModStatusFilter; sortMode: SortMode; mods: Mod[]; totalModsCount: number; selectedModId: string | null;
+  onShowDashboard: () => void; onSearchChange: (value: string) => void; onStatusFilterChange: (value: ModStatusFilter) => void;
+  onSortChange: (value: SortMode) => void; onOpenMod: (id: string) => void; onClose: () => void;
 }) {
-  const activeModset = modsets.find((modset) => modset.id === activeModsetId) ?? modsets[0] ?? null;
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const modRowRefs = React.useRef(new Map<string, HTMLButtonElement>());
   const deleteBlockedTitle = React.useCallback((mod: Mod) => {
     const names = mod.blocking_dependents.map((dependent) => dependent.name ?? dependent.id).filter(Boolean);
     return names.length > 0 ? `Required by: ${names.join(", ")}` : "Required by another tracked mod";
   }, []);
-  const handleModsetChange = React.useCallback(
-    (modsetId: number) => {
-      onActivateModset(modsetId);
-      onShowDashboard();
-    },
-    [onActivateModset, onShowDashboard],
-  );
-
   React.useEffect(() => {
     if (!selectedModId || showDashboard || showModsetAdmin || showUserAdmin) {
       return;
@@ -86,76 +46,23 @@ export function Sidebar({
     node.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [selectedModId, showDashboard, showModsetAdmin, showUserAdmin, mods]);
 
-  return (
-    <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management">
-      <div className="sidebar-handle" aria-hidden="true" />
-      <div className="brand">
-        <img className="app-logo app-logo-sidebar" src="/icon.png" alt="ARMM" />
-        <div className="header-actions">
-          <button
-            className={`icon-button ${showDashboard ? "active" : ""}`}
-            onClick={onShowDashboard}
-            title="Dashboard"
-            aria-pressed={showDashboard}
-          >
-            <Home size={18} />
-          </button>
-          <button
-            className={`icon-button ${showModsetAdmin ? "active" : ""}`}
-            onClick={onShowModsetAdmin}
-            title="Modsets"
-            aria-pressed={showModsetAdmin}
-          >
-            <Layers3 size={18} />
-          </button>
-          <button
-            className={`icon-button ${showUserAdmin ? "active" : ""}`}
-            onClick={onToggleSecurity}
-            title="Security"
-            aria-pressed={showUserAdmin}
-          >
-            <Shield size={18} />
-          </button>
-          <button className="icon-button logout-button" onClick={onLogout} title={`Logout ${username}`}>
-            <LogOut size={18} />
-          </button>
-          <button className="icon-button" onClick={onToggleTheme} title={themePreference === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-            {themePreference === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-        </div>
-      </div>
 
-      <button className="primary-button" onClick={onShowAddMod} disabled={!modsets.some(modset => modset.can_edit)} type="button">
-        <Plus size={18} />
-        Add mod
-      </button>
-
-      <div className="content-section">
-        <label>Modset</label>
-        <CustomSelect<number>
-          value={activeModset?.id ?? 0}
-          options={
-            modsets.length > 0
-              ? modsets.map((modset) => ({ value: modset.id, label: modset.name }))
-              : [{ value: 0, label: "No modset" }]
-          }
-          onChange={handleModsetChange}
-          disabled={loading || modsets.length === 0}
-          ariaLabel="Modset"
-        />
-      </div>
-
+  return <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management">
+    <button className="icon-button drawer-close" onClick={onClose} type="button" aria-label="Close mod list"><X size={18} /></button>
+    <div className="mod-browser-heading"><h2>Mods <span>{totalModsCount}</span></h2>
+      <button className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>
+    </div>
+    {!showDashboard && <button className="workspace-overview" type="button" onClick={onShowDashboard}><ArrowLeft size={16} /> Back to overview</button>}
+    <label className="mod-search">Search mods<input value={searchQuery} onChange={event => onSearchChange(event.target.value)} placeholder="Name or Workshop ID" /></label>
+    <div className={`browser-filters ${filtersOpen || statusFilter !== "all" ? "expanded" : ""}`}>
       <div className="filter-row">
-        <label className="filter-search">
-          Search
-          <input value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} placeholder="Mod name or ID" />
-        </label>
         <label>
           Status
           <CustomSelect<ModStatusFilter>
             value={statusFilter}
             options={[
               { value: "all", label: "All" },
+              { value: "UP_TO_DATE", label: "Up to date" },
               { value: "UPDATE_AVAILABLE", label: "Update available" },
               { value: "NOT_INSTALLED", label: "No version" },
               { value: "UNKNOWN", label: "Status unknown" },
@@ -181,6 +88,9 @@ export function Sidebar({
         </label>
       </div>
 
+    </div>
+    <p className="browser-result-count" aria-live="polite">{mods.length} of {totalModsCount} mods</p>
+
       <div className="mod-list">
         {mods.map((mod) => (
           <button
@@ -200,8 +110,8 @@ export function Sidebar({
               <strong>{mod.name ?? mod.id}</strong>
               <small>
                 {mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}
-                <span className="relation-count">{mod.dependencies.length} deps</span>
-                <span className="relation-count">{mod.dependents.length} req</span>
+                {mod.dependencies.length > 0 && <span className="relation-count">{mod.dependencies.length} deps</span>}
+                {mod.dependents.length > 0 && <span className="relation-count">{mod.dependents.length} req</span>}
               </small>
             </span>
             <span className="mod-row-icons">
@@ -217,6 +127,5 @@ export function Sidebar({
         {totalModsCount === 0 && <p className="empty">No mods tracked yet.</p>}
         {totalModsCount > 0 && mods.length === 0 && <p className="empty">No mods match the current filters.</p>}
       </div>
-    </section>
-  );
+  </section>;
 }
