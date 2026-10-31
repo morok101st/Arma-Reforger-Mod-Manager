@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Copy, ExternalLink, RefreshCw, Save, Trash2,
 
 import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
-import { CustomSelect, Dialog, Info, StatusIcon, statusLabel } from "./common";
+import { CustomSelect, Dialog, StatusIcon, statusLabel } from "./common";
 
 export function ModDetail({
   canEdit,
@@ -43,6 +43,9 @@ export function ModDetail({
   const refreshing = refreshState === "checking";
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = React.useState(false);
+  const [idCopied, setIdCopied] = React.useState(false);
+  const idCopyTimerRef = React.useRef<number | null>(null);
+  const [copyError, setCopyError] = React.useState<string | null>(null);
   const [modJsonCopied, setModJsonCopied] = React.useState(false);
   const modJsonCopiedTimerRef = React.useRef<number | null>(null);
   const normalizedInstalledVersionEdit = installedVersionEdit.trim();
@@ -104,7 +107,23 @@ export function ModDetail({
   const canCopyModJson = Boolean(currentInstalledVersion);
 
   React.useEffect(() => {
+    setIdCopied(false);
+    return () => {
+      if (idCopyTimerRef.current !== null) window.clearTimeout(idCopyTimerRef.current);
+    };
+  }, [selected.id]);
+
+  async function copyWorkshopId() {
+    setCopyError(null);
+    await copyTextToClipboard(selected.id);
+    setIdCopied(true);
+    if (idCopyTimerRef.current !== null) window.clearTimeout(idCopyTimerRef.current);
+    idCopyTimerRef.current = window.setTimeout(() => setIdCopied(false), 1500);
+  }
+
+  React.useEffect(() => {
     setModJsonCopied(false);
+    setCopyError(null);
   }, [selected.id, selected.current_version]);
 
   React.useEffect(() => {
@@ -126,6 +145,7 @@ export function ModDetail({
       null,
       2,
     );
+    setCopyError(null);
     await copyTextToClipboard(modJson);
     setModJsonCopied(true);
     if (modJsonCopiedTimerRef.current !== null) {
@@ -138,11 +158,20 @@ export function ModDetail({
   }
 
   return (
-    <>
-      <header className="detail-header">
+    <article className="mod-detail">
+      <header className="mod-detail-header">
         <div>
-          <p>{selected.id}</p>
           <h2>{selected.name ?? "Unnamed mod"}</h2>
+          <div className="mod-identifier"><span>Workshop ID</span><code>{selected.id}</code>
+            <button className="icon-button mod-id-copy" type="button" onClick={() => copyWorkshopId().catch(() => setCopyError("Could not copy Workshop ID. Check clipboard access and try again."))} aria-label="Copy Workshop ID" title={idCopied ? "Copied" : "Copy Workshop ID"}>
+              {idCopied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+            </button><span className="mod-id-feedback" role="status">{idCopied ? "Copied" : ""}</span>
+          </div>
+          <dl className="mod-header-metadata" aria-label="Technical details">
+            <div><dt>Game version</dt><dd>{selected.game_version ?? UNKNOWN_VALUE}</dd></div>
+            <div><dt>Size</dt><dd>{selected.size ?? UNKNOWN_VALUE}</dd></div>
+            <div><dt>Last checked</dt><dd>{formatDate(selected.last_checked) ?? UNKNOWN_VALUE}</dd></div>
+          </dl>
         </div>
         <div className="actions">
           {selected.source_url && (
@@ -152,7 +181,7 @@ export function ModDetail({
             </a>
           )}
           <button
-            className="icon-button"
+            className="secondary-button compact"
             onClick={() => refreshMod(selected.id)}
             disabled={loading || refreshing || !canEdit}
             title={refreshing ? "Checking for updates" : "Refresh mod"}
@@ -160,15 +189,11 @@ export function ModDetail({
             aria-busy={refreshing}
           >
             <RefreshCw className={refreshing ? "refresh-spin" : undefined} size={18} />
+            {refreshing ? "Checking…" : "Check updates"}
           </button>
-          <button
-            className="icon-button danger"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={loading || !canEdit}
-            title={selected.delete_blocked ? "This mod is required by another tracked mod and cannot be deleted." : "Remove mod"}
-          >
-            <Trash2 size={18} />
-          </button>
+
+          {canEdit && <button className="secondary-button compact danger-button mod-remove-action" type="button" onClick={() => setShowDeleteDialog(true)} disabled={loading} title={selected.delete_blocked ? "This mod is required by other tracked mods." : "Remove from this modset"}><Trash2 size={16} /> Remove mod</button>}
+
         </div>
       </header>
 
@@ -228,7 +253,7 @@ export function ModDetail({
                         }}
                         type="button"
                       >
-                        No
+                        Remove only this mod
                       </button>
                       <button
                         className="secondary-button compact danger-button"
@@ -239,7 +264,7 @@ export function ModDetail({
                         }}
                         type="button"
                       >
-                        Yes
+                        Remove and deactivate dependencies
                       </button>
                     </>
                   )}
@@ -292,7 +317,7 @@ export function ModDetail({
                     }}
                     type="button"
                   >
-                    No
+                    Keep dependencies installed
                   </button>
                   <button
                     className="primary-button compact"
@@ -303,7 +328,7 @@ export function ModDetail({
                     }}
                     type="button"
                   >
-                    Yes
+                    Deactivate dependencies too
                   </button>
                 </div>
               </>
@@ -334,40 +359,19 @@ export function ModDetail({
         </Dialog>
       )}
 
-      <div
-        className={`status-band ${refreshing ? "checking" : refreshState === "completed" ? "save-band" : selected.status.toLowerCase()}`}
-        role="status"
-        aria-live="polite"
-        aria-busy={refreshing}
-      >
-        {refreshing ? (
-          <>
-            <RefreshCw className="status-icon unknown refresh-spin" size={20} />
-            <strong>Checking for updates</strong>
-            <span>Deep check in progress: Workshop data is being crawled and the latest version is being verified via the Reforger CLI.</span>
-          </>
-        ) : refreshState === "completed" ? (
-          <>
-            <CheckCircle2 className="status-icon ok" size={20} />
-            <strong>Check completed</strong>
-            <span>Workshop data and latest version were refreshed.</span>
-          </>
-        ) : (
-          <>
-            <StatusIcon status={selected.status} />
-            <strong>{statusLabel(selected.status)}</strong>
-            <span>
-              {selected.status === "NOT_INSTALLED"
-                ? `Latest ${selected.latest_version ?? UNKNOWN_VALUE}`
-                : `Installed ${selected.current_version ?? UNKNOWN_VALUE} · Latest ${selected.latest_version ?? UNKNOWN_VALUE}`}
-            </span>
-          </>
-        )}
-      </div>
-
-      <div className="version-editor">
+      <section className="mod-version-section" aria-label="Versions">
+        {selected.status !== "NOT_INSTALLED" && <div className={`mod-version-status ${selected.status.toLowerCase()}`}><StatusIcon status={selected.status} /><strong>{statusLabel(selected.status)}</strong></div>}
+        <div className="mod-version-comparison">
+          <div><span>Installed version</span><strong>{selected.current_version ?? "No installed version"}</strong></div>
+          <div><span>Latest version</span><strong>{selected.latest_version ?? UNKNOWN_VALUE}</strong></div>
+        </div>
+        {refreshState !== "idle" && <p className="mod-feedback" role="status" aria-live="polite" aria-busy={refreshing}>
+          {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : <CheckCircle2 size={16} />}
+          {refreshing ? "Checking Workshop and verifying the latest version…" : "Update check completed."}
+        </p>}
+      {canEdit && <div className="version-editor">
         <label>
-          Installed version
+          Set installed version
           <CustomSelect<string>
             value={installedVersionEdit}
             options={installedVersionOptions}
@@ -389,44 +393,36 @@ export function ModDetail({
           type="button"
         >
           <Save size={18} />
-          Save
+          Save version
         </button>
         {selected.latest_version && selected.current_version !== selected.latest_version && (
           <button className="secondary-button compact" disabled={loading || !canEdit} onClick={() => updateInstalledVersion(selected.latest_version ?? "")} type="button">
             Set to latest
           </button>
         )}
+
+      </div>}
+        <div className="mod-copy-action">
         <button
           className="secondary-button compact"
           disabled={loading || !canCopyModJson}
-          onClick={() => copyModJson().catch(() => null)}
+          onClick={() => copyModJson().catch(() => setCopyError("Could not copy JSON. Check clipboard access and try again."))}
           title={canCopyModJson ? "Copy mod JSON to clipboard" : "No installed version available for export"}
           type="button"
         >
           {modJsonCopied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
           {modJsonCopied ? "Copied" : "Copy JSON"}
         </button>
-      </div>
-
-      {saveState === "saved" && (
-        <div className="status-band save-band">
-          <CheckCircle2 size={20} />
-          <strong>Saved</strong>
-          <span>Mod settings updated.</span>
+          {!canCopyModJson && <span className="muted">JSON copy requires an installed version.</span>}
         </div>
-      )}
+        {copyError && <p className="error-box" role="alert">{copyError}</p>}
+        {saveState === "saved" && <p className="mod-feedback" role="status"><CheckCircle2 size={16} /> Installed version saved.</p>}
+      </section>
 
-      <div className="metrics">
-        <Info label="Game Version" value={selected.game_version} />
-        <Info label="Size" value={selected.size} />
-        <Info label="Last checked" value={formatDate(selected.last_checked)} />
-        <Info label="Latest version" value={selected.latest_version} />
-      </div>
-
-      {selected.summary && <p className="summary">{selected.summary}</p>}
-
+      {selected.summary && <section className="mod-description"><h3>About this mod</h3><p>{selected.summary}</p></section>}
+      <div className="mod-relationships">
       <section className="content-section">
-        <h3>Dependencies</h3>
+        <h3>Dependencies <span className="section-count">{selected.dependencies.length}</span></h3>
         {selected.dependencies.length > 0 ? (
           <div className="chips">
             {selected.dependencies.map((dependency) => {
@@ -446,7 +442,7 @@ export function ModDetail({
       </section>
 
       <section className="content-section">
-        <h3>Required by</h3>
+        <h3>Required by <span className="section-count">{selected.dependents.length}</span></h3>
         {selected.dependents.length > 0 ? (
           <div className="chips">
             {selected.dependents.map((dependent) => (
@@ -460,7 +456,8 @@ export function ModDetail({
         )}
       </section>
 
-      <section className="content-section">
+      </div>
+      <section className="content-section mod-changelog">
         <h3>Changelog</h3>
         {changelogEntries.length > 0 ? (
           <div className="changelog-list">
@@ -477,7 +474,8 @@ export function ModDetail({
           <p className="muted">No changelog stored.</p>
         )}
       </section>
-    </>
+
+    </article>
   );
 }
 
@@ -490,9 +488,10 @@ function ChangelogItem({
   expanded: boolean;
   toggleChangelogVersion: (version: string) => void;
 }) {
+  const contentId = React.useId();
   return (
     <article className="changelog-entry">
-      <button className="changelog-toggle" onClick={() => toggleChangelogVersion(entry.version)} type="button">
+      <button className="changelog-toggle" aria-expanded={expanded} aria-controls={contentId} onClick={() => toggleChangelogVersion(entry.version)} type="button">
         {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         <span className="changelog-heading">
           <strong>{entry.version}</strong>
@@ -501,7 +500,7 @@ function ChangelogItem({
       </button>
       {expanded &&
         (entry.lines.length > 0 ? (
-          <div className="changelog-lines">
+          <div className="changelog-lines" id={contentId}>
             {entry.lines.map((line, index) => (
               <p className={line.endsWith(":") ? "changelog-label" : ""} key={`${entry.version}-${index}`}>
                 {line}
@@ -509,7 +508,7 @@ function ChangelogItem({
             ))}
           </div>
         ) : (
-          <div className="changelog-lines">
+          <div className="changelog-lines" id={contentId}>
             <p className="muted">No notes for this version.</p>
           </div>
         ))}
@@ -530,6 +529,9 @@ async function copyTextToClipboard(text: string) {
   textArea.style.position = "fixed";
   document.body.appendChild(textArea);
   textArea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textArea);
+  try {
+    if (!document.execCommand("copy")) throw new Error("Clipboard copy failed");
+  } finally {
+    document.body.removeChild(textArea);
+  }
 }

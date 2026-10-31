@@ -35,3 +35,11 @@ The mod browser prioritizes search, an overview link, result count and mod list.
 Below 900px the browser becomes a closable drawer. Global navigation remains visible, actions wrap and management stays full width. The drawer closes on mod selection, its close button, backdrop or Escape. At 600px and below, navigation icons stack above labels.
 
 The remaining administration subsection split, mod-detail redesign and full shared-component keyboard pass belong to later phases.
+
+## Mod details (phase three)
+
+Lead with the mod name and a 16px Workshop ID with an adjacent icon that copies the raw ID as text and briefly confirms success, followed by labeled Workshop and Check updates actions. Installed and latest versions have a single comparison area with persistent status. Refresh progress and save confirmation appear without replacing that status. The installed-version editor is shown only to writers; JSON copy remains available to readers when an installed version exists. Clipboard failures are visible and retryable.
+
+Description, dependencies and Required by follow. Tracked dependencies remain navigable; untracked dependencies remain plain labels. Changelog entries expose expanded state and their content region. Technical metadata is a compact definition list directly under the mod name and Workshop ID, without a repeated latest version. Remove mod sits beside the upper actions with a subtle danger treatment and separation from routine controls. It is shown only to writers and preserves dependency safeguards and explicit follow-up choices.
+
+The layout collapses from paired relationship columns to a single column on phones; long names and IDs wrap. No backend/API or dependency semantics change.
