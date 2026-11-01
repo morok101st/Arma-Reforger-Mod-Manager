@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">Individual manual refresh lifecycle</title><desc id="desc">A manual POST starts or joins a queued or running job for one mod and modset. Workers execute jobs under an exclusive session lock. Success updates mod data; failure or interruption permits an explicit retry. Status polling is read-only.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b0b0ac"/></marker></defs>
+<rect width="1200" height="560" rx="16" fill="#141414"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#eeeeec">
+<text x="40" y="47" font-size="27" font-weight="600">Individual manual refresh lifecycle</text>
+<text x="40" y="78" font-size="16" fill="#b0b0ac" font-weight="400">One latest job per mod + modset · A new explicit retry receives a new attempt ID</text>
+<rect x="40" y="120" width="220" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="58" y="153" font-size="20" fill="#eeeeec" font-weight="600">Start or join</text>
+<text x="58" y="184" font-size="16" fill="#b0b0ac" font-weight="400">POST refresh-job</text>
+<text x="58" y="207" font-size="16" fill="#b0b0ac" font-weight="400">HTTP 202</text>
+<rect x="330" y="120" width="220" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="348" y="153" font-size="20" fill="#eeeeec" font-weight="600">Queued</text>
+<text x="348" y="184" font-size="16" fill="#b0b0ac" font-weight="400">Stored in PostgreSQL</text>
+<text x="348" y="207" font-size="16" fill="#b0b0ac" font-weight="400">Survives restart</text>
+<rect x="620" y="120" width="220" height="122" rx="12" fill="#242424" stroke="#ffce3a"/>
+<text x="638" y="153" font-size="20" fill="#ffce3a" font-weight="600">Running</text>
+<text x="638" y="184" font-size="16" fill="#b0b0ac" font-weight="400">Worker owns the lock</text>
+<text x="638" y="207" font-size="16" fill="#b0b0ac" font-weight="400">Manual alerts disabled</text>
+<rect x="910" y="120" width="250" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="928" y="153" font-size="20" fill="#eeeeec" font-weight="600">Succeeded</text>
+<text x="928" y="184" font-size="16" fill="#b0b0ac" font-weight="400">Mod data updated</text>
+<text x="928" y="207" font-size="16" fill="#b0b0ac" font-weight="400">Action available again</text>
+<path d="M 260 181 H 323" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 550 181 H 613" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 840 181 H 903" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="620" y="340" width="220" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="638" y="373" font-size="20" fill="#eeeeec" font-weight="600">Failed</text>
+<text x="638" y="404" font-size="16" fill="#b0b0ac" font-weight="400">Error or interruption</text>
+<text x="638" y="427" font-size="16" fill="#b0b0ac" font-weight="400">Explicit retry allowed</text>
+<path d="M 730 242 V 333" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="752" y="296" font-size="16" fill="#b0b0ac" font-weight="400">No automatic replay</text>
+<path d="M 620 401 H 440 V 249" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="290" y="382" font-size="16" fill="#b0b0ac" font-weight="400">User retries</text>
+<text x="40" y="500" font-size="18" fill="#eeeeec" font-weight="400">Queued/running: duplicate POSTs join the same attempt. GET /refresh-jobs only reads status.</text>
+<text x="40" y="532" font-size="16" fill="#b0b0ac" font-weight="400">Existing synchronous POST /mods/{id}/refresh waits for the same durable job and returns ModRead.</text>
+</g></svg>

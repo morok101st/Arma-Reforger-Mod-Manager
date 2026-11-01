@@ -1,0 +1,18 @@
+# ARMM documentation
+
+These pages describe current `main`. Deployment examples remain pinned to release **0.2.5**; see [changes since 0.2.5](changes-since-0.2.5.md) before comparing an installed release with these screenshots.
+
+| Task | Reference |
+| --- | --- |
+| Install and configure | [README installation](../README.md#installation-docker-compose), [deployment wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Deployment-with-Docker-Compose) |
+| Navigate the redesigned interface | [User guide](user-guide.md) |
+| Review the interface | [Screenshots and provenance](screenshots.md) |
+| Understand services and jobs | [Architecture](architecture.md) |
+| Integrate an API client | [API and automation](api.md) |
+| Upgrade an existing installation | [Upgrade overview](upgrading.md) |
+| Migrate group access from 0.2.4 | [Group sharing and recovery](group-sharing-upgrade.md) |
+| Operate persistent manual checks | [Manual refresh and 0.2.5 upgrades](manual-refresh-upgrade.md) |
+| Build source / verify changes | [Development and asset tooling](development.md) |
+| Review historical release behavior | [0.2.5 release notes](releases/0.2.5.md) |
+
+The repository guides are the detailed references; the wiki provides task-oriented entry points and deployment chapters. Historical release notes describe that release and are not rewritten to describe unreleased features.
