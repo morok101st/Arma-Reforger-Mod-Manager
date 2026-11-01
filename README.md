@@ -3,12 +3,19 @@
 ARMM is a web application for managing and monitoring Arma Reforger Workshop mods.
 It stores mod data per user-owned modset, regularly refreshes Workshop metadata, compares installed and latest versions, and centralizes updates, dependency relations, sharing, and audit events in one UI.
 
+![ARMM workspace in dark mode](docs/images/workspace-dark.png)
+
+*Current interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
+
+**Documentation scope:** this README describes current `main`. The redesign, URL navigation, improved recovery, atomic user editing and persistent manual checks were added **after 0.2.5** and are not part of that tagged release. The tracked deployment examples remain pinned to `0.2.5` until another release is published. See [changes since 0.2.5](docs/changes-since-0.2.5.md).
+
+[User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
+
 ## What the application does
 
 - Tracks Workshop mods by mod ID.
 - Reads Workshop metadata from the Workshop pages and can use a dedicated internal Reforger metadata service for manual reliable latest-version checks.
-- Supports multiple modsets per user. A modset is private by default; its owner can grant selected groups read or write access.
-- Supports admin-managed user groups. Owners can grant selected groups read or write access to private modsets, including access for existing service accounts.
+- Supports private, user-owned modsets and admin-managed groups. Owners grant selected groups read or write access, including access for existing service accounts.
 - Compares `Installed Version` vs. `Latest Version`.
 - Uses a dedicated `No installed version` state for tracked mods without an installed target version.
 - Runs an automatic crawl twice per day at fixed times. Scheduled crawls use Workshop scraping only and do not call the Reforger CLI metadata service.
@@ -24,53 +31,21 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Discord update alerts can link directly back into ARMM for the affected mod and modset.
 - Discord update alerts are emitted only during the scheduled automatic runs.
 
-## Functional scope (UI)
+## Using the interface
 
-### Dashboard
+- **Workspace:** the active modset selector, Export JSON and Add mod sit above the overview or selected mod. The desktop mod browser contains search, status filters and sorting; on phones it opens as a drawer.
+- **Overview:** Version health distinguishes Up to date, Update available, No installed version and No latest version. Selecting a category filters the browser. Needs attention lists updates and missing latest versions; mods without an installed version are intentionally neutral. Export order and the paged modset Changelog are collapsible.
+- **Mod details:** copy the Workshop ID, compare installed/latest versions, check updates, choose a known installed version, inspect dependencies/Required by, or copy a single JSON entry when an installed version exists. Running manual checks remain visible after reload and in other tabs.
+- **Modsets:** search by name or owner, filter owned/group-access modsets, and open a modset from its name. Edit combines its name and group permissions. Export is visible; Duplicate and Delete are in the additional actions menu. Copies start private without group grants or webhook scope membership. The last remaining modset is protected.
+- **Administration:** administrators have separate Users, Groups, Discord and Audit log sections. The user editor saves role, account status, memberships and an optional password together. Personal Account settings, theme switching and Sign out are in the account menu; regular users see Settings instead of Administration.
+- **Navigation and recovery:** copied URLs, reload and browser Back/Forward retain the selected view/modset/mod. Failed reads show an error and Retry rather than misleading empty lists. Successful writes are not repeated when a following list reload fails. Dialogs and selects support keyboard navigation and retain drafts after errors.
 
-- Metrics: tracked mods, dependency links, and the configured auto schedule.
-- Auto schedule summary showing the configured timezone and daily run times.
-- “Needs attention” card with clear OK/Warning state.
-- Collapsible export-order editor for the active modset, collapsed by default.
-- Collapsible Changelog showing the latest modset actions such as adding mods, removing mods, or changing installed versions; collapsed by default.
-- Changelog entries use compact responsive rows and can be paged through directly in the overview.
-
-### Mod management
-
-- Add mod (dialog), optionally directly into another modset.
-- Mod detail view with status, metadata, installed-version selection from known changelog versions, “Set to latest”, refresh, and delete confirmation.
-- Mod detail view can copy the selected mod as a single export JSON entry for quick server-config edits.
-- Dedicated `No installed version` / `NOT_INSTALLED` handling instead of overloading the generic unknown state.
-- Follow-up confirmation dialogs when deleting a mod or changing it to `No installed version` would orphan dependency-origin mods.
-- Compact `deps` and `req` indicators in the mod list.
-- Search by mod name and mod ID.
-
-### Modsets
-
-- Create, rename, activate, grant group access to, and delete modsets.
-- Duplicate modsets including their tracked mod entries. Duplicates are created as private copies and are not automatically added to existing webhook scopes.
-- Modsets are owned by the user who created them.
-- Private modsets are available to their owner, administrators, and explicitly authorized groups.
-- Owners can additionally grant groups read or write access. Read permits viewing and export; write permits editing mods, the modset name, and export order. Group access alone does not permit deleting the modset or managing its sharing.
-- Global Shared access has been removed. After upgrading from 0.2.4, other accounts need explicit group access even for previously shared modsets.
-- Deleting non-empty modsets is allowed, but the last remaining modset is protected.
-- Export each modset as a JSON file.
-
-### Security area
-
-- Change your own password.
-- Admin features: create users, change roles, enable/disable users, reset passwords.
-- Admin features: create, edit, and delete groups; manage memberships from the group or user editor.
-- Optional OIDC login can be enabled alongside local login.
-- Admin-managed Discord webhooks for update alerts: create, edit, disable, delete, and test webhooks in the UI.
-- Discord webhooks can be limited to specific modsets directly in the webhook dialog.
-- Discord update notifications can open the affected mod directly inside ARMM when `ARMM_PUBLIC_URL` is configured.
-- Audit log with filters (Auth, User, Mod, Failures) and paging through older entries.
+See the [user guide](docs/user-guide.md) for permissions, keyboard controls, URL examples and daily workflows.
 
 ## Security features
 
 - Login required for all management endpoints.
-- Only `GET /api/health` is public.
+- `GET /api/health` is public; login/configuration and enabled OIDC entry/callback routes are also reachable without an existing session. Management data and API documentation require login.
 - Role model: `admin` and `user`.
 - Initial admin user is bootstrapped from `.env` at startup.
 - Password hashing with `PBKDF2-SHA256` (`210000` iterations).
@@ -108,15 +83,22 @@ Base path behind the frontend proxy: `/api`
 - `GET /api/auth/oidc/callback`
 - `GET /api/auth/me`
 - `PATCH /api/auth/password`
+- `PATCH /api/auth/theme`
 - `GET/POST/PATCH/DELETE /api/mods...`
 - `PATCH /api/mods/{mod_id}?deactivate_orphan_dependencies=true`
 - `DELETE /api/mods/{mod_id}?deactivate_orphan_dependencies=true`
-- `POST /api/mods/{mod_id}/refresh`
+- `POST /api/mods/{mod_id}/refresh` (existing synchronous response)
+- `POST /api/mods/{mod_id}/refresh-job` (202; start or join an individual manual job)
+- `GET /api/refresh-jobs` (latest job status per tracked mod in the selected modset)
+- `POST /api/refresh` (manual bulk check of the selected modset)
 - `GET/POST/PATCH/DELETE /api/modsets...`
+- `POST /api/modsets/{modset_id}/activate`
 - `POST /api/modsets/{modset_id}/duplicate`
+- `PATCH /api/modsets/{modset_id}/load-order`
 - `GET /api/modsets/{modset_id}/activity` (`limit`, `offset`)
 - `GET /api/modsets/{modset_id}/export`
-- `GET/POST/PATCH /api/users...` (admin)
+- `GET/POST/PATCH/DELETE /api/users...` (admin)
+- `PATCH /api/users/{user_id}/password` (admin)
 - `GET/POST/PATCH/DELETE /api/discord-webhooks...` (admin)
 - `GET /api/admin/modsets` (admin, used for webhook modset selection)
 - `GET /api/groups` (signed-in group directory, names and IDs only)
@@ -128,6 +110,8 @@ Base path behind the frontend proxy: `/api`
 - `GET /api/scheduler/status`
 - `GET /api` (browser entry, redirects to `/api/docs`)
 - `GET /api/docs` (authenticated)
+
+See [API and automation](docs/api.md) for cookie authentication, permissions, atomic user updates and job handling.
 
 ## Installation (Docker Compose)
 
@@ -232,7 +216,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 ## Operations
 
 - Configure the deployment timezone for automatic runs with `ARMM_SCHEDULER_TIMEZONE` in `.env`.
-- Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
+- `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD` bootstrap the first admin only. Once an admin exists, changing these variables does not reset its credentials; use Account settings or administrator user management.
 - Modsets are user-scoped. The creator becomes the owner; other users need an explicit group grant.
 - Private modsets can also be shared with selected groups. For setup, service-account API examples, and upgrading existing 0.2.4 deployments, see [Group sharing and upgrades](docs/group-sharing-upgrade.md).
 - Manual update checks survive reloads and reconnects. See [persistent checks and upgrading from 0.2.5](docs/manual-refresh-upgrade.md) for API compatibility and deployment instructions.
@@ -240,7 +224,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
-- The example compose file uses GHCR images from the latest tagged release and does not build locally.
+- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.5`) and does not build locally. New `main` behavior needs a source build until a corresponding release is published.
 
 ### Optional OIDC login
 
@@ -283,9 +267,13 @@ Before exposing ARMM to other users, verify these points:
 - After the first production start, log in with the bootstrap admin and verify that no default credentials remain in use.
 - If Discord webhooks are configured, treat them as secrets and rotate them if they were ever exposed.
 
+## Upgrading
+
+Use the [upgrade guide](docs/upgrading.md) to distinguish 0.2.4 → 0.2.5 group-access changes from post-0.2.5 changes. Updating from 0.2.5 adds the durable refresh-job table automatically; the visual redesign and atomic user editor add no further schema migration. Back up the database and matching `.env`, keep old/new backends separate, and reload browser tabs after updating.
+
 ## Backup and recovery
 
-- Back up the PostgreSQL volume regularly. It contains users, sessions, modsets, tracked mods, audit logs, changelog data, and encrypted Discord webhook targets.
+- Back up the PostgreSQL volume regularly. It contains users and session-version counters, groups and grants, modsets, tracked mods, refresh jobs, audit logs, changelog data, and encrypted Discord webhook targets. Session cookies themselves are stored by clients.
 - Keep a backup of your production `.env` outside the server, because it contains required runtime secrets.
 - If `ARMM_SECRET_KEY` is changed later, existing sessions become invalid and encrypted Discord webhook URLs must be re-entered.
 - Test restore procedures, not only backups. A backup is only useful if you have verified that the database and `.env` can be restored together.
@@ -311,8 +299,11 @@ Errors such as `relation "tracked_mods" does not exist` or `column a.details doe
 
 ## Development and CI
 
+See [source builds and documentation tooling](docs/development.md) to run unreleased `main` code without changing the published example tag.
+
 - Backend tests: `python -m unittest discover -s tests -v` (inside `backend`)
 - Frontend build: `npm run build` (inside `frontend`)
 - Frontend navigation tests: `npm test` (inside `frontend`, after `npm install`).
 - Browser navigation tests: start the frontend with `VITE_API_BASE_URL=/api npm run dev`, run `npx playwright install --with-deps chromium`, then `ARMM_TEST_URL=http://localhost:5173 npm run test:browser` inside `frontend`. The tests mock API responses and do not modify real application data. Optional screenshots: set `ARMM_TEST_SCREENSHOTS` to an output directory.
-- CI runs both on push/PR to `main`.
+- CI runs backend tests (including isolated PostgreSQL upgrade cases), frontend navigation tests and the production frontend build on pushes to `main` and pull requests. Browser tests run separately.
+- Documentation screenshot capture: see [screenshot provenance and regeneration](docs/screenshots.md).

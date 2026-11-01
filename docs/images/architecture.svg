@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+<title id="title">ARMM services and update paths</title><desc id="desc">Browser requests pass through HTTPS Traefik and Nginx to FastAPI. FastAPI stores state in PostgreSQL, scrapes Workshop pages, uses internal CLI probes for manual checks and sends scheduled alerts to Discord.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b0b0ac"/></marker></defs>
+<rect width="1200" height="650" rx="16" fill="#141414"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#eeeeec">
+<text x="40" y="47" font-size="27" font-weight="600">ARMM services and update paths</text>
+<text x="40" y="78" font-size="16" fill="#b0b0ac" font-weight="400">Current main after 0.2.5 · Service ports are internal unless shown as HTTPS</text>
+<rect x="40" y="120" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="58" y="153" font-size="20" fill="#eeeeec" font-weight="600">Browser</text>
+<text x="58" y="184" font-size="16" fill="#b0b0ac" font-weight="400">React interface</text>
+<text x="58" y="207" font-size="16" fill="#b0b0ac" font-weight="400">Signed session cookie</text>
+<rect x="330" y="120" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="348" y="153" font-size="20" fill="#eeeeec" font-weight="600">Traefik</text>
+<text x="348" y="184" font-size="16" fill="#b0b0ac" font-weight="400">HTTPS entry point</text>
+<text x="348" y="207" font-size="16" fill="#b0b0ac" font-weight="400">Routes to frontend</text>
+<rect x="620" y="120" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="638" y="153" font-size="20" fill="#eeeeec" font-weight="600">Nginx frontend</text>
+<text x="638" y="184" font-size="16" fill="#b0b0ac" font-weight="400">Port 8080 · SPA</text>
+<text x="638" y="207" font-size="16" fill="#b0b0ac" font-weight="400">/api → backend</text>
+<rect x="910" y="120" width="250" height="122" rx="12" fill="#242424" stroke="#ffce3a"/>
+<text x="928" y="153" font-size="20" fill="#ffce3a" font-weight="600">FastAPI backend</text>
+<text x="928" y="184" font-size="16" fill="#b0b0ac" font-weight="400">Port 8000</text>
+<text x="928" y="207" font-size="16" fill="#b0b0ac" font-weight="400">Auth · jobs · scheduler</text>
+<path d="M 265 181 H 323" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 555 181 H 613" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 845 181 H 903" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 1035 242 V 285 H 152" fill="none" stroke="#b0b0ac" stroke-width="2"/>
+<path d="M 152 285 V 353" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="510" font-size="15" fill="#b0b0ac" font-weight="400">Scheduled alerts only</text>
+<rect x="40" y="360" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="58" y="393" font-size="20" fill="#eeeeec" font-weight="600">Discord</text>
+<text x="58" y="424" font-size="16" fill="#b0b0ac" font-weight="400">External webhook API</text>
+<text x="58" y="447" font-size="16" fill="#b0b0ac" font-weight="400">Scoped + deduplicated</text>
+<path d="M 442 285 V 353" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="330" y="510" font-size="15" fill="#b0b0ac" font-weight="400">Scraping</text>
+<rect x="330" y="360" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="348" y="393" font-size="20" fill="#eeeeec" font-weight="600">Workshop</text>
+<text x="348" y="424" font-size="16" fill="#b0b0ac" font-weight="400">External website</text>
+<text x="348" y="447" font-size="16" fill="#b0b0ac" font-weight="400">Metadata + changelog</text>
+<path d="M 732 285 V 353" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="620" y="510" font-size="15" fill="#b0b0ac" font-weight="400">Manual provider only</text>
+<rect x="620" y="360" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="638" y="393" font-size="20" fill="#eeeeec" font-weight="600">Reforger CLI</text>
+<text x="638" y="424" font-size="16" fill="#b0b0ac" font-weight="400">Internal port 8081</text>
+<text x="638" y="447" font-size="16" fill="#b0b0ac" font-weight="400">ServerData.json probes</text>
+<path d="M 1035 285 V 353" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="910" y="510" font-size="15" fill="#b0b0ac" font-weight="400">Persistent state</text>
+<rect x="910" y="360" width="250" height="122" rx="12" fill="#242424" stroke="#555550"/>
+<text x="928" y="393" font-size="20" fill="#eeeeec" font-weight="600">PostgreSQL 16</text>
+<text x="928" y="424" font-size="16" fill="#b0b0ac" font-weight="400">Internal port 5432</text>
+<text x="928" y="447" font-size="16" fill="#b0b0ac" font-weight="400">Data + durable jobs</text>
+<text x="40" y="555" font-size="18" fill="#eeeeec" font-weight="400">Manual individual checks: durable jobs; reload and other tabs restore the same active attempt.</text>
+<text x="40" y="590" font-size="16" fill="#b0b0ac" font-weight="400">Scheduled checks: 10:00 / 19:00 in ARMM_SCHEDULER_TIMEZONE; scraping only, no CLI probes.</text>
+<text x="40" y="625" font-size="16" fill="#b0b0ac" font-weight="400">Volumes: armm-db-data for PostgreSQL · reforger-server-data for the dedicated-server installation.</text>
+</g></svg>

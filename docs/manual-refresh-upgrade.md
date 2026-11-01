@@ -1,5 +1,7 @@
 # Persistent manual update checks and upgrading from 0.2.5
 
+This feature is on current `main` after 0.2.5; it is not included in the tagged 0.2.5 images. See the [upgrade overview](upgrading.md) and [architecture diagrams](architecture.md).
+
 Manual **Check updates** jobs are stored in the database. Reloading, opening another tab, or reconnecting restores their status. Requests for the same mod in the same modset join the active job. Different modsets have separate jobs because dependency tracking is modset-specific.
 
 The browser checks job status every two seconds and reconnects automatically after network failures. Failed/interrupted checks allow a new attempt. When a process loses its execution lock, a worker marks its running job failed without replaying possible side effects. Queued jobs resume after restart. Reloading never starts a job.

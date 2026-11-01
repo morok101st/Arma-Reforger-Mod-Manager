@@ -1,6 +1,8 @@
 # Group sharing and upgrades from 0.2.4
 
-Groups are the only way owners grant access to other accounts. Global Shared access has been removed. Administrators manage groups and memberships in **Security → Groups** or the user editor. Existing local and OIDC accounts can be members; a service account is an ordinary account used by an integration.
+This guide covers the **0.2.4 → 0.2.5** access migration. UI paths use current `main` labels; for later changes see the [upgrade overview](upgrading.md).
+
+Groups are the only way owners grant access to other accounts. Global Shared access has been removed. Administrators manage groups and memberships in **Administration → Groups** or the user editor. Existing local and OIDC accounts can be members; a service account is an ordinary account used by an integration.
 
 ## Set up a private integration
 
