@@ -235,6 +235,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Manage the active admin login via `ARMM_ADMIN_USERNAME` / `ARMM_ADMIN_PASSWORD`.
 - Modsets are user-scoped. The creator becomes the owner; other users need an explicit group grant.
 - Private modsets can also be shared with selected groups. For setup, service-account API examples, and upgrading existing 0.2.4 deployments, see [Group sharing and upgrades](docs/group-sharing-upgrade.md).
+- Manual update checks survive reloads and reconnects. See [persistent checks and upgrading from 0.2.5](docs/manual-refresh-upgrade.md) for API compatibility and deployment instructions.
 - Manual `POST /api/refresh` is limited to the selected authorized modset (`modset_id`, or the active modset if omitted). Scheduled checks still cover all tracked modsets.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.

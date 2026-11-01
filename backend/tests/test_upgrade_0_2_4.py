@@ -21,6 +21,7 @@ from tests.support import DummyScheduler
 
 
 class Upgrade024Mixin:
+    fixture_version = "0_2_4"
     def test_fresh_installation_creates_versioned_group_tables(self):
         with patch.object(app_main, 'engine', self.engine), \
              patch.object(app_main, 'SessionLocal', sessionmaker(bind=self.engine)), \
@@ -28,12 +29,12 @@ class Upgrade024Mixin:
             with TestClient(app_main.app) as client:
                 self.assertEqual(client.get('/health').status_code, 200)
         with self.engine.connect() as connection:
-            self.assertEqual(connection.execute(text('SELECT version FROM schema_migrations')).scalar(), '001_group_sharing')
+            self.assertEqual(set(connection.execute(text('SELECT version FROM schema_migrations')).scalars()), {'001_group_sharing', '002_mod_refresh_jobs'})
             self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM groups')).scalar(), 0)
             self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM modsets')).scalar(), 1)
 
     def load_legacy(self):
-        fixture = Path(__file__).parent / 'fixtures' / f'schema_0_2_4_{self.engine.dialect.name}.sql'
+        fixture = Path(__file__).parent / 'fixtures' / f'schema_{self.fixture_version}_{self.engine.dialect.name}.sql'
         with self.engine.begin() as connection:
             for statement in fixture.read_text().split('\n-- statement\n'):
                 connection.exec_driver_sql(statement)
@@ -86,7 +87,7 @@ class Upgrade024Mixin:
             self.assertEqual(export_modset(db, owner, 1)[0].modId, 'PARENT')
             self.assertEqual(decrypt_webhook_url(db.execute(text('SELECT webhook_url FROM discord_webhooks WHERE id = 1')).scalar()), 'https://discord.com/api/webhooks/legacy/test')
             self.assertEqual(db.execute(text('SELECT COUNT(*) FROM groups')).scalar(), 0)
-            self.assertEqual(db.execute(text('SELECT COUNT(*) FROM schema_migrations')).scalar(), 1)
+            self.assertEqual(db.execute(text('SELECT COUNT(*) FROM schema_migrations')).scalar(), 2)
             group = Group(name='New integration', description='After upgrade')
             db.add(group)
             db.flush()
