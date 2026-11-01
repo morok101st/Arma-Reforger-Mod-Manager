@@ -17,6 +17,7 @@ from app.routers.mods import router as mods_router
 from app.routers.system import router as system_router
 from app.routers.groups import router as groups_router
 from app.scheduler import start_scheduler
+from app.refresh_jobs import start_refresh_workers
 
 
 @asynccontextmanager
@@ -26,16 +27,18 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(
         bind=engine,
         tables=[table for table in Base.metadata.tables.values() if table.name not in {
-            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions",
+            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions", "mod_refresh_jobs",
         }],
     )
     migrate_schema(engine)
     with SessionLocal() as db:
         bootstrap_admin(db)
     scheduler = start_scheduler()
+    stop_refresh_workers = start_refresh_workers(engine)
     try:
         yield
     finally:
+        stop_refresh_workers()
         scheduler.shutdown(wait=False)
 
 

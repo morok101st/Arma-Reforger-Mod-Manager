@@ -160,3 +160,15 @@ export type ModsetExport = Array<{
   name: string;
   version: string;
 }>;
+
+
+export type ModRefreshJob = {
+  mod_id: string;
+  modset_id: number;
+  attempt: string;
+  state: "queued" | "running" | "succeeded" | "failed";
+  requested_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+};

@@ -1,5 +1,6 @@
 import type { UserAccountUpdate } from "../types";
 import type {
+  ModRefreshJob,
   AuditLog,
   AuthConfig,
   AuthUser,
@@ -132,9 +133,12 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(withModset("/mods", modsetId), { method: "POST", json: { id, current_version: currentVersion } });
       return readJsonOrThrow<Mod>(response, "Could not add mod.");
     },
+    async listRefreshJobs(modsetId: number) {
+      return readJsonOrThrow<ModRefreshJob[]>(await request(withModset("/refresh-jobs", modsetId)), "Could not load update check status.");
+    },
     async refreshMod(id: string, modsetId?: number | null) {
-      const response = await request(withModset(`/mods/${id}/refresh`, modsetId), { method: "POST" });
-      return readJsonOrThrow<Mod>(response, "Refresh failed.");
+      const response = await request(withModset(`/mods/${id}/refresh-job`, modsetId), { method: "POST" });
+      return readJsonOrThrow<ModRefreshJob>(response, "Refresh failed.");
     },
     async deleteMod(id: string, modsetId?: number | null, options?: { deactivateOrphanDependencies?: boolean }) {
       const basePath = withModset(`/mods/${id}`, modsetId);

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -70,3 +71,16 @@ class ModRead(BaseModel):
 class RefreshResult(BaseModel):
     refreshed: int
     failed: dict[str, str]
+
+
+class ModRefreshJobRead(BaseModel):
+    mod_id: str
+    modset_id: int
+    attempt: str
+    state: Literal["queued", "running", "succeeded", "failed"]
+    requested_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    error: str | None
+
+    model_config = {"from_attributes": True}
