@@ -197,3 +197,19 @@ class SchedulerRun(Base):
     refreshed: Mapped[int | None] = mapped_column(Integer, nullable=True)
     failed: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ModRefreshJob(Base):
+    """Latest manual refresh attempt per tracked mod; terminal rows are reused."""
+    __tablename__ = "mod_refresh_jobs"
+    __table_args__ = (CheckConstraint("state IN ('queued', 'running', 'succeeded', 'failed')", name="ck_refresh_job_state"),)
+
+    modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True)
+    mod_id: Mapped[str] = mapped_column(ForeignKey("mods.id", ondelete="CASCADE"), primary_key=True)
+    attempt: Mapped[str] = mapped_column(String(36))
+    state: Mapped[str] = mapped_column(String(16), index=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

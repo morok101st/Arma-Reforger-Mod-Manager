@@ -19,6 +19,7 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
     let active = 1,
       signedIn = true,
       role = "admin";
+    const jobs = new Map();
     const added = new Map(),
       removed = new Set();
     page.on("pageerror", (e) => errors.push(e.message));
@@ -57,7 +58,7 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       source_url: null,
     });
     // Never let an incorrectly configured frontend send test actions to a real API.
-    await page.route("**/*", (route) => {
+    await context.route("**/*", (route) => {
       const request = route.request();
       if (
         new URL(request.url()).origin !== new URL(baseUrl).origin ||
@@ -68,7 +69,7 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       }
       return route.continue();
     });
-    await page.route("**/api/**", async (route) => {
+    await context.route("**/api/**", async (route) => {
       const req = route.request(),
         url = new URL(req.url()),
         path = url.pathname.replace("/api", ""),
@@ -103,6 +104,16 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         data = {};
       } else if (path === "/modsets" || path === "/admin/modsets") data = sets;
       else if (path === "/users") data = [{ ...user(), is_active: true }];
+      else if (path === "/refresh-jobs") data = Array.from(jobs.values()).filter(job => job.modset_id === set);
+      else if (path.match(/^\/mods\/[^/]+\/refresh-job$/)) {
+        const id = path.split("/")[2], key = `${set}:${id}`;
+        const previous = jobs.get(key);
+        data = previous && ["queued", "running"].includes(previous.state) ? previous : {
+          mod_id: id, modset_id: set, attempt: String(Date.now()), state: "running",
+          requested_at: new Date().toISOString(), started_at: new Date().toISOString(), completed_at: null, error: null,
+        };
+        jobs.set(key, data);
+      }
       else if (path === "/groups") data = [];
       else if (
         path === "/admin/groups" ||
@@ -142,6 +153,10 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       failures,
       requests,
       errors,
+      finishRefresh(set, id, state) {
+        const key = `${set}:${id}`;
+        jobs.set(key, { ...jobs.get(key), state, completed_at: new Date().toISOString(), error: state === "failed" ? "Interrupted" : null });
+      },
       hold(key) {
         let resolve;
         const promise = new Promise((r) => (resolve = r));
@@ -181,6 +196,56 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
     }
   }
   try {
+    await test("refresh survives reload and second tab, completes and retries after interruption", async (f) => {
+      const p = f.page;
+      await f.start("?modset=1&mod=ABC");
+      const refresh = p.getByRole("button", { name: "Refresh mod", exact: true });
+      await refresh.click();
+      await p.getByRole("button", { name: "Checking mod for updates", exact: true }).waitFor();
+      await p.reload();
+      const checking = p.getByRole("button", { name: "Checking mod for updates", exact: true });
+      await checking.waitFor();
+      assert.equal(await checking.isDisabled(), true);
+      const second = await f.context.newPage();
+      await second.goto(p.url());
+      const secondChecking = second.getByRole("button", { name: "Checking mod for updates", exact: true });
+      await secondChecking.waitFor();
+      assert.equal(await secondChecking.isDisabled(), true);
+      assert.equal(f.requests.filter(r => r.path.endsWith("/refresh-job")).length, 1);
+      f.finishRefresh(1, "ABC", "succeeded");
+      await p.getByText("Update check completed.", { exact: true }).waitFor();
+      assert.equal(await refresh.isEnabled(), true);
+      await refresh.click();
+      await checking.waitFor();
+      f.finishRefresh(1, "ABC", "failed");
+      await p.getByText("Update check failed or was interrupted. Select Check updates to try again.", { exact: true }).waitFor();
+      assert.equal(await refresh.isEnabled(), true);
+      await p.reload();
+      await p.getByText("Update check failed or was interrupted. Select Check updates to try again.", { exact: true }).waitFor();
+      await refresh.click();
+      await checking.waitFor();
+      await second.close();
+    });
+    await test("refresh status failure recovers and fits mobile in both themes", async (f) => {
+      const p = f.page;
+      await p.setViewportSize({ width: 390, height: 844 });
+      f.failures.add("/refresh-jobs");
+      await f.start("?modset=1&mod=ABC");
+      await p.getByText("Update check status is unavailable. Reconnecting automatically…", { exact: true }).waitFor();
+      assert.equal(await p.getByRole("button", { name: "Refresh mod", exact: true }).isDisabled(), true);
+      for (const theme of ["dark", "light"]) {
+        await p.evaluate(t => document.documentElement.dataset.theme = t, theme);
+        assert(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        if (process.env.ARMM_TEST_SCREENSHOTS) {
+          require("node:fs").mkdirSync(process.env.ARMM_TEST_SCREENSHOTS, { recursive: true });
+          await p.screenshot({ path: require("node:path").join(process.env.ARMM_TEST_SCREENSHOTS, `refresh-error-${theme}.png`), fullPage: true });
+        }
+      }
+      f.failures.delete("/refresh-jobs");
+      await p.waitForFunction(() => !Array.from(document.querySelectorAll("button")).find(b => b.getAttribute("aria-label") === "Refresh mod")?.disabled);
+      await p.getByRole("button", { name: "Refresh mod", exact: true }).click();
+      await p.getByRole("button", { name: "Checking mod for updates", exact: true }).waitFor();
+    });
     await test("view/mod history, reload, exact copied links and sidebar filter independence", async (f) => {
       const p = f.page;
       await f.start();

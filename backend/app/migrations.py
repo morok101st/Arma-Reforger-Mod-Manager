@@ -9,6 +9,7 @@ from app.webhook_crypto import encrypt_webhook_url, is_encrypted_webhook_url
 def migrate_schema(engine: Engine) -> None:
     inspector = inspect(engine)
     dialect = engine.dialect.name
+    _migrate_refresh_jobs(engine)
 
     if "modsets" in inspector.get_table_names():
         _ensure_default_modset(engine)
@@ -400,3 +401,22 @@ def _backfill_dependency_origin(engine: Engine) -> None:
                     ),
                     {"modset_id": modset_id, "mod_id": dependency_id},
                 )
+
+
+def _migrate_refresh_jobs(engine: Engine) -> None:
+    from app.models import ModRefreshJob
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            connection.exec_driver_sql("BEGIN")
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(674293501)"))
+        connection.execute(text(
+            "CREATE TABLE IF NOT EXISTS schema_migrations ("
+            "version VARCHAR(120) PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        ))
+        version = "002_mod_refresh_jobs"
+        if connection.execute(text("SELECT version FROM schema_migrations WHERE version = :version"), {"version": version}).first():
+            return
+        ModRefreshJob.__table__.create(bind=connection, checkfirst=True)
+        connection.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})

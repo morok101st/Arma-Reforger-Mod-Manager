@@ -26,7 +26,7 @@ export function ModDetail({
   canEdit: boolean;
   selected: Mod;
   loading: boolean;
-  refreshState: "idle" | "checking" | "completed";
+  refreshState: "idle" | "checking" | "completed" | "failed" | "loading" | "unavailable";
   saveState: "idle" | "saved";
   installedVersionEdit: string;
   setInstalledVersionEdit: (value: string) => void;
@@ -41,6 +41,7 @@ export function ModDetail({
   openMod: (id: string) => void;
 }) {
   const refreshing = refreshState === "checking";
+  const refreshUnavailable = refreshState === "loading" || refreshState === "unavailable";
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = React.useState(false);
   const [idCopied, setIdCopied] = React.useState(false);
@@ -183,7 +184,7 @@ export function ModDetail({
           <button
             className="secondary-button compact"
             onClick={() => refreshMod(selected.id)}
-            disabled={loading || refreshing || !canEdit}
+            disabled={loading || refreshUnavailable || refreshing || !canEdit}
             title={refreshing ? "Checking for updates" : "Refresh mod"}
             aria-label={refreshing ? "Checking mod for updates" : "Refresh mod"}
             aria-busy={refreshing}
@@ -366,8 +367,12 @@ export function ModDetail({
           <div><span>Latest version</span><strong>{selected.latest_version ?? UNKNOWN_VALUE}</strong></div>
         </div>
         {refreshState !== "idle" && <p className="mod-feedback" role="status" aria-live="polite" aria-busy={refreshing}>
-          {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : <CheckCircle2 size={16} />}
-          {refreshing ? "Checking Workshop and verifying the latest version…" : "Update check completed."}
+          {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : refreshState === "completed" ? <CheckCircle2 size={16} /> : null}
+          {refreshing ? "Checking Workshop and verifying the latest version…"
+            : refreshState === "failed" ? "Update check failed or was interrupted. Select Check updates to try again."
+            : refreshState === "loading" ? "Loading update check status…"
+            : refreshState === "unavailable" ? "Update check status is unavailable. Reconnecting automatically…"
+            : "Update check completed."}
         </p>}
       <div className="version-editor">
         {canEdit && <>
