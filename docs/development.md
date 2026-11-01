@@ -1,6 +1,6 @@
 # Source builds and documentation tooling
 
-Release installations use the tracked GHCR example. To review post-0.2.5 changes before another release exists, build the selected source revision instead of inventing an image tag. The current example tag `0.2.5` intentionally remains unchanged.
+Release installations use the tracked GHCR example, currently selecting **0.2.6**. To review a source revision independently of published images, build that revision locally instead of inventing an image tag.
 
 ## Build the current source
 

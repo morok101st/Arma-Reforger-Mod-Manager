@@ -7,7 +7,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 *Current interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
 
-**Documentation scope:** this README describes current `main`. The redesign, URL navigation, improved recovery, atomic user editing and persistent manual checks were added **after 0.2.5** and are not part of that tagged release. The tracked deployment examples remain pinned to `0.2.5` until another release is published. See [changes since 0.2.5](docs/changes-since-0.2.5.md).
+**Documentation scope:** this README describes **0.2.6**. The redesign, URL navigation, improved recovery, atomic user editing and persistent manual checks are included in this release. The tracked deployment examples select `0.2.6`. See [changes since 0.2.5](docs/changes-since-0.2.5.md) and [release notes](docs/releases/0.2.6.md).
 
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 
@@ -224,7 +224,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
-- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.5`) and does not build locally. New `main` behavior needs a source build until a corresponding release is published.
+- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.6`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
 
 ### Optional OIDC login
 
@@ -299,7 +299,7 @@ Errors such as `relation "tracked_mods" does not exist` or `column a.details doe
 
 ## Development and CI
 
-See [source builds and documentation tooling](docs/development.md) to run unreleased `main` code without changing the published example tag.
+See [source builds and documentation tooling](docs/development.md) to build the selected source revision independently of the published image tag.
 
 - Backend tests: `python -m unittest discover -s tests -v` (inside `backend`)
 - Frontend build: `npm run build` (inside `frontend`)

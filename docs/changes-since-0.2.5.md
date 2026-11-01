@@ -1,6 +1,6 @@
 # Changes since 0.2.5
 
-This is a comparison of release `v0.2.5` (`68ee633`) with current `main`, not a new release announcement. The example GHCR deployment still selects `0.2.5`; it does not yet contain the changes below. No new tag or release is created by this documentation update.
+This compares release `v0.2.5` (`68ee633`) with **0.2.6**. All changes below are included in 0.2.6, which is selected by the tracked GHCR deployment examples. See [release notes](releases/0.2.6.md).
 
 ## Interface redesign
 

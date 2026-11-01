@@ -1,11 +1,11 @@
 # Upgrading ARMM
 
-Documentation tracks current `main`; tracked image examples remain pinned to **0.2.5**. Do not select an invented image tag for unreleased code. Use a [source build](development.md) to review `main`, or wait for a published release containing the desired changes.
+Documentation and tracked image examples describe **0.2.6**. Set `ARMM_IMAGE_TAG=0.2.6` to upgrade from 0.2.5. Use a [source build](development.md) only to review a source revision independently of published images.
 
 | Starting point | Changes requiring attention | Detailed guide |
 | --- | --- | --- |
 | 0.2.4 → 0.2.5 | Global Shared access is replaced by explicit groups. Existing groups, identities, ownership and webhook scopes must be preserved. | [Group sharing and recovery](group-sharing-upgrade.md) |
-| 0.2.5 → current main / a future release containing it | Redesigned interface and navigation; atomic user editing; persistent individual manual checks with an additive job table. | [Changes since 0.2.5](changes-since-0.2.5.md), [manual-check migration](manual-refresh-upgrade.md) |
+| 0.2.5 → 0.2.6 | Redesigned interface and navigation; atomic user editing; persistent individual manual checks with an additive job table. | [Changes since 0.2.5](changes-since-0.2.5.md), [manual-check migration](manual-refresh-upgrade.md) |
 
 The redesign, URL navigation, resource recovery and atomic user update add no schema migration. Persistent manual jobs add `002_mod_refresh_jobs`; it runs automatically at startup. No new required environment variables or additional service is needed.
 
@@ -17,7 +17,7 @@ The redesign, URL navigation, resource recovery and atomic user update add no sc
 4. Start updated services and inspect startup/migration logs and `/api/health`. Reload existing browser tabs.
 5. Verify login, group grants, webhook scopes, a known export, URL reload/history and a manual check across reload/another tab.
 
-For GHCR deployments, change `ARMM_IMAGE_TAG` to the actual published release, then pull/start using your existing configuration. The current example value `0.2.5` intentionally does not install unreleased redesign changes.
+For GHCR deployments, set `ARMM_IMAGE_TAG=0.2.6`, then pull/start using your existing configuration. The new image tag includes the redesign and persistent individual manual checks.
 
 The old synchronous single-mod refresh route remains supported. New frontends use additive asynchronous routes. Existing Discord deep links and separate password/membership endpoints remain supported. Session advisory locks require direct PostgreSQL connections or session pooling, not transaction pooling.
 

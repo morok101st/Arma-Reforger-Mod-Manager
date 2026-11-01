@@ -1,6 +1,6 @@
 # API and automation
 
-This page describes current `main`. New post-0.2.5 routes/fields require a build containing those changes; see [release scope](changes-since-0.2.5.md). The authenticated OpenAPI schema at `/api/openapi.json` is the exhaustive route and payload reference for the deployed build.
+This page describes **0.2.6**, including the new routes/fields added after 0.2.5; see [release scope](changes-since-0.2.5.md). The authenticated OpenAPI schema at `/api/openapi.json` is the exhaustive route and payload reference for the deployed build.
 
 ## Authentication and permissions
 

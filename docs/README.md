@@ -1,6 +1,6 @@
 # ARMM documentation
 
-These pages describe current `main`. Deployment examples remain pinned to release **0.2.5**; see [changes since 0.2.5](changes-since-0.2.5.md) before comparing an installed release with these screenshots.
+These pages describe **0.2.6**, including the redesigned interface and persistent manual checks. Deployment examples select `0.2.6`; see [changes since 0.2.5](changes-since-0.2.5.md) when upgrading an older installation.
 
 | Task | Reference |
 | --- | --- |
@@ -13,6 +13,6 @@ These pages describe current `main`. Deployment examples remain pinned to releas
 | Migrate group access from 0.2.4 | [Group sharing and recovery](group-sharing-upgrade.md) |
 | Operate persistent manual checks | [Manual refresh and 0.2.5 upgrades](manual-refresh-upgrade.md) |
 | Build source / verify changes | [Development and asset tooling](development.md) |
-| Review historical release behavior | [0.2.5 release notes](releases/0.2.5.md) |
+| Review release behavior | [0.2.6 release notes](releases/0.2.6.md), [historical 0.2.5 notes](releases/0.2.5.md) |
 
 The repository guides are the detailed references; the wiki provides task-oriented entry points and deployment chapters. Historical release notes describe that release and are not rewritten to describe unreleased features.

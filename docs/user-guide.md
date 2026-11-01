@@ -1,6 +1,6 @@
 # User guide
 
-This guide describes the interface on current `main`, including changes made after 0.2.5. Screenshots use fictional data; see [release scope](changes-since-0.2.5.md).
+This guide describes the interface in **0.2.6**, including changes made after 0.2.5. Screenshots use fictional data; see [release scope](changes-since-0.2.5.md).
 
 ## Workspace and version health
 
