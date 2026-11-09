@@ -43,6 +43,10 @@ def require_modset_permission(
     modset = db.scalar(select(ModSet).where(ModSet.id == modset_id, accessible_modset_filter(user)))
     if modset is None:
         raise HTTPException(status_code=404, detail="Modset not found")
+    if modset.base_modset_id and db.scalar(select(ModSet.id).where(
+        ModSet.id == modset.base_modset_id, accessible_modset_filter(user),
+    )) is None:
+        raise HTTPException(status_code=403, detail="Access to the parent modset is required. Ask its owner to restore access or ask an administrator to detach the parent.")
     if permission != "read":
         key = {"write": "can_edit", "delete": "can_delete", "manage": "can_manage_access"}[permission]
         if not modset_capabilities(db, user, modset)[key]:

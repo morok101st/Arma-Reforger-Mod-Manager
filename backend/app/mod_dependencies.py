@@ -4,6 +4,7 @@ from typing import Protocol
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.base_modsets import synchronize_derived_modsets
 from app.models import Mod, UserMod
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import list_tracked_user_mods, normalize_dependencies, normalize_match_value
@@ -18,7 +19,7 @@ class WorkshopMetadataProvider(Protocol):
 
 async def track_and_refresh_dependencies_for_installed_mod(db: Session, mod: Mod, modset_id: int, metadata_provider: WorkshopMetadataProvider) -> None:
     user_mod = db.scalar(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id == mod.id))
-    if not user_mod:
+    if not user_mod and not any(row.mod_id == mod.id for row in list_tracked_user_mods(db, modset_id)):
         return
     await synchronize_dependency_tracking_for_modset(db, modset_id, metadata_provider)
 
@@ -91,13 +92,14 @@ def synchronize_dependency_tracking_for_modset_state(db: Session, modset_id: int
                 dependency_ids_to_refresh.append(dependency_id)
             state_changed = True
         else:
-            if not existing_mapping.dependency_origin:
+            if not getattr(existing_mapping, "inherited_from_modset_id", None) and not existing_mapping.dependency_origin:
                 existing_mapping.dependency_origin = True
                 state_changed = True
             if not dependency_mod.latest_version:
                 dependency_ids_to_refresh.append(dependency_id)
 
     if dependency_ids_to_refresh or state_changed:
+        synchronize_derived_modsets(db, modset_id)
         db.commit()
     return dependency_ids_to_refresh
 

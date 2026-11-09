@@ -193,7 +193,7 @@ export function ModDetail({
             {refreshing ? "Checking…" : "Check updates"}
           </button>
 
-          {canEdit && <button className="secondary-button compact danger-button mod-remove-action" type="button" onClick={() => setShowDeleteDialog(true)} disabled={loading} title={selected.delete_blocked ? "This mod is required by other tracked mods." : "Remove from this modset"}><Trash2 size={16} /> Remove mod</button>}
+          {canEdit && !selected.parent_modset_id && <button className="secondary-button compact danger-button mod-remove-action" type="button" onClick={() => setShowDeleteDialog(true)} disabled={loading} title={selected.delete_blocked ? "This mod is required by other tracked mods." : "Remove from this modset"}><Trash2 size={16} /> Remove mod</button>}
 
         </div>
       </header>
@@ -201,6 +201,7 @@ export function ModDetail({
       {showDeleteDialog && (
         <Dialog title="Delete mod" onClose={() => setShowDeleteDialog(false)}>
           <div className="dialog-form">
+            {Boolean(selected.child_modsets_count) && <p className="error-box">Removing this parent mod also removes it from {selected.child_modsets_count} child modset(s). Their export order for other mods stays unchanged.</p>}
             {selected.delete_blocked ? (
               <>
                 <div className="danger-callout">
@@ -361,6 +362,7 @@ export function ModDetail({
       )}
 
       <section className="mod-version-section" aria-label="Versions">
+        {Boolean(selected.child_modsets_count) && <p className="muted">This is a parent modset. Installed version changes also apply to {selected.child_modsets_count} child modset(s).</p>}
         {selected.status !== "NOT_INSTALLED" && <div className={`mod-version-status ${selected.status.toLowerCase()}`}><StatusIcon status={selected.status} /><strong>{statusLabel(selected.status)}</strong></div>}
         <div className="mod-version-comparison">
           <div><span>Installed version</span><strong>{selected.current_version ?? "No installed version"}</strong></div>
@@ -374,8 +376,9 @@ export function ModDetail({
             : refreshState === "unavailable" ? "Update check status is unavailable. Reconnecting automatically…"
             : "Update check completed."}
         </p>}
+      {selected.parent_modset_id && <p className="muted mod-inheritance-note">Inherited from <a href={`?modset=${selected.parent_modset_id}&mod=${encodeURIComponent(selected.id)}`}>{selected.parent_modset_name ?? "parent modset"}</a>. The installed version is binding and can only be changed there. {selected.order_mode === "parent" ? "Parent order is binding; arrange local mods between parent mods in the overview." : "Export order remains editable in this modset’s overview."}</p>}
       <div className="version-editor">
-        {canEdit && <>
+        {canEdit && !selected.parent_modset_id && <>
         <label>
           Set installed version
           <CustomSelect<string>

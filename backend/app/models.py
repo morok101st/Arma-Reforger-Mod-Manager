@@ -100,6 +100,8 @@ class ModSet(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    export_order_mode: Mapped[str] = mapped_column(String(16), default="independent", server_default="independent")
+    base_modset_id: Mapped[int | None] = mapped_column(ForeignKey("modsets.id", ondelete="RESTRICT"), nullable=True, index=True)
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     # Legacy 0.2.4 column retained for non-destructive upgrades; never grants access.
     shared: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
@@ -213,3 +215,14 @@ class ModRefreshJob(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class ModSetExportOrder(Base):
+    """Local export positions for inherited mods, independent of their versions."""
+    __tablename__ = "modset_export_orders"
+
+    before_mod_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
+    modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True)
+    mod_id: Mapped[str] = mapped_column(ForeignKey("mods.id", ondelete="CASCADE"), primary_key=True)
+    load_order: Mapped[int] = mapped_column(Integer, default=500)

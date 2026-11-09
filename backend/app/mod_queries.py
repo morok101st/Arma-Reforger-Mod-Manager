@@ -1,17 +1,22 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Mod, ModVersion, UserMod
+from app.models import Mod, ModVersion, UserMod, ModSet, ModSetExportOrder
 from app.schemas_mods import DependencyRead, ModRead, ModReferenceRead
 from app.versioning import compare_versions
 
 
 def mod_to_read(
     mod: Mod,
-    user_mod: UserMod,
-    all_mappings: list[UserMod] | None = None,
+    user_mod: UserMod | InheritedMod,
+    all_mappings: list[UserMod | InheritedMod] | None = None,
     dependency_ids: set[str] | None = None,
     core_dependency_ids: set[str] | None = None,
+    derived_modsets_count: int = 0,
 ) -> ModRead:
     current_version = user_mod.current_version
     tracking_reason = user_mod.tracking_reason
@@ -22,6 +27,9 @@ def mod_to_read(
     blocking_dependents = find_dependents(mod, all_mappings, installed_only=True, core_only=False)
     core_dependents = find_dependents(mod, all_mappings, installed_only=True, core_only=True)
     return ModRead(
+        derived_modsets_count=derived_modsets_count,
+        inherited_from_modset_id=getattr(user_mod, "inherited_from_modset_id", None),
+        inherited_from_modset_name=getattr(user_mod, "inherited_from_modset_name", None),
         id=mod.id,
         name=mod.name,
         summary=mod.summary,
@@ -51,7 +59,13 @@ def mod_to_read(
 def list_mods(db: Session, modset_id: int) -> list[ModRead]:
     mappings = list_tracked_user_mods(db, modset_id)
     dependency_ids, core_dependency_ids = collect_dependency_sets(mappings)
-    return [mod_to_read(mapping.mod, mapping, mappings, dependency_ids, core_dependency_ids) for mapping in mappings]
+    count = derived_count(db, modset_id)
+    reads = [mod_to_read(mapping.mod, mapping, mappings, dependency_ids, core_dependency_ids, count) for mapping in mappings]
+    protected = derived_dependency_ids(db, modset_id) if count else set()
+    for read in reads:
+        read.delete_blocked = read.delete_blocked or read.id in protected
+    apply_effective_positions(db, modset_id, mappings, reads)
+    return reads
 
 
 def get_mod_read(db: Session, mod_id: str, modset_id: int) -> ModRead | None:
@@ -60,10 +74,15 @@ def get_mod_read(db: Session, mod_id: str, modset_id: int) -> ModRead | None:
     if not target:
         return None
     dependency_ids, core_dependency_ids = collect_dependency_sets(mappings)
-    return mod_to_read(target.mod, target, mappings, dependency_ids, core_dependency_ids)
+    count = derived_count(db, modset_id)
+    read = mod_to_read(target.mod, target, mappings, dependency_ids, core_dependency_ids, count)
+    if count:
+        read.delete_blocked = read.delete_blocked or mod_id in derived_dependency_ids(db, modset_id)
+    apply_effective_positions(db, modset_id, mappings, [read])
+    return read
 
 
-def list_tracked_user_mods(db: Session, modset_id: int) -> list[UserMod]:
+def list_local_user_mods(db: Session, modset_id: int) -> list[UserMod]:
     return list(
         db.scalars(
             select(UserMod)
@@ -84,7 +103,7 @@ def get_user_mod_or_none(db: Session, mod_id: str, modset_id: int) -> UserMod | 
 
 
 def get_mod_or_none(db: Session, mod_id: str, modset_id: int) -> Mod | None:
-    mapping = get_user_mod_or_none(db, mod_id, modset_id)
+    mapping = inherited_mapping(db, modset_id, mod_id) or get_user_mod_or_none(db, mod_id, modset_id)
     return mapping.mod if mapping else None
 
 
@@ -173,3 +192,72 @@ def sort_versions(versions: list[ModVersion]) -> list[ModVersion]:
         key=lambda version: version.last_modified_at or version.published_at or version.created_at,
         reverse=True,
     )
+
+
+def inherited_mapping(db: Session, modset_id: int, mod_id: str) -> UserMod | None:
+    modset = db.get(ModSet, modset_id)
+    if not modset or not modset.base_modset_id:
+        return None
+    return get_user_mod_or_none(db, mod_id, modset.base_modset_id)
+
+
+def list_tracked_user_mods(db: Session, modset_id: int) -> list[UserMod | InheritedMod]:
+    """Effective mappings. Inherited rows are detached views, never writable ORM rows."""
+    local: dict[str, UserMod | InheritedMod] = {row.mod_id: row for row in list_local_user_mods(db, modset_id)}
+    modset = db.get(ModSet, modset_id)
+    if modset and modset.base_modset_id:
+        base = db.get(ModSet, modset.base_modset_id)
+        orders = {row.mod_id: row.load_order for row in db.scalars(
+            select(ModSetExportOrder).where(ModSetExportOrder.modset_id == modset_id)
+        )}
+        for row in list_local_user_mods(db, base.id):
+            local[row.mod_id] = InheritedMod(
+                mod_id=row.mod_id, modset_id=modset_id, mod=row.mod,
+                current_version=row.current_version, pinned=row.pinned, is_core=row.is_core,
+                dependency_origin=row.dependency_origin, tracking_reason=row.tracking_reason,
+                load_order=orders.get(row.mod_id, row.load_order),
+                inherited_from_modset_id=base.id, inherited_from_modset_name=base.name,
+            )
+    return sorted(local.values(), key=lambda row: ((row.mod.name or row.mod_id).casefold(), row.mod_id))
+
+
+def derived_count(db: Session, modset_id: int) -> int:
+    return db.scalar(select(func.count()).select_from(ModSet).where(ModSet.base_modset_id == modset_id)) or 0
+
+
+@dataclass(frozen=True)
+class InheritedMod:
+    mod_id: str
+    modset_id: int
+    mod: Mod
+    current_version: str | None
+    pinned: bool
+    is_core: bool
+    dependency_origin: bool
+    tracking_reason: str
+    load_order: int
+    inherited_from_modset_id: int
+    inherited_from_modset_name: str
+
+
+def derived_dependency_ids(db: Session, base_id: int) -> set[str]:
+    protected: set[str] = set()
+    for child_id in db.scalars(select(ModSet.id).where(ModSet.base_modset_id == base_id)):
+        required, _ = collect_dependency_sets(list_tracked_user_mods(db, child_id))
+        protected.update(required)
+    return protected
+
+
+def apply_effective_positions(db: Session, modset_id: int, mappings, reads) -> None:
+    from app.base_modsets import effective_order
+    modset = db.get(ModSet, modset_id)
+    ordered = effective_order(db, modset_id, mappings)
+    exported = [row for row in ordered if (row.current_version or "").strip()]
+    ranks = {row.mod_id: index + 1 for index, row in enumerate(exported)}
+    for read in reads:
+        read.export_position = ranks.get(read.id)
+        read.export_order_mode = modset.export_order_mode if modset else "independent"
+    if modset and modset.base_modset_id and modset.export_order_mode == "base":
+        positions = {row.mod_id: 500 + index * 10 for index, row in enumerate(ordered)}
+        for read in reads:
+            read.load_order = positions[read.id]

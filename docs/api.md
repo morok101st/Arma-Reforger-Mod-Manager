@@ -1,6 +1,6 @@
 # API and automation
 
-This page describes **0.2.6**, including the new routes/fields added after 0.2.5; see [release scope](changes-since-0.2.5.md). The authenticated OpenAPI schema at `/api/openapi.json` is the exhaustive route and payload reference for the deployed build.
+This page describes **0.2.7**, including the new routes/fields added after 0.2.5; see [release scope](changes-since-0.2.5.md). The authenticated OpenAPI schema at `/api/openapi.json` is the exhaustive route and payload reference for the deployed build.
 
 ## Authentication and permissions
 
@@ -48,6 +48,6 @@ Existing `PUT /api/admin/users/{user_id}/groups` and `PATCH /api/users/{user_id}
 
 ## Export and pagination
 
-Export uses `GET /api/modsets/{modset_id}/export`. Entries are `{modId, name, version}` and include only installed versions. Lower `load_order` values export first, then name/ID. Use `PATCH /api/modsets/{modset_id}/load-order` for batch order updates; per-mod `PATCH` also accepts `load_order`.
+Export uses `GET /api/modsets/{modset_id}/export`. Entries are `{modId, name, version}` and include only installed versions. save a complete order with `PUT /api/modsets/{modset_id}/export-order` and `{ "mod_ids": ["FIRST_ID", "SECOND_ID"] }`. `export_position` in mod responses is the 1-based final position (null for uninstalled entries). Incomplete or stale lists return 409, duplicate IDs return 400, and following mode forbids changing relative parent order. See [parent/child modsets](parent-child-modsets.md) for permission and inheritance rules. Existing numeric `PATCH /api/modsets/{modset_id}/load-order` and per-mod `load_order` calls remain compatible.
 
 Modset activity and administrator audit reads support `limit`/`offset`. Audit category filters in the UI are client-side. Browser navigation uses `modset`, while the API uses `modset_id`; see [URL examples](user-guide.md#links-keyboard-access-and-recovery).

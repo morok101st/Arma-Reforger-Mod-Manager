@@ -193,7 +193,7 @@ function statusPriority(status: ModStatus): number {
   return 3;
 }
 
-export function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
+export function sortMods(mods: Mod[], sortMode: SortMode, childModsFirst = false): Mod[] {
   const statusRank: Record<ModStatus, number> = {
     UPDATE_AVAILABLE: 0,
     NOT_INSTALLED: 1,
@@ -202,6 +202,10 @@ export function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
   };
 
   return [...mods].sort((left, right) => {
+    if (childModsFirst) {
+      const group = Number(Boolean(left.parent_modset_id)) - Number(Boolean(right.parent_modset_id));
+      if (group) return group;
+    }
     if (sortMode === "updates") {
       return statusRank[left.status] - statusRank[right.status] || compareByName(left, right);
     }
@@ -215,7 +219,7 @@ export function sortMods(mods: Mod[], sortMode: SortMode): Mod[] {
     }
 
     if (sortMode === "load_order") {
-      return left.load_order - right.load_order || compareByName(left, right);
+      return compareExportOrder(left, right);
     }
 
     return compareByName(left, right);
@@ -262,4 +266,14 @@ export function dependencyKey(dependency: Dependency): string {
 function normalizeMatchValue(value: string | null): string {
   if (!value) return "";
   return value.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+/** Server-provided ranks are authoritative, including name/ID tie-breaks. */
+export function compareExportOrder(left: Mod, right: Mod): number {
+  if (left.export_position != null || right.export_position != null) {
+    return (left.export_position ?? Number.MAX_SAFE_INTEGER) - (right.export_position ?? Number.MAX_SAFE_INTEGER);
+  }
+  const leftName = (left.name || left.id).toLowerCase();
+  const rightName = (right.name || right.id).toLowerCase();
+  return left.load_order - right.load_order || (leftName < rightName ? -1 : leftName > rightName ? 1 : 0) || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
 }

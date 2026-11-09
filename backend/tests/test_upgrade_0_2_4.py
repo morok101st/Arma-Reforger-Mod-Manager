@@ -29,7 +29,7 @@ class Upgrade024Mixin:
             with TestClient(app_main.app) as client:
                 self.assertEqual(client.get('/health').status_code, 200)
         with self.engine.connect() as connection:
-            self.assertEqual(set(connection.execute(text('SELECT version FROM schema_migrations')).scalars()), {'001_group_sharing', '002_mod_refresh_jobs'})
+            self.assertEqual(set(connection.execute(text('SELECT version FROM schema_migrations')).scalars()), {'001_group_sharing', '002_mod_refresh_jobs', '003_base_modsets', '004_base_export_order'})
             self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM groups')).scalar(), 0)
             self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM modsets')).scalar(), 1)
 
@@ -60,8 +60,12 @@ class Upgrade024Mixin:
         self.legacy_tables = inspect(self.engine).get_table_names()
 
     def snapshot(self):
+        if not hasattr(self, "legacy_columns"):
+            self.legacy_columns = {table: [column["name"] for column in inspect(self.engine).get_columns(table)] for table in self.legacy_tables}
         with self.engine.connect() as connection:
-            return {table: connection.execute(text(f'SELECT * FROM "{table}" ORDER BY 1, 2')).all() for table in self.legacy_tables}
+            return {table: connection.execute(text(
+                'SELECT ' + ", ".join(f'"{column}"' for column in self.legacy_columns[table]) + f' FROM "{table}" ORDER BY 1, 2'
+            )).all() for table in self.legacy_tables}
 
     def test_upgrade_and_restarts_preserve_all_legacy_rows(self):
         self.load_legacy()
@@ -87,7 +91,7 @@ class Upgrade024Mixin:
             self.assertEqual(export_modset(db, owner, 1)[0].modId, 'PARENT')
             self.assertEqual(decrypt_webhook_url(db.execute(text('SELECT webhook_url FROM discord_webhooks WHERE id = 1')).scalar()), 'https://discord.com/api/webhooks/legacy/test')
             self.assertEqual(db.execute(text('SELECT COUNT(*) FROM groups')).scalar(), 0)
-            self.assertEqual(db.execute(text('SELECT COUNT(*) FROM schema_migrations')).scalar(), 2)
+            self.assertEqual(db.execute(text('SELECT COUNT(*) FROM schema_migrations')).scalar(), 4)
             group = Group(name='New integration', description='After upgrade')
             db.add(group)
             db.flush()

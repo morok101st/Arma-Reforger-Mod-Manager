@@ -25,8 +25,7 @@ export function Dashboard({
   canPageForwardModsetActivity,
   previousModsetActivityPage,
   nextModsetActivityPage,
-  updateModLoadOrder,
-  updateModsetLoadOrder,
+  updateExportOrder,
 }: {
   activityLoad: LoadState;
   schedulerLoad: LoadState;
@@ -44,8 +43,7 @@ export function Dashboard({
   canPageForwardModsetActivity: boolean;
   previousModsetActivityPage: () => void;
   nextModsetActivityPage: () => void;
-  updateModLoadOrder: (modId: string, loadOrder: number) => Promise<void>;
-  updateModsetLoadOrder: (entries: { mod_id: string; load_order: number }[]) => Promise<void>;
+  updateExportOrder: (modIds: string[]) => Promise<void>;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
   const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
@@ -138,8 +136,7 @@ export function Dashboard({
         mods={mods}
         loading={loading}
         error={error}
-        updateModLoadOrder={updateModLoadOrder}
-        updateModsetLoadOrder={updateModsetLoadOrder}
+        updateExportOrder={updateExportOrder}
       />}
 
       <section className="dashboard-card activity-card">

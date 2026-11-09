@@ -24,11 +24,11 @@ export function useMods({
     deleteMod: (id: string, modsetId?: number | null, options?: { deactivateOrphanDependencies?: boolean }) => Promise<void>;
     updateMod: (
       id: string,
-      payload: { current_version?: string | null; load_order?: number },
+      payload: { current_version?: string | null },
       modsetId?: number | null,
       options?: { deactivateOrphanDependencies?: boolean },
     ) => Promise<Mod>;
-    updateModsetLoadOrder: (modsetId: number, entries: { mod_id: string; load_order: number }[]) => Promise<void>;
+    updateExportOrder: (modsetId: number, modIds: string[]) => Promise<void>;
   };
   authUser: AuthUser | null;
   activeModsetId: number | null;
@@ -44,6 +44,7 @@ export function useMods({
   const [installedVersionEdit, setInstalledVersionEdit] = React.useState("");
   const [expandedChangelogVersions, setExpandedChangelogVersions] = React.useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = React.useState<SortMode>("updates");
+  const [childModsFirst, setChildModsFirst] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<ModStatusFilter>("all");
   const [saveState, setSaveState] = React.useState<"idle" | "saved">("idle");
@@ -51,7 +52,7 @@ export function useMods({
   const [canPageForwardModsetActivity, setCanPageForwardModsetActivity] = React.useState(false);
 
   const visibleMods = React.useMemo(() => filterMods(mods, searchQuery, statusFilter), [mods, searchQuery, statusFilter]);
-  const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode), [visibleMods, sortMode]);
+  const sortedMods = React.useMemo(() => sortMods(visibleMods, sortMode, childModsFirst), [visibleMods, sortMode, childModsFirst]);
   // An explicit URL selection is independent of sidebar search/filter/sort.
   const selected = requestedModId ? mods.find(mod => mod.id === requestedModId) ?? null
     : sortedMods.find((mod) => mod.id === selectedId) ?? sortedMods[0] ?? null;
@@ -161,20 +162,9 @@ export function useMods({
     [activeModsetId, api, installedVersionEdit, loadModsetActivity, loadMods, modsetActivityPage, selected],
   );
 
-  const updateModLoadOrder = React.useCallback(async (modId: string, loadOrder: number) => {
-    if (!activeModsetId) return null;
-    const normalizedLoadOrder = Number.parseInt(String(loadOrder), 10);
-    if (!Number.isFinite(normalizedLoadOrder)) return null;
-    await api.updateModsetLoadOrder(activeModsetId, [{ mod_id: modId, load_order: normalizedLoadOrder }]);
-    await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
-    setSaveState("saved");
-    window.setTimeout(() => setSaveState("idle"), 3000);
-    return null;
-  }, [activeModsetId, api, loadModsetActivity, loadMods, modsetActivityPage]);
-
-  const updateModsetLoadOrder = React.useCallback(async (entries: { mod_id: string; load_order: number }[]) => {
-    if (!activeModsetId || entries.length === 0) return;
-    await api.updateModsetLoadOrder(activeModsetId, entries);
+  const updateExportOrder = React.useCallback(async (modIds: string[]) => {
+    if (!activeModsetId || modIds.length === 0) return;
+    await api.updateExportOrder(activeModsetId, modIds);
     await Promise.allSettled([loadMods(), loadModsetActivity(modsetActivityPage)]);
     setSaveState("saved");
     window.setTimeout(() => setSaveState("idle"), 3000);
@@ -218,6 +208,8 @@ export function useMods({
     changelogEntries,
     trackedDependencyMatches,
     setInstalledVersionEdit,
+    childModsFirst,
+    setChildModsFirst,
     setSortMode,
     setSearchQuery,
     setStatusFilter,
@@ -233,8 +225,7 @@ export function useMods({
     getModRefreshState,
     removeMod,
     updateInstalledVersion,
-    updateModLoadOrder,
-    updateModsetLoadOrder,
+    updateExportOrder,
     toggleChangelogVersion,
     canPageBackModsetActivity: modsetActivityPage > 0,
   };

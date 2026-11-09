@@ -19,7 +19,8 @@ export function useAppController() {
     const user = await auth.api.checkSession();
     auth.setAuthUser(current => JSON.stringify(current) === JSON.stringify(user) ? current : user);
     await modsets.loadModsets();
-  }, [auth.api, auth.setAuthUser, modsets.loadModsets]);
+    await mods.loadMods();
+  }, [auth.api, auth.setAuthUser, modsets.loadModsets, mods.loadMods]);
   const groups = useGroups(auth.api, auth.authUser, refreshAccess);
   React.useEffect(() => { groups.reload().catch(() => null); }, [admin.users, groups.reload]);
   React.useEffect(() => {

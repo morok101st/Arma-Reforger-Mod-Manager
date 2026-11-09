@@ -50,9 +50,9 @@ def enqueue_refresh(db: Session, mod_id: str, modset_id: int, actor: User) -> Mo
 
 
 def list_refresh_jobs(db: Session, modset_id: int) -> list[ModRefreshJobRead]:
-    jobs = db.scalars(select(ModRefreshJob).join(UserMod, (
-        (UserMod.modset_id == ModRefreshJob.modset_id) & (UserMod.mod_id == ModRefreshJob.mod_id)
-    )).where(ModRefreshJob.modset_id == modset_id)).all()
+    from app.mod_queries import list_tracked_user_mods
+    ids = [row.mod_id for row in list_tracked_user_mods(db, modset_id)]
+    jobs = db.scalars(select(ModRefreshJob).where(ModRefreshJob.modset_id == modset_id, ModRefreshJob.mod_id.in_(ids))).all()
     return [ModRefreshJobRead.model_validate(job) for job in jobs]
 
 
@@ -114,7 +114,8 @@ def execute_refresh(engine: Engine, modset_id: int, mod_id: str) -> None:
                 _audit_result(db, job)
                 db.commit()
                 return
-            if db.scalar(select(UserMod.id).where(UserMod.modset_id == modset_id, UserMod.mod_id == mod_id)) is None:
+            from app.mod_queries import get_mod_or_none
+            if get_mod_or_none(db, mod_id, modset_id) is None:
                 db.delete(job)
                 db.commit()
                 return

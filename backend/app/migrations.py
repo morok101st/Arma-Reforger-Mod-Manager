@@ -18,6 +18,8 @@ def migrate_schema(engine: Engine) -> None:
         _migrate_mod_versions(engine, inspector)
         _migrate_users(engine, inspector)
         _migrate_groups(engine)
+        _migrate_base_modsets(engine)
+        _migrate_base_order(engine)
         return
 
     user_mod_columns = {column["name"] for column in inspector.get_columns("user_mods")}
@@ -75,6 +77,8 @@ def migrate_schema(engine: Engine) -> None:
     _migrate_mod_versions(engine, inspector)
     _migrate_users(engine, inspector)
     _migrate_groups(engine)
+    _migrate_base_modsets(engine)
+    _migrate_base_order(engine)
 
 
 def _migrate_groups(engine: Engine) -> None:
@@ -420,3 +424,32 @@ def _migrate_refresh_jobs(engine: Engine) -> None:
             return
         ModRefreshJob.__table__.create(bind=connection, checkfirst=True)
         connection.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})
+
+
+def _migrate_base_modsets(engine: Engine) -> None:
+    from app.models import ModSetExportOrder
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            connection.exec_driver_sql("BEGIN")
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(674293501)"))
+        columns = {column["name"] for column in inspect(connection).get_columns("modsets")}
+        if "base_modset_id" not in columns:
+            connection.execute(text("ALTER TABLE modsets ADD COLUMN base_modset_id INTEGER REFERENCES modsets(id) ON DELETE RESTRICT"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_modsets_base_modset_id ON modsets (base_modset_id)"))
+        ModSetExportOrder.__table__.create(bind=connection, checkfirst=True)
+        connection.execute(text("INSERT INTO schema_migrations (version) VALUES ('003_base_modsets') ON CONFLICT DO NOTHING"))
+
+
+def _migrate_base_order(engine: Engine) -> None:
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            connection.exec_driver_sql("BEGIN")
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(674293501)"))
+        if "export_order_mode" not in {c["name"] for c in inspect(connection).get_columns("modsets")}:
+            connection.execute(text("ALTER TABLE modsets ADD COLUMN export_order_mode VARCHAR(16) NOT NULL DEFAULT 'independent'"))
+        if "before_mod_ids" not in {c["name"] for c in inspect(connection).get_columns("modset_export_orders")}:
+            connection.execute(text("ALTER TABLE modset_export_orders ADD COLUMN before_mod_ids JSON"))
+        connection.execute(text("INSERT INTO schema_migrations (version) VALUES ('004_base_export_order') ON CONFLICT DO NOTHING"))

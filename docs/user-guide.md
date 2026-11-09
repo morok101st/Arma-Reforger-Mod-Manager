@@ -1,6 +1,6 @@
 # User guide
 
-This guide describes the interface in **0.2.6**, including changes made after 0.2.5. Screenshots use fictional data; see [release scope](changes-since-0.2.5.md).
+This guide describes the interface in **0.2.7**, including changes made after 0.2.5. Screenshots use fictional data; see [release scope](changes-since-0.2.5.md).
 
 ## Workspace and version health
 
@@ -27,9 +27,11 @@ A running individual manual check remains visible after reload and in another ta
 
 Deleting an active dependency may be blocked. Removing or deactivating a parent can offer a follow-up choice to set newly orphaned dependency-origin mods to No installed version. Dependencies remain identifiable even after manual editing.
 
+child modsets show **Child mods first** below search. It is enabled by default: own mods come before inherited parent mods, with **Sort by** applied within each group. Disable it for global sorting. Export order is unaffected.
+
 ## Export order and activity
 
-Open **Overview → Export order** to edit numeric values, move entries top/up/down/bottom, or reset order. Default is `500`; smaller values export earlier. Equal values stabilize by name then mod ID. Only mods with an installed version are exported. Browser sorting does not alter export order.
+open **Overview → Export order** and move entries top/up/down/bottom. Positions **1, 2, 3…** show the final export sequence; changes save automatically. Existing orders are preserved, including previous name/ID tie-breaks. Only mods with installed versions are exported. Browser sorting does not alter export order. Child modsets can follow the parent order and insert local mods, or keep an independent order; see [parent/child modsets](parent-child-modsets.md).
 
 The overview **Changelog** records changes in this modset, such as add/remove/version edits, and supports paging. It is separate from a mod's version changelog and the administrator's central audit log. Both overview sections start collapsed.
 

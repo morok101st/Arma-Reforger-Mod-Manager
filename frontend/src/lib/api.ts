@@ -153,7 +153,7 @@ export function createApiClient(onUnauthorized?: () => void) {
     },
     async updateMod(
       id: string,
-      payload: { current_version?: string | null; is_core?: boolean; load_order?: number },
+      payload: { current_version?: string | null; is_core?: boolean },
       modsetId?: number | null,
       options?: { deactivateOrphanDependencies?: boolean },
     ) {
@@ -164,16 +164,19 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(path, { method: "PATCH", json: payload });
       return readJsonOrThrow<Mod>(response, "Could not update mod.");
     },
+    async previewExportOrder(id: number, mode: "parent" | "independent", parentId: number) {
+      return readJsonOrThrow<ModsetExport>(await request(`/modsets/${id}/order-preview?mode=${mode}&parent_modset_id=${parentId}`), "Could not preview export order.");
+    },
     async listModsets() {
       const response = await request("/modsets");
       return readJsonOrThrow<Modset[]>(response, "Could not load modsets.");
     },
-    async createModset(name: string) {
-      const response = await request("/modsets", { method: "POST", json: { name } });
+    async createModset(name: string, parentModsetId?: number | null, orderMode?: "parent" | "independent") {
+      const response = await request("/modsets", { method: "POST", json: { name, parent_modset_id: parentModsetId ?? null, order_mode: orderMode ?? "parent" } });
       return readJsonOrThrow<Modset>(response, "Could not create modset.");
     },
-    async updateModset(modsetId: number, name: string, permissions?: GroupPermission[]) {
-      const payload = { name, ...(permissions !== undefined ? { group_permissions: permissions } : {}) };
+    async updateModset(modsetId: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) {
+      const payload = { name, ...(orderMode !== undefined ? { order_mode: orderMode, confirm_order_change: confirmOrderChange ?? false } : {}), ...(parentModsetId !== undefined ? { parent_modset_id: parentModsetId, confirm_parent_conflicts: confirmParentConflicts ?? false } : {}), ...(permissions !== undefined ? { group_permissions: permissions } : {}) };
       const response = await request(`/modsets/${modsetId}`, { method: "PATCH", json: payload });
       return readJsonOrThrow<Modset>(response, "Could not rename modset.");
     },
@@ -193,8 +196,8 @@ export function createApiClient(onUnauthorized?: () => void) {
       const response = await request(`/modsets/${modsetId}/export`);
       return readJsonOrThrow<ModsetExport>(response, "Could not export modset.");
     },
-    async updateModsetLoadOrder(modsetId: number, entries: { mod_id: string; load_order: number }[]) {
-      const response = await request(`/modsets/${modsetId}/load-order`, { method: "PATCH", json: { entries } });
+    async updateExportOrder(modsetId: number, modIds: string[]) {
+      const response = await request(`/modsets/${modsetId}/export-order`, { method: "PUT", json: { mod_ids: modIds } });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.detail ?? "Could not update export order.");

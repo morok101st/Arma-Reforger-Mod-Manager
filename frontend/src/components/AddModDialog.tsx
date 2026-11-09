@@ -66,6 +66,7 @@ export function AddModDialog({
             ariaLabel="Target modset"
           />
         </label>
+        {Boolean(modsets.find(set => set.id === targetModsetId)?.child_modsets_count) && <p className="muted">This is a parent modset. Adding a mod also adds it to its child modsets and makes this installed version binding, replacing any local version of the same mod.</p>}
         {error && <p className="error-box" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button className="secondary-button compact" onClick={onClose} type="button">
