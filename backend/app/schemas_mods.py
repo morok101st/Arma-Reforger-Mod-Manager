@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.schema_enums import ModStatus, TrackingReason
 
@@ -43,6 +43,11 @@ class ModVersionRead(BaseModel):
 
 
 class ModRead(BaseModel):
+    export_position: int | None = None
+    export_order_mode: str = Field(default="independent", json_schema_extra={"deprecated": True, "description": "Compatibility field; use order_mode."})
+    derived_modsets_count: int = Field(default=0, json_schema_extra={"deprecated": True, "description": "Compatibility field; use child_modsets_count."})
+    inherited_from_modset_id: int | None = Field(default=None, json_schema_extra={"deprecated": True, "description": "Compatibility field; use parent_modset_id."})
+    inherited_from_modset_name: str | None = Field(default=None, json_schema_extra={"deprecated": True, "description": "Compatibility field; use parent_modset_name."})
     id: str
     name: str | None
     summary: str | None
@@ -66,6 +71,26 @@ class ModRead(BaseModel):
     delete_blocked: bool = False
     status: ModStatus
     versions: list[ModVersionRead] = []
+
+    @computed_field
+    @property
+    def parent_modset_id(self) -> int | None:
+        return self.inherited_from_modset_id
+
+    @computed_field
+    @property
+    def parent_modset_name(self) -> str | None:
+        return self.inherited_from_modset_name
+
+    @computed_field
+    @property
+    def child_modsets_count(self) -> int:
+        return self.derived_modsets_count
+
+    @computed_field
+    @property
+    def order_mode(self) -> Literal["parent", "independent"]:
+        return "parent" if self.export_order_mode == "base" else "independent"
 
 
 class RefreshResult(BaseModel):

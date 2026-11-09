@@ -63,6 +63,8 @@ async def api_create_mod(
         schedule_mod_metadata_refresh(payload.id, effective_modset_id)
         audit_mod_created(db, mod=created, modset_id=effective_modset_id, request=request, actor=current_user)
         return created
+    except HTTPException:
+        raise
     except Exception as exc:
         audit_mod_create_failed(db, payload=payload, modset_id=effective_modset_id, request=request, actor=current_user, exc=exc)
         raise_workshop_fetch_failed(exc)

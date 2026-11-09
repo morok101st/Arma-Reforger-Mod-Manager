@@ -2,7 +2,7 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AuditLog, User
+from app.models import AuditLog, User, ModSet
 from app.schemas_audit import AuditLogRead, ModsetActivityRead
 
 
@@ -43,12 +43,14 @@ def list_audit_logs(db: Session, limit: int = 100, offset: int = 0) -> list[Audi
 def list_modset_activity(db: Session, modset_id: int, limit: int = 20, offset: int = 0) -> list[ModsetActivityRead]:
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
+    modset = db.get(ModSet, modset_id)
+    source_ids = [modset_id] + ([modset.base_modset_id] if modset and modset.base_modset_id else [])
     logs = db.scalars(
         select(AuditLog)
         .where(
             AuditLog.entity_type == "mod",
             AuditLog.action.in_(("mod_created", "mod_updated", "mod_deleted")),
-            AuditLog.detail["modset_id"].as_integer() == modset_id,
+            AuditLog.detail["modset_id"].as_integer().in_(source_ids),
         )
         .order_by(AuditLog.created_at.desc())
         .offset(offset)

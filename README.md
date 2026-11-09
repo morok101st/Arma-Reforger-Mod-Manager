@@ -7,7 +7,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 *Current interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
 
-**Documentation scope:** this README describes **0.2.6**. The redesign, URL navigation, improved recovery, atomic user editing and persistent manual checks are included in this release. The tracked deployment examples select `0.2.6`. See [changes since 0.2.5](docs/changes-since-0.2.5.md) and [release notes](docs/releases/0.2.6.md).
+**Current release: 0.2.7.** Includes [parent/child modsets and list-based export ordering](docs/parent-child-modsets.md), binding inherited versions, parent-controlled ordering and Child mods first. Deployment examples select `0.2.7`. See [release notes](docs/releases/0.2.7.md) and the [upgrade guide](docs/upgrading.md).
 
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 
@@ -25,7 +25,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Can optionally set orphaned dependency mods to `No installed version` when a parent mod is deleted or deactivated.
 - Stores changelog history per version including `Last modified`.
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
-- Supports per-modset export load order through a numeric `load_order` value. Lower values load earlier, higher values load later, and the default is `500`.
+- Supports per-modset export order. The development editor displays list positions and saves moves; legacy numeric API calls remain compatible.
 - Can send Discord update alerts through admin-managed webhooks without code changes.
 - Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
 - Discord update alerts can link directly back into ARMM for the affected mod and modset.
@@ -94,7 +94,8 @@ Base path behind the frontend proxy: `/api`
 - `GET/POST/PATCH/DELETE /api/modsets...`
 - `POST /api/modsets/{modset_id}/activate`
 - `POST /api/modsets/{modset_id}/duplicate`
-- `PATCH /api/modsets/{modset_id}/load-order`
+- `PUT /api/modsets/{modset_id}/export-order` (development; complete ordered `mod_ids` list)
+- `PATCH /api/modsets/{modset_id}/load-order` (numeric compatibility endpoint)
 - `GET /api/modsets/{modset_id}/activity` (`limit`, `offset`)
 - `GET /api/modsets/{modset_id}/export`
 - `GET/POST/PATCH/DELETE /api/users...` (admin)
@@ -202,16 +203,14 @@ Scheduled metadata lookup flow:
 ## Export load order
 
 Arma Reforger uses the order of entries in the exported `mods` array as the server load order.
-ARMM stores a numeric export load order per tracked mod inside each modset.
+The development UI manages export order as a list with positions **1, 2, 3…**.
 
-- Default value: `500`
-- Lower values load earlier.
-- Higher values load later.
-- Equal values are allowed and fall back to mod name and mod ID for stable ordering.
-- The normal sidebar sort modes are for browsing; the exported file always uses the stored export load order.
-- The dashboard includes a collapsible export-order editor for the active modset so the final export order can be adjusted and checked before downloading the JSON.
-- Export order can be adjusted either by entering a numeric value directly or by using move controls for top, up, down, and bottom.
-- `Reset order` sets all exported mods in the selected modset back to the default value `500`.
+- Move mods to the top, up, down or to the bottom; changes save automatically.
+- Existing order is preserved, including tie-breaking for previously equal values.
+- Browser/sidebar sorting remains separate from export order.
+- A child modset can follow its parent order and insert local mods, or keep its own independent order. See [parent/child modsets](docs/parent-child-modsets.md).
+- The UI saves complete ordered mod-ID lists. Numeric values remain internal and existing numeric API calls stay compatible.
+- Numeric API fields remain supported for compatibility; the UI saves the complete ordered sequence.
 
 ## Operations
 
@@ -224,7 +223,7 @@ ARMM stores a numeric export load order per tracked mod inside each modset.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
-- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.6`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
+- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.7`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
 
 ### Optional OIDC login
 

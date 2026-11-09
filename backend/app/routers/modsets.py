@@ -18,13 +18,15 @@ from app.modset_service import (
     export_modset,
     list_modsets,
     update_modset_load_order,
+    update_export_order,
     update_modset,
+    preview_export_order,
 )
 from app.models import User
 from app.router_helpers import audit_event
 from app.schemas_audit import ModsetActivityRead
 from app.schemas_auth import AuthUserRead
-from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetLoadOrderUpdate, ModSetRead, ModSetUpdate
+from app.schemas_modsets import ModSetCreate, ModSetExportEntry, ModSetLoadOrderUpdate, ModSetRead, ModSetUpdate, ModSetExportOrderUpdate
 from app.user_service import auth_user_to_read
 
 router = APIRouter(tags=["modsets"])
@@ -53,7 +55,7 @@ def api_create_modset(
         entity_id=str(created.id),
         actor=current_user,
         request=request,
-        detail={"modset_name": created.name},
+        detail={"modset_name": created.name, "parent_modset_id": created.base_modset_id},
     )
     return created
 
@@ -83,6 +85,8 @@ def api_update_modset(
         request=request,
         detail={
             "modset_name": updated.name,
+            "order_mode": updated.order_mode,
+            **({"parent_modset_id": updated.base_modset_id} if "base_modset_id" in payload.model_fields_set else {}),
             **({"group_permissions": [entry.model_dump() for entry in payload.group_permissions]}
                if payload.group_permissions is not None else {}),
         },
@@ -219,3 +223,23 @@ def api_modset_activity(
         return list_modset_activity(db, modset_id, limit=limit, offset=offset)
     except ModSetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/modsets/{modset_id}/order-preview", response_model=list[ModSetExportEntry])
+def api_order_preview(modset_id: int, mode: str, parent_modset_id: int | None = None, base_modset_id: int | None = None,
+                      db: Session = Depends(get_db), current_user: User = Depends(require_current_user)):
+    if parent_modset_id is not None and base_modset_id is not None and parent_modset_id != base_modset_id:
+        raise HTTPException(status_code=422, detail="Conflicting parent modset IDs")
+    mode = "base" if mode == "parent" else mode
+    if mode not in {"base", "independent"}:
+        raise HTTPException(status_code=422, detail="Unknown export order mode")
+    return preview_export_order(db, current_user, modset_id, mode, parent_modset_id if parent_modset_id is not None else base_modset_id)
+
+
+@router.put("/modsets/{modset_id}/export-order", status_code=status.HTTP_204_NO_CONTENT)
+def api_update_export_order(modset_id: int, payload: ModSetExportOrderUpdate, request: Request,
+                            db: Session = Depends(get_db), current_user: User = Depends(require_current_user)) -> None:
+    update_export_order(db, current_user, modset_id, payload)
+    audit_event(db, action="modset_load_order_updated", entity_type="modset", entity_id=str(modset_id),
+                actor=current_user, request=request,
+                detail={"modset_id": modset_id, "updated_count": len(payload.mod_ids), "mod_ids": payload.mod_ids})

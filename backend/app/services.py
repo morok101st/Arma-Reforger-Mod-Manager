@@ -3,9 +3,11 @@ import queue
 import threading
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from fastapi import HTTPException
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.base_modsets import synchronize_derived_modsets
 from app.config import get_settings
 from app.database import SessionLocal
 from app.discord_webhooks import notify_update_available
@@ -17,6 +19,7 @@ from app.mod_dependencies import (
 from app.mod_persistence import upsert_scraped_mod
 from app.mod_queries import (
     collect_dependency_sets,
+    inherited_mapping,
     get_mod_or_none,
     get_mod_read,
     get_user_mod_or_none,
@@ -24,7 +27,7 @@ from app.mod_queries import (
     list_tracked_user_mods,
     normalize_dependencies,
 )
-from app.models import Mod, UserMod
+from app.models import Mod, UserMod, ModSet, ModSetExportOrder
 from app.schemas_mods import ModCreate, ModRead, RefreshResult, UserModUpdate
 from app.scraper import WorkshopScraper
 from app.workshop_provider import get_workshop_metadata_provider
@@ -49,6 +52,8 @@ _metadata_refresh_workers_started = False
 
 
 async def create_mod(db: Session, payload: ModCreate, modset_id: int, defer_metadata_refresh: bool = False) -> ModRead:
+    if inherited_mapping(db, modset_id, payload.id):
+        raise HTTPException(status_code=409, detail="This mod is inherited. Its version is managed in the parent modset.")
     mod = db.get(Mod, payload.id)
     if not mod:
         mod = Mod(id=payload.id)
@@ -71,6 +76,7 @@ async def create_mod(db: Session, payload: ModCreate, modset_id: int, defer_meta
         user_mod.pinned = payload.pinned
         user_mod.tracking_reason = "manual"
 
+    synchronize_derived_modsets(db, modset_id)
     db.commit()
     if defer_metadata_refresh:
         await fetch_and_upsert_mods(db, WorkshopScraper(get_settings().workshop_base_url), [payload.id])
@@ -92,6 +98,19 @@ async def update_user_mod(
     send_update_notifications: bool = False,
     defer_metadata_refresh: bool = False,
 ) -> ModRead | None:
+    settings_modset = db.get(ModSet, modset_id)
+    fields = provided_fields if provided_fields is not None else payload.model_fields_set
+    if "load_order" in fields and settings_modset and settings_modset.base_modset_id and settings_modset.export_order_mode == "base":
+        raise HTTPException(status_code=409, detail="Parent order is binding. Use the complete modset load-order endpoint to place local mods.")
+    if inherited_mapping(db, modset_id, mod_id):
+        fields = provided_fields if provided_fields is not None else payload.model_fields_set
+        if fields - {"load_order"}:
+            raise HTTPException(status_code=409, detail="Inherited mods can only change export order. Edit the version in the parent modset.")
+        if payload.load_order is not None:
+            from app.modset_service import set_inherited_order
+            set_inherited_order(db, modset_id, mod_id, payload.load_order)
+            db.commit()
+        return get_mod_read(db, mod_id, modset_id)
     mod = db.get(Mod, mod_id)
     if not mod:
         return None
@@ -103,6 +122,11 @@ async def update_user_mod(
     previous_current_version = (user_mod.current_version or "").strip()
     provided_fields = provided_fields or set(payload.model_fields_set)
 
+    if "current_version" in provided_fields and not payload.current_version and user_mod.current_version:
+        for child_id in db.scalars(select(ModSet.id).where(ModSet.base_modset_id == modset_id)):
+            required, _ = collect_dependency_sets(list_tracked_user_mods(db, child_id))
+            if mod_id in required:
+                raise HTTPException(status_code=409, detail="This parent mod is required by an installed mod in a child modset.")
     if "current_version" in provided_fields:
         user_mod.current_version = payload.current_version
     if "pinned" in provided_fields and payload.pinned is not None:
@@ -217,7 +241,7 @@ async def refresh_all_mods(db: Session, send_update_notifications: bool = False,
     query = select(UserMod.mod_id).distinct().order_by(UserMod.mod_id)
     if modset_id is not None:
         query = query.where(UserMod.modset_id == modset_id)
-    mod_ids = list(db.scalars(query).all())
+    mod_ids = [row.mod_id for row in list_tracked_user_mods(db, modset_id)] if modset_id is not None else list(db.scalars(query).all())
     failed: dict[str, str] = {}
     refreshed = 0
     for mod_id in mod_ids:
@@ -253,7 +277,8 @@ async def refresh_mod_for_all_modsets(
     await fetch_and_upsert_mods(db, metadata_provider, [mod_id])
 
     modset_ids = list(db.scalars(select(UserMod.modset_id).where(UserMod.mod_id == mod_id).distinct()).all())
-    for modset_id in modset_ids:
+    derived_ids = list(db.scalars(select(ModSet.id).where(ModSet.base_modset_id.in_(modset_ids))).all())
+    for modset_id in dict.fromkeys(modset_ids + derived_ids):
         refreshed = get_mod_or_none(db, mod_id, modset_id)
         if not refreshed:
             continue
@@ -273,6 +298,8 @@ async def fetch_and_upsert_mods(db: Session, metadata_provider, mod_ids: list[st
 
 
 def delete_mod(db: Session, mod_id: str, modset_id: int, deactivate_orphan_dependencies: bool = False) -> bool:
+    if inherited_mapping(db, modset_id, mod_id):
+        raise HTTPException(status_code=409, detail="Inherited mods cannot be removed. Edit the parent modset or detach it first.")
     user_mod = get_user_mod_or_none(db, mod_id, modset_id)
     if not user_mod:
         return False
@@ -280,6 +307,9 @@ def delete_mod(db: Session, mod_id: str, modset_id: int, deactivate_orphan_depen
         raise ModDeleteBlockedError("Cannot delete a mod that is an active dependency of another tracked mod.")
     orphaned_dependency_ids = find_orphaned_dependency_ids_for_mod_delete(db, mod_id, modset_id)
     db.delete(user_mod)
+    db.execute(delete(ModSetExportOrder).where(ModSetExportOrder.modset_id == modset_id, ModSetExportOrder.mod_id == mod_id))
+    child_ids = select(ModSet.id).where(ModSet.base_modset_id == modset_id)
+    db.execute(delete(ModSetExportOrder).where(ModSetExportOrder.modset_id.in_(child_ids), ModSetExportOrder.mod_id == mod_id))
     db.commit()
     if deactivate_orphan_dependencies:
         deactivate_dependency_tracking(db, modset_id, orphaned_dependency_ids)
@@ -294,7 +324,13 @@ def list_mods(db: Session, modset_id: int) -> list[ModRead]:
 def is_delete_blocked(db: Session, mod_id: str, modset_id: int) -> bool:
     mappings = list_tracked_user_mods(db, modset_id)
     dependency_ids, _ = collect_dependency_sets(mappings)
-    return mod_id in dependency_ids
+    if mod_id in dependency_ids:
+        return True
+    for child_id in db.scalars(select(ModSet.id).where(ModSet.base_modset_id == modset_id)):
+        child_dependencies, _ = collect_dependency_sets(list_tracked_user_mods(db, child_id))
+        if mod_id in child_dependencies:
+            return True
+    return False
 
 
 def find_orphaned_dependency_ids_for_mod_delete(db: Session, mod_id: str, modset_id: int) -> list[str]:
@@ -343,5 +379,6 @@ def deactivate_dependency_tracking(db: Session, modset_id: int, mod_ids: list[st
         db.scalars(select(UserMod).where(UserMod.modset_id == modset_id, UserMod.mod_id.in_(mod_ids))).all()
     )
     for mapping in mappings:
-        mapping.current_version = None
+        if not inherited_mapping(db, modset_id, mapping.mod_id) and not is_delete_blocked(db, mapping.mod_id, modset_id):
+            mapping.current_version = None
     db.commit()

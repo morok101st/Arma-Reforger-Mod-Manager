@@ -38,17 +38,19 @@ export function useAppActions({
     loadAuditLogs: () => Promise<unknown>;
   };
   mods: {
+    loadMods: () => Promise<unknown>;
+    loadModsetActivity: (page?: number) => Promise<unknown>;
     addMod: (modId: string, currentVersion: string | null, modsetId?: number) => Promise<{ id: string }>;
     refreshMod: (id: string) => Promise<unknown>;
     removeMod: (id: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
     updateInstalledVersion: (nextVersion?: string, options?: { deactivateOrphanDependencies?: boolean }) => Promise<unknown>;
-    updateModLoadOrder: (modId: string, loadOrder: number) => Promise<unknown>;
-    updateModsetLoadOrder: (entries: { mod_id: string; load_order: number }[]) => Promise<unknown>;
+    updateExportOrder: (modIds: string[]) => Promise<unknown>;
   };
   modsets: {
+    activeModsetId: number | null;
     activateModset: (modsetId: number) => Promise<unknown>;
-    createModset: (name: string) => Promise<unknown>;
-    updateModset: (modsetId: number, name: string, permissions?: GroupPermission[]) => Promise<unknown>;
+    createModset: (name: string, parentModsetId?: number | null, orderMode?: "parent" | "independent") => Promise<unknown>;
+    updateModset: (modsetId: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) => Promise<unknown>;
     duplicateModset: (modsetId: number) => Promise<unknown>;
     deleteModset: (modsetId: number) => Promise<unknown>;
     exportModset: (modsetId: number) => Promise<ModsetExport>;
@@ -197,25 +199,24 @@ export function useAppActions({
     await action.run(() => mods.updateInstalledVersion(nextVersion, options));
   }, [action, mods]);
 
-  const updateModLoadOrder = React.useCallback(async (modId: string, loadOrder: number) => {
-    await action.run(() => mods.updateModLoadOrder(modId, loadOrder), { rethrow: true });
-  }, [action, mods]);
-
-  const updateModsetLoadOrder = React.useCallback(async (entries: { mod_id: string; load_order: number }[]) => {
-    await action.run(() => mods.updateModsetLoadOrder(entries), { rethrow: true });
+  const updateExportOrder = React.useCallback(async (modIds: string[]) => {
+    await action.run(() => mods.updateExportOrder(modIds), { rethrow: true });
   }, [action, mods]);
 
   const activateModset = React.useCallback(async (modsetId: number) => {
     await action.run(() => modsets.activateModset(modsetId), { rethrow: true });
   }, [action, modsets]);
 
-  const createModset = React.useCallback(async (name: string) => {
-    await action.run(() => modsets.createModset(name), { rethrow: true });
+  const createModset = React.useCallback(async (name: string, parentModsetId?: number | null, orderMode?: "parent" | "independent") => {
+    await action.run(() => modsets.createModset(name, parentModsetId, orderMode), { rethrow: true });
   }, [action, modsets]);
 
-  const updateModset = React.useCallback(async (modsetId: number, name: string, permissions?: GroupPermission[]) => {
-    await action.run(() => modsets.updateModset(modsetId, name, permissions), { rethrow: true });
-  }, [action, modsets]);
+  const updateModset = React.useCallback(async (modsetId: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) => {
+    await action.run(() => modsets.updateModset(modsetId, name, permissions, parentModsetId, confirmParentConflicts, orderMode, confirmOrderChange), { rethrow: true });
+    if ((parentModsetId !== undefined || orderMode !== undefined) && modsetId === modsets.activeModsetId) {
+      await Promise.allSettled([mods.loadMods(), mods.loadModsetActivity()]);
+    }
+  }, [action, modsets, mods]);
 
   const deleteModset = React.useCallback(async (modsetId: number) => {
     await action.run(() => modsets.deleteModset(modsetId), { rethrow: true });
@@ -271,8 +272,7 @@ export function useAppActions({
     refreshMod,
     removeMod,
     updateInstalledVersion,
-    updateModLoadOrder,
-    updateModsetLoadOrder,
+    updateExportOrder,
     activateModset,
     createModset,
     updateModset,

@@ -35,8 +35,8 @@ export function ModsetManagement({
   activeModsetId: number | null;
   loading: boolean;
   error: string | null;
-  createModset: (name: string) => Promise<void>;
-  updateModset: (modsetId: number, name: string, permissions?: GroupPermission[]) => Promise<void>;
+  createModset: (name: string, parentModsetId?: number | null, orderMode?: "parent" | "independent") => Promise<void>;
+  updateModset: (modsetId: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) => Promise<void>;
   duplicateModset: (modsetId: number) => Promise<void>;
   deleteModset: (modsetId: number) => Promise<void>;
   activateModset: (modsetId: number) => Promise<void>;
@@ -46,6 +46,8 @@ export function ModsetManagement({
   const [scope, setScope] = React.useState("all");
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [newName, setNewName] = React.useState("");
+  const [parentId, setParentId] = React.useState("");
+  const [orderMode, setOrderMode] = React.useState<"parent" | "independent">("parent");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [editModsetId, setEditModsetId] = React.useState<number | null>(null);
   const [deleteModsetId, setDeleteModsetId] = React.useState<number | null>(null);
@@ -58,7 +60,7 @@ export function ModsetManagement({
     const name = newName.trim();
     if (!name) return;
     setCreateError(null);
-    try { await createModset(name); closeCreateDialog(); }
+    try { await createModset(name, parentId ? Number(parentId) : null, orderMode); closeCreateDialog(); }
     catch (error) { setCreateError(error instanceof Error ? error.message : "Could not create modset. Try again."); }
   }
 
@@ -67,6 +69,8 @@ export function ModsetManagement({
   }
 
   function openCreateDialog() {
+    setParentId("");
+    setOrderMode("parent");
     setNewName("");
     setCreateError(null);
     setShowCreateDialog(true);
@@ -105,6 +109,8 @@ export function ModsetManagement({
         <thead><tr><th scope="col">Modset</th><th scope="col">Owner</th><th scope="col">Access</th><th scope="col">Mods</th><th scope="col">Actions</th></tr></thead>
         <tbody>{modsets.filter(matches).map(modset => <tr key={modset.id} className={modset.id === activeModsetId ? "current" : undefined}>
           <td className="modset-name-cell"><button className="modset-open" type="button" disabled={loading} onClick={() => activateModset(modset.id).catch(() => null)} aria-label={`Open modset ${modset.name}`}>{modset.name}</button>
+            {modset.parent_modset_id && <small>Parent: {modset.parent_modset_name ?? "Access required"}</small>}
+            {Boolean(modset.child_modsets_count) && <small>Parent of {modset.child_modsets_count} child modset(s)</small>}
             {modset.id === activeModsetId && <span className="modset-current">Active</span>}
           </td>
           <td><span className="mobile-cell-label">Owner</span>{modset.is_owner ? "You" : modset.owner_username ?? "Unknown"}</td>
@@ -117,7 +123,7 @@ export function ModsetManagement({
               <summary aria-label={`More actions for ${modset.name}`} title="More actions"><MoreHorizontal size={18} /><span className="modset-more-label">More actions</span></summary>
               <div>
                 <button type="button" disabled={loading} onClick={() => duplicateModset(modset.id).catch(() => null)}><Copy size={16} /> Duplicate</button>
-                <button className="modset-delete-action" type="button" disabled={loading || !modset.can_delete || modsets.length <= 1} title={modsets.length <= 1 ? "The last modset cannot be deleted." : undefined} onClick={() => setDeleteModsetId(modset.id)}><Trash2 size={16} /> Delete</button>
+                <button className="modset-delete-action" type="button" disabled={loading || !modset.can_delete || Boolean(modset.child_modsets_count) || modsets.length <= 1} title={modset.child_modsets_count ? "Detach child modsets before deleting their parent." : modsets.length <= 1 ? "The last modset cannot be deleted." : undefined} onClick={() => setDeleteModsetId(modset.id)}><Trash2 size={16} /> Delete</button>
               </div>
             </details>
           </div></td>
@@ -128,12 +134,15 @@ export function ModsetManagement({
       </>}
       {showCreateDialog && (
         <Dialog title="Create modset" onClose={closeCreateDialog}>
-          <form className="dialog-form" onSubmit={handleCreate}>
+          <form className="dialog-form parent-modset-form" onSubmit={handleCreate}>
             <ResourceStatus state={loadState} label="modsets" />
             <label>
               Name
               <input autoFocus maxLength={120} disabled={loading} value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
             </label>
+            <label>Parent modset<CustomSelect value={parentId} onChange={setParentId} disabled={loading} ariaLabel="Parent modset" options={[{value:"", label:"None — independent modset"}, ...modsets.filter(set => !set.parent_modset_id).map(set => ({value:String(set.id), label:set.name}))]} /></label>
+            {parentId && <label>Export order<CustomSelect<"parent" | "independent"> value={orderMode} onChange={setOrderMode} disabled={loading} ariaLabel="Export order mode" options={[{value:"parent",label:"Follow parent order and insert local mods"},{value:"independent",label:"Independent order"}]} /></label>}
+            <p className="muted">Installed versions stay linked, including future parent additions. Local mods of the same ID adopt the parent version. Choose whether to follow the parent order or manage it independently. Users also need parent read access.</p>
             {createError && <p className="error-box" role="alert">{createError}</p>}
             <div className="dialog-actions">
               <button className="secondary-button compact" onClick={closeCreateDialog} type="button">
@@ -147,7 +156,7 @@ export function ModsetManagement({
         </Dialog>
       )}
 
-      {editModset && <ModsetEditDialog key={editModset.id} modset={editModset} groups={groups} groupsLoad={groupsLoad} modsetsLoad={loadState} api={api}
+      {editModset && <ModsetEditDialog key={editModset.id} modset={editModset} modsets={modsets} groups={groups} groupsLoad={groupsLoad} modsetsLoad={loadState} api={api}
         updateModset={updateModset} onClose={closeEditDialog} onSaved={onAccessChanged} />}
 
       {deleteModsetTarget && (

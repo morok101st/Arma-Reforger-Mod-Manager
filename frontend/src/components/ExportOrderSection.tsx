@@ -1,24 +1,23 @@
 import React from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, RotateCcw, Save, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, GitFork, RotateCcw, TriangleAlert } from "lucide-react";
 
 import type { Mod } from "../types";
+import { compareExportOrder } from "../lib/utils";
 
 export function ExportOrderSection({
   activeModsetName,
   mods,
   loading,
   error,
-  updateModLoadOrder,
-  updateModsetLoadOrder,
+  updateExportOrder,
 }: {
   activeModsetName: string;
   mods: Mod[];
   loading: boolean;
   error: string | null;
-  updateModLoadOrder: (modId: string, loadOrder: number) => Promise<void>;
-  updateModsetLoadOrder: (entries: { mod_id: string; load_order: number }[]) => Promise<void>;
+  updateExportOrder: (modIds: string[]) => Promise<void>;
 }) {
-  const [loadOrderEdits, setLoadOrderEdits] = React.useState<Record<string, string>>({});
+  const followsParent = mods.some(mod => mod.order_mode === "parent");
   const [highlightedModId, setHighlightedModId] = React.useState<string | null>(null);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const highlightTimerRef = React.useRef<number | null>(null);
@@ -27,13 +26,9 @@ export function ExportOrderSection({
     () =>
       mods
         .filter((mod) => Boolean((mod.current_version ?? "").trim()))
-        .sort((left, right) => left.load_order - right.load_order || compareModName(left, right)),
+        .sort(compareExportOrder),
     [mods],
   );
-
-  React.useEffect(() => {
-    setLoadOrderEdits(Object.fromEntries(mods.map((mod) => [mod.id, String(mod.load_order ?? DEFAULT_LOAD_ORDER)])));
-  }, [mods]);
 
   React.useEffect(() => {
     setHighlightedModId(null);
@@ -45,13 +40,6 @@ export function ExportOrderSection({
     };
   }, []);
 
-  async function handleLoadOrderSave(mod: Mod) {
-    const value = loadOrderEdits[mod.id] ?? String(mod.load_order ?? DEFAULT_LOAD_ORDER);
-    const normalizedLoadOrder = Number.parseInt(value.trim(), 10);
-    if (!isValidLoadOrder(normalizedLoadOrder)) return;
-    await updateModLoadOrder(mod.id, normalizedLoadOrder);
-  }
-
   async function handleMoveMod(modId: string, targetIndex: number) {
     const currentIndex = exportOrderMods.findIndex((mod) => mod.id === modId);
     if (currentIndex < 0) return;
@@ -60,7 +48,7 @@ export function ExportOrderSection({
     const reordered = [...exportOrderMods];
     const [moved] = reordered.splice(currentIndex, 1);
     reordered.splice(boundedTargetIndex, 0, moved);
-    await updateModsetLoadOrder(reindexedLoadOrderEntries(reordered));
+    await updateExportOrder(reordered.map(mod => mod.id));
     setHighlightedModId(modId);
     if (highlightTimerRef.current !== null) window.clearTimeout(highlightTimerRef.current);
     highlightTimerRef.current = window.setTimeout(() => {
@@ -69,9 +57,12 @@ export function ExportOrderSection({
     }, 1000);
   }
 
-  async function handleResetLoadOrder() {
+  async function placeLocalModsAtEnd() {
     if (exportOrderMods.length === 0) return;
-    await updateModsetLoadOrder(exportOrderMods.map((mod) => ({ mod_id: mod.id, load_order: DEFAULT_LOAD_ORDER })));
+    await updateExportOrder([
+      ...exportOrderMods.filter(mod => mod.parent_modset_id),
+      ...exportOrderMods.filter(mod => !mod.parent_modset_id),
+    ].map(mod => mod.id));
   }
 
   return (
@@ -79,15 +70,15 @@ export function ExportOrderSection({
       <div className="section-heading">
         <h3>Export order</h3>
         <div className="export-order-heading-actions">
-          {isExpanded && (
+          {isExpanded && followsParent && (
             <button
               className="secondary-button compact"
-              disabled={loading || exportOrderMods.length === 0 || exportOrderMods.every((mod) => mod.load_order === DEFAULT_LOAD_ORDER)}
-              onClick={() => handleResetLoadOrder().catch(() => null)}
+              disabled={loading || !exportOrderMods.some((mod, index) => !mod.parent_modset_id && exportOrderMods.slice(index + 1).some(row => row.parent_modset_id))}
+              onClick={() => placeLocalModsAtEnd().catch(() => null)}
               type="button"
             >
               <RotateCcw size={16} />
-              Reset order
+              Place local mods at end
             </button>
           )}
           <button
@@ -105,6 +96,7 @@ export function ExportOrderSection({
 
       {isExpanded && (
         <div className="export-order-content" id={contentId}>
+          {followsParent && <p className="muted">Parent order is binding and follows future changes. Move your local mods between parent mods. If a parent mod is removed, local mods stay before the next remaining parent mod.</p>}
           {error && (
             <div className="status-band update_available">
               <TriangleAlert className="status-icon warn" size={20} />
@@ -116,7 +108,7 @@ export function ExportOrderSection({
           {exportOrderMods.length > 0 ? (
             <div className="export-order-table" role="table" aria-label={`Export order for ${activeModsetName}`}>
           <div className="export-order-row export-order-header" role="row">
-            <span role="columnheader">Order</span>
+            <span role="columnheader">Position</span>
             <span role="columnheader">Move</span>
             <span role="columnheader">Mod name</span>
             <span role="columnheader">Mod ID</span>
@@ -124,32 +116,12 @@ export function ExportOrderSection({
           </div>
           {exportOrderMods.map((mod, index) => (
             <div className={`export-order-row ${highlightedModId === mod.id ? "highlighted" : ""}`} role="row" key={mod.id}>
-              <div className="export-order-control" role="cell">
-                <input
-                  aria-label={`Export load order for ${mod.name ?? mod.id}`}
-                  disabled={loading}
-                  max={999999}
-                  min={0}
-                  type="number"
-                  value={loadOrderEdits[mod.id] ?? String(mod.load_order ?? DEFAULT_LOAD_ORDER)}
-                  onChange={(event) => setLoadOrderEdits((current) => ({ ...current, [mod.id]: event.target.value }))}
-                />
-                <button
-                  aria-label={`Save export load order for ${mod.name ?? mod.id}`}
-                  className="primary-button compact"
-                  disabled={loading || !hasLoadOrderChange(mod, loadOrderEdits[mod.id])}
-                  onClick={() => handleLoadOrderSave(mod).catch(() => null)}
-                  title="Save order"
-                  type="button"
-                >
-                  <Save size={16} />
-                </button>
-              </div>
+              <span className="export-order-position" role="cell" aria-label={`Export position ${index + 1} for ${mod.name ?? mod.id}`}>{index + 1}</span>
               <div className="export-order-move-actions" role="cell">
                 <button
                   aria-label={`Move ${mod.name ?? mod.id} to top`}
                   className="icon-button"
-                  disabled={loading || index === 0}
+                  disabled={loading || (followsParent && Boolean(mod.parent_modset_id)) || index === 0}
                   onClick={() => handleMoveMod(mod.id, 0).catch(() => null)}
                   title="Move to top"
                   type="button"
@@ -159,7 +131,7 @@ export function ExportOrderSection({
                 <button
                   aria-label={`Move ${mod.name ?? mod.id} up`}
                   className="icon-button"
-                  disabled={loading || index === 0}
+                  disabled={loading || (followsParent && Boolean(mod.parent_modset_id)) || index === 0}
                   onClick={() => handleMoveMod(mod.id, index - 1).catch(() => null)}
                   title="Move up"
                   type="button"
@@ -169,7 +141,7 @@ export function ExportOrderSection({
                 <button
                   aria-label={`Move ${mod.name ?? mod.id} down`}
                   className="icon-button"
-                  disabled={loading || index === exportOrderMods.length - 1}
+                  disabled={loading || (followsParent && Boolean(mod.parent_modset_id)) || index === exportOrderMods.length - 1}
                   onClick={() => handleMoveMod(mod.id, index + 1).catch(() => null)}
                   title="Move down"
                   type="button"
@@ -179,7 +151,7 @@ export function ExportOrderSection({
                 <button
                   aria-label={`Move ${mod.name ?? mod.id} to bottom`}
                   className="icon-button"
-                  disabled={loading || index === exportOrderMods.length - 1}
+                  disabled={loading || (followsParent && Boolean(mod.parent_modset_id)) || index === exportOrderMods.length - 1}
                   onClick={() => handleMoveMod(mod.id, exportOrderMods.length - 1).catch(() => null)}
                   title="Move to bottom"
                   type="button"
@@ -187,7 +159,10 @@ export function ExportOrderSection({
                   <ChevronsDown size={16} />
                 </button>
               </div>
-              <strong role="cell">{mod.name ?? "Unnamed mod"}</strong>
+              <strong className="export-order-name" role="cell">
+                <span>{mod.name ?? "Unnamed mod"}</span>
+                {mod.parent_modset_id && <span className="mod-row-inherited" role="img" aria-label={`Inherited from ${mod.parent_modset_name ?? "parent modset"}`} title={`Inherited from ${mod.parent_modset_name ?? "parent modset"}. Installed version is managed there.`}><GitFork size={16} aria-hidden="true" /></span>}
+              </strong>
               <code role="cell">{mod.id}</code>
               <span role="cell">{mod.current_version}</span>
             </div>
@@ -196,33 +171,9 @@ export function ExportOrderSection({
           ) : (
             <p className="muted">No mods with an installed version are included in the export for this modset.</p>
           )}
-          <p className="muted load-order-hint">Lower values load earlier. Higher values load later. Default: 500.</p>
+          <p className="muted export-order-hint">{followsParent ? "Inherited positions are managed in the parent modset. Your local placements are saved automatically." : "Move mods to arrange the server export. Changes are saved automatically."}</p>
         </div>
       )}
     </section>
   );
 }
-
-function compareModName(left: Mod, right: Mod): number {
-  const leftName = left.name ?? left.id;
-  const rightName = right.name ?? right.id;
-  return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
-}
-
-function hasLoadOrderChange(mod: Mod, value: string | undefined) {
-  const normalizedLoadOrder = Number.parseInt((value ?? "").trim(), 10);
-  return isValidLoadOrder(normalizedLoadOrder) && normalizedLoadOrder !== mod.load_order;
-}
-
-function isValidLoadOrder(value: number) {
-  return Number.isFinite(value) && value >= 0 && value <= 999999;
-}
-
-function reindexedLoadOrderEntries(mods: Mod[]) {
-  return mods.map((mod, index) => ({
-    mod_id: mod.id,
-    load_order: DEFAULT_LOAD_ORDER + index * 10,
-  }));
-}
-
-const DEFAULT_LOAD_ORDER = 500;

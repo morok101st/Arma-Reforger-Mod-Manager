@@ -1,7 +1,7 @@
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
-import { ArrowLeft, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, GitFork, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, ModStatusFilter, SortMode } from "../types";
 
@@ -15,6 +15,9 @@ export function Sidebar({
   searchQuery,
   statusFilter,
   sortMode,
+  isChildModset,
+  childModsFirst,
+  onChildModsFirstChange,
   mods,
   totalModsCount,
   selectedModId,
@@ -26,6 +29,9 @@ export function Sidebar({
   onClose,
 }: {
   loadState: LoadState;
+  isChildModset: boolean;
+  childModsFirst: boolean;
+  onChildModsFirstChange: (value: boolean) => void;
   isMobileDrawerOpen: boolean; loading: boolean; showDashboard: boolean; showModsetAdmin: boolean; showUserAdmin: boolean;
   searchQuery: string; statusFilter: ModStatusFilter; sortMode: SortMode; mods: Mod[]; totalModsCount: number; selectedModId: string | null;
   onShowDashboard: () => void; onSearchChange: (value: string) => void; onStatusFilterChange: (value: ModStatusFilter) => void;
@@ -58,6 +64,7 @@ export function Sidebar({
     </div>
     {!showDashboard && <button className="workspace-overview" type="button" onClick={onShowDashboard}><ArrowLeft size={16} /> Back to overview</button>}
     <label className="mod-search">Search mods<input value={searchQuery} onChange={event => onSearchChange(event.target.value)} placeholder="Name or Workshop ID" /></label>
+    {isChildModset && <label className="checkbox-row child-mods-first" title="Show this child modset’s own mods before inherited parent mods. Sort by applies within each group."><input type="checkbox" checked={childModsFirst} onChange={event => onChildModsFirstChange(event.target.checked)} />Child mods first</label>}
     <div className={`browser-filters ${filtersOpen || statusFilter !== "all" ? "expanded" : ""}`}>
       <div className="filter-row">
         <label>
@@ -84,7 +91,7 @@ export function Sidebar({
               { value: "name", label: "Name" },
               { value: "status", label: "Status" },
               { value: "last_checked", label: "Last checked" },
-              { value: "load_order", label: "Load order" },
+              { value: "load_order", label: "Export order" },
             ]}
             onChange={onSortChange}
             ariaLabel="Sort by"
@@ -127,6 +134,11 @@ export function Sidebar({
                 </span>
               )}
               {mod.pinned && <Pin size={14} />}
+              {mod.parent_modset_id && (
+                <span className="mod-row-inherited" role="img" aria-label={`Inherited from ${mod.parent_modset_name ?? "parent modset"}`} title={`Inherited from ${mod.parent_modset_name ?? "parent modset"}. Installed version is managed there.`}>
+                  <GitFork size={16} aria-hidden="true" />
+                </span>
+              )}
             </span>
           </button>
         ))}

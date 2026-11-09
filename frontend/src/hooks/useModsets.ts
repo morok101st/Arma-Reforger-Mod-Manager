@@ -13,8 +13,8 @@ export function useModsets({
   requestedModsetId: number | null;
   api: {
     listModsets: () => Promise<Modset[]>;
-    createModset: (name: string) => Promise<Modset>;
-    updateModset: (modsetId: number, name: string, permissions?: GroupPermission[]) => Promise<Modset>;
+    createModset: (name: string, parentModsetId?: number | null, orderMode?: "parent" | "independent") => Promise<Modset>;
+    updateModset: (modsetId: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) => Promise<Modset>;
     duplicateModset: (modsetId: number) => Promise<Modset>;
     deleteModset: (modsetId: number) => Promise<AuthUser>;
     activateModset: (modsetId: number) => Promise<AuthUser>;
@@ -54,8 +54,8 @@ export function useModsets({
   );
 
   const createModset = React.useCallback(
-    async (name: string) => {
-      const created = await api.createModset(name);
+    async (name: string, parentModsetId?: number | null, orderMode?: "parent" | "independent") => {
+      const created = await api.createModset(name, parentModsetId, orderMode);
       await loadModsets().catch(() => null);
       return created;
     },
@@ -63,8 +63,8 @@ export function useModsets({
   );
 
   const updateModset = React.useCallback(
-    async (modsetId: number, name: string, permissions?: GroupPermission[]) => {
-      const updated = await api.updateModset(modsetId, name, permissions);
+    async (modsetId: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) => {
+      const updated = await api.updateModset(modsetId, name, permissions, parentModsetId, confirmParentConflicts, orderMode, confirmOrderChange);
       await loadModsets().catch(() => null);
       return updated;
     },

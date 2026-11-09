@@ -94,6 +94,11 @@ export type ModReference = {
 };
 
 export type Mod = {
+  export_position?: number | null;
+  order_mode?: "parent" | "independent";
+  child_modsets_count?: number;
+  parent_modset_id?: number | null;
+  parent_modset_name?: string | null;
   id: string;
   name: string | null;
   summary: string | null;
@@ -137,6 +142,10 @@ export type SchedulerStatus = {
 };
 
 export type Modset = {
+  order_mode?: "parent" | "independent";
+  parent_modset_id?: number | null;
+  parent_modset_name?: string | null;
+  child_modsets_count?: number;
   id: number;
   name: string;
   tracked_mods_count: number;

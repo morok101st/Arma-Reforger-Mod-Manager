@@ -161,6 +161,9 @@ export function App() {
         searchQuery={mods.searchQuery}
         statusFilter={mods.statusFilter}
         sortMode={mods.sortMode}
+        isChildModset={Boolean(activeModset.parent_modset_id)}
+        childModsFirst={mods.childModsFirst}
+        onChildModsFirstChange={mods.setChildModsFirst}
         mods={mods.sortedMods}
         totalModsCount={mods.mods.length}
         selectedModId={mods.selected?.id ?? null}
@@ -222,8 +225,7 @@ export function App() {
             canPageForwardModsetActivity={mods.canPageForwardModsetActivity}
             previousModsetActivityPage={mods.previousModsetActivityPage}
             nextModsetActivityPage={mods.nextModsetActivityPage}
-            updateModLoadOrder={actions.updateModLoadOrder}
-            updateModsetLoadOrder={actions.updateModsetLoadOrder}
+            updateExportOrder={actions.updateExportOrder}
           />
         ) : view.showModsetAdmin ? (
           <ModsetManagement

@@ -3,8 +3,10 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test tests/navigation.test.cjs",
-    "test:browser": "node tests/navigation.browser.cjs"
+    "test": "node --test tests/navigation.test.cjs tests/mod-sorting.test.cjs",
+    "test:browser": "node tests/navigation.browser.cjs",
+    "test:parent:browser": "node tests/parent-child-modsets.browser.cjs",
+    "test:base:browser": "npm run test:parent:browser"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

@@ -27,7 +27,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(
         bind=engine,
         tables=[table for table in Base.metadata.tables.values() if table.name not in {
-            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions", "mod_refresh_jobs",
+            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions", "mod_refresh_jobs", "modset_export_orders",
         }],
     )
     migrate_schema(engine)
@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Arma Reforger Mod Manager API",
-        version="0.2.6",
+        version="0.2.7",
         root_path="/api",
         docs_url=None,
         redoc_url=None,
