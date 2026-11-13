@@ -2175,6 +2175,8 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 }
 
 .redesigned-shell .dashboard-stats .info { min-height: 0; align-content: start; }
+.dashboard-stats .modset-size { max-width: 280px; }
+.dashboard-stats .modset-size small { color: var(--md-sys-color-on-surface-variant); line-height: 1.5; }
 .redesigned-shell .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .redesigned-shell .metrics { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
 .workspace-toolbar { position: sticky; top: -28px; z-index: 10; background: var(--md-sys-color-surface); padding-top: 12px; }

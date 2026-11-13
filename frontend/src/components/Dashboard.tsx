@@ -7,6 +7,7 @@ import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummar
 import type { Mod, ModsetActivity, ModStatusFilter, SchedulerStatus } from "../types";
 import { Info, StatusIcon } from "./common";
 import { ExportOrderSection } from "./ExportOrderSection";
+import { getModsetSize } from "../lib/modsetSize";
 
 export function Dashboard({
   activityLoad,
@@ -46,6 +47,7 @@ export function Dashboard({
   updateExportOrder: (modIds: string[]) => Promise<void>;
 }) {
   const stats = React.useMemo(() => getDashboardStats(mods), [mods]);
+  const modsetSize = React.useMemo(() => getModsetSize(mods), [mods]);
   const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
   const [isActivityExpanded, setIsActivityExpanded] = React.useState(false);
   const activityContentId = React.useId();
@@ -61,6 +63,11 @@ export function Dashboard({
       <div className="dashboard-stats">
         <Info label="Tracked mods" value={String(stats.total)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
+        <div className="info modset-size">
+          <span>Estimated size</span>
+          <strong>{modsetSize.value}</strong>
+          <small>{modsetSize.detail}Workshop metadata for mods with an installed version; actual disk usage may differ.</small>
+        </div>
         <Info
           label="Auto schedule"
           value={
