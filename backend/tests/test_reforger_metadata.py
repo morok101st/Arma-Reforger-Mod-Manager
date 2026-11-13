@@ -90,6 +90,7 @@ class ReforgerMetadataTestCase(unittest.IsolatedAsyncioTestCase):
                 ScrapedMod(
                     id="64F0EB575E3F64E2",
                     name="101st Airborne Faction",
+                    size="676.99 MB",
                     latest_version="0.4.1",
                     changelog="Scraped changelog",
                     dependencies=[{"id": "DEP001", "name": "Scraped Dependency", "url": None}],
@@ -97,12 +98,13 @@ class ReforgerMetadataTestCase(unittest.IsolatedAsyncioTestCase):
                     source_url="https://reforger.armaplatform.com/workshop/64F0EB575E3F64E2",
                 )
             ),
-            _FakeReforger({"64F0EB575E3F64E2": ScrapedMod(id="64F0EB575E3F64E2", latest_version="0.4.2", dependencies=[])}),
+            _FakeReforger({"64F0EB575E3F64E2": ScrapedMod(id="64F0EB575E3F64E2", latest_version="0.4.2", size="999 GB", dependencies=[])}),
         )
 
         mod = await provider.fetch_mod("64F0EB575E3F64E2")
 
         self.assertEqual(mod.latest_version, "0.4.2")
+        self.assertEqual(mod.size, "676.99 MB")
         self.assertEqual(mod.changelog, "Scraped changelog")
         self.assertEqual(mod.dependencies, [{"id": "DEP001", "name": "Scraped Dependency", "url": None}])
         self.assertEqual([version.version for version in mod.versions], ["0.4.2", "0.4.1"])

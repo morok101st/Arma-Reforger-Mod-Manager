@@ -7,6 +7,8 @@ from urllib.parse import urljoin
 import httpx
 from bs4 import BeautifulSoup
 
+from app.mod_size import normalize_mod_size
+
 
 @dataclass
 class ScrapedModVersion:
@@ -76,7 +78,7 @@ class WorkshopScraper:
             description=description,
             latest_version=_version_value(soup, page_text),
             game_version=_label_value(page_text, ["game version", "required game version"]),
-            size=_label_value(page_text, ["size", "file size"]),
+            size=_size_value(soup),
             dependencies=_dependencies(soup, page_text),
             changelog=_section_after_heading(soup, ["changelog", "change log", "changes"]),
             source_url=source_url,
@@ -141,6 +143,23 @@ def _label_value(text: str, labels: list[str]) -> str | None:
         if match:
             value = _clean_text(match.group(1))
             if value and value.lower() not in {"version", "game version", "size"}:
+                return value
+    return None
+
+
+def _size_value(soup: BeautifulSoup) -> str | None:
+    # Descriptions can mention map size before the actual file-size metadata.
+    # Only accept exact technical labels with their paired value, never prose.
+    nodes = soup.find_all(["dt", "th"])
+    for label in ("version size", "file size", "size"):
+        for node in nodes:
+            if _clean_text(node.get_text(" ")).casefold() != label:
+                continue
+            value_node = node.find_next_sibling()
+            if value_node is None or value_node.name != ("dd" if node.name == "dt" else "td"):
+                continue
+            value = normalize_mod_size(_clean_text(value_node.get_text(" ")))
+            if value is not None:
                 return value
     return None
 
