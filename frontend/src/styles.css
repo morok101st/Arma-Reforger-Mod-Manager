@@ -864,7 +864,7 @@ button:disabled {
   border-color: rgba(255, 206, 58, 0.24);
 }
 
-.webhook-status {
+.resource-status-badge {
   align-items: center;
   border-radius: 999px;
   display: inline-flex;
@@ -875,19 +875,19 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.webhook-status.active {
+.resource-status-badge.active {
   background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
   color: var(--md-sys-color-primary);
 }
 
-.webhook-status.inactive {
+.resource-status-badge.inactive {
   background: var(--md-sys-color-surface-hover);
   border: 1px solid var(--md-sys-color-outline-variant);
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.webhook-scope-badge {
+.resource-info-badge {
   align-items: center;
   background: var(--md-sys-color-surface-hover);
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -901,17 +901,17 @@ button:disabled {
   text-transform: uppercase;
 }
 
-:root[data-theme="dark"] .webhook-status.active {
+:root[data-theme="dark"] .resource-status-badge.active {
   background: rgba(255, 206, 58, 0.12);
   border-color: rgba(255, 206, 58, 0.24);
 }
 
-:root[data-theme="dark"] .webhook-status.inactive {
+:root[data-theme="dark"] .resource-status-badge.inactive {
   background: #202020;
   border-color: #3a3a3a;
 }
 
-:root[data-theme="dark"] .webhook-scope-badge {
+:root[data-theme="dark"] .resource-info-badge {
   background: #202020;
   border-color: #3a3a3a;
 }
@@ -2274,7 +2274,6 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .modsets-table tr.current { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 .modset-open { border: 0; background: transparent; color: var(--md-sys-color-on-surface); padding: 4px 0; text-align: left; font: inherit; font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
 .modset-open:hover { color: var(--md-sys-color-primary); text-decoration: underline; text-underline-offset: 3px; }
-.modset-current { color: var(--md-sys-color-on-primary-container); background: var(--md-sys-color-primary-container); display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; margin-left: 8px; }
 .modset-count { font-variant-numeric: tabular-nums; }
 .modset-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .modset-actions > button { padding-inline: 12px; }
@@ -2465,3 +2464,7 @@ summary:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-
 .export-order-name > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 
 .child-mods-first { min-height: 44px; margin-bottom: 8px; }
+
+.modset-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.modset-name-cell .modset-badges:not(:empty) { margin-top: 6px; }
+.modset-badges .resource-info-badge { max-width: 100%; overflow-wrap: anywhere; }

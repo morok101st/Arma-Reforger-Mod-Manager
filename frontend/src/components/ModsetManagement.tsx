@@ -109,9 +109,11 @@ export function ModsetManagement({
         <thead><tr><th scope="col">Modset</th><th scope="col">Owner</th><th scope="col">Access</th><th scope="col">Mods</th><th scope="col">Actions</th></tr></thead>
         <tbody>{modsets.filter(matches).map(modset => <tr key={modset.id} className={modset.id === activeModsetId ? "current" : undefined}>
           <td className="modset-name-cell"><button className="modset-open" type="button" disabled={loading} onClick={() => activateModset(modset.id).catch(() => null)} aria-label={`Open modset ${modset.name}`}>{modset.name}</button>
-            {modset.parent_modset_id && <small>Parent: {modset.parent_modset_name ?? "Access required"}</small>}
-            {Boolean(modset.child_modsets_count) && <small>Parent of {modset.child_modsets_count} child modset(s)</small>}
-            {modset.id === activeModsetId && <span className="modset-current">Active</span>}
+            <div className="modset-badges">
+              {modset.id === activeModsetId && <span className="resource-status-badge active">Active</span>}
+              {modset.parent_modset_id && <span className="resource-info-badge">Parent: {modset.parent_modset_name ?? "Access required"}</span>}
+              {Boolean(modset.child_modsets_count) && <span className="resource-info-badge">Parent of {modset.child_modsets_count} child modset(s)</span>}
+            </div>
           </td>
           <td><span className="mobile-cell-label">Owner</span>{modset.is_owner ? "You" : modset.owner_username ?? "Unknown"}</td>
           <td><span className="mobile-cell-label">Access</span><span>{modset.has_group_access ? "Group access" : "Private"}</span><small>{modset.can_edit ? "Can edit" : "Read only"}</small></td>
