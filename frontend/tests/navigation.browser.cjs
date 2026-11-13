@@ -196,6 +196,38 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
     }
   }
   try {
+    await test("mod list arrow keys follow visible order and keep focus without wrapping or intercepting search", async (f) => {
+      const p = f.page;
+      await f.start("?modset=1&mod=ABC");
+      const rows = p.locator(".sidebar .mod-row");
+      await rows.first().click();
+      const check = async index => {
+        await p.waitForFunction(i => {
+          const row = document.querySelectorAll(".sidebar .mod-row")[i];
+          return row && row === document.activeElement && row.getAttribute("aria-current") === "page";
+        }, index);
+      };
+      await check(0);
+      await p.keyboard.press("ArrowUp");
+      await check(0);
+      await p.keyboard.press("ArrowDown");
+      await check(1);
+      assert.equal(new URL(p.url()).searchParams.get("mod"), "DEF");
+      await p.keyboard.press("ArrowDown");
+      await check(1);
+      await p.keyboard.press("ArrowUp");
+      await check(0);
+      const search = p.getByPlaceholder("Name or Workshop ID");
+      await search.fill("ABC");
+      const url = p.url();
+      await p.keyboard.press("ArrowDown");
+      assert.equal(p.url(), url);
+      assert.equal(await search.evaluate(el => el === document.activeElement), true);
+      await rows.first().click();
+      await p.keyboard.press("ArrowDown");
+      await check(0);
+      assert.equal(await rows.count(), 1);
+    });
     await test("refresh survives reload and second tab, completes and retries after interruption", async (f) => {
       const p = f.page;
       await f.start("?modset=1&mod=ABC");

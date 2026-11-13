@@ -51,6 +51,14 @@ export function Dashboard({
   const trackedModIds = React.useMemo(() => new Set(mods.map((mod) => mod.id)), [mods]);
   const [isActivityExpanded, setIsActivityExpanded] = React.useState(false);
   const activityContentId = React.useId();
+  const sizeHintId = React.useId();
+  const [showSizeHint, setShowSizeHint] = React.useState(false);
+  React.useEffect(() => {
+    if (!showSizeHint) return;
+    const dismiss = (event: KeyboardEvent) => { if (event.key === "Escape") setShowSizeHint(false); };
+    document.addEventListener("keydown", dismiss);
+    return () => document.removeEventListener("keydown", dismiss);
+  }, [showSizeHint]);
 
   return (
     <>
@@ -63,10 +71,15 @@ export function Dashboard({
       <div className="dashboard-stats">
         <Info label="Tracked mods" value={String(stats.total)} />
         <Info label="Dependency links" value={String(stats.dependencyLinks)} />
-        <div className="info modset-size">
+        <div className="info modset-size" tabIndex={0} aria-describedby={sizeHintId}
+          onMouseEnter={() => setShowSizeHint(true)} onMouseLeave={() => setShowSizeHint(false)}
+          onFocus={() => setShowSizeHint(true)} onBlur={() => setShowSizeHint(false)}>
           <span>Estimated size</span>
           <strong>{modsetSize.value}</strong>
-          <small>{modsetSize.detail}Workshop metadata for mods with an installed version; actual disk usage may differ.</small>
+          {modsetSize.detail && <small>{modsetSize.detail.trim()}</small>}
+          <p id={sizeHintId} role="tooltip" className="modset-size-tooltip" hidden={!showSizeHint}>
+            Workshop metadata for mods with an installed version; actual disk usage may differ.
+          </p>
         </div>
         <Info
           label="Auto schedule"

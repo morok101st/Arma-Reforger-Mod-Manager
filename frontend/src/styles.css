@@ -2092,15 +2092,15 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .navigation-brand img { width: 36px; height: 36px; }
 .navigation-brand strong { font-size: 18px; letter-spacing: 0.04em; }
 .app-navigation nav { display: flex; gap: 8px; }
-.app-navigation nav button, .account-menu button, .account-menu summary, .workspace-overview {
+.app-navigation nav button, .account-menu button, .account-menu summary {
   display: flex; align-items: center; gap: 8px; border: 0; background: transparent;
   color: var(--md-sys-color-on-surface-variant); padding: 10px 12px; border-radius: var(--shape-corner-sm);
   font-weight: 600; cursor: pointer; text-decoration: none;
 }
-.app-navigation nav button[aria-current="page"], .workspace-overview.active {
+.app-navigation nav button[aria-current="page"] {
   background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);
 }
-.app-navigation nav button:hover, .account-menu button:hover, .account-menu summary:hover, .workspace-overview:hover {
+.app-navigation nav button:hover, .account-menu button:hover, .account-menu summary:hover {
   background: var(--md-sys-color-surface-hover); color: var(--md-sys-color-on-surface);
 }
 .account-menu { margin-left: auto; position: relative; min-width: 0; }
@@ -2125,7 +2125,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .mod-browser-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mod-browser-heading h2 { font-size: 18px; letter-spacing: 0; display: flex; align-items: center; gap: 8px; }
 .mod-browser-heading h2 span { color: var(--md-sys-color-on-surface-variant); font-size: 13px; font-weight: 400; }
-.workspace-overview { width: 100%; }
+.mod-browser-actions { display: flex; align-items: center; gap: 8px; }
 .browser-filters { display: none; }
 .browser-filters.expanded { display: block; }
 .browser-result-count { margin: 0; font-size: 12px; color: var(--md-sys-color-on-surface-variant); }
@@ -2175,8 +2175,23 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 }
 
 .redesigned-shell .dashboard-stats .info { min-height: 0; align-content: start; }
-.dashboard-stats .modset-size { max-width: 280px; }
+.dashboard-stats .modset-size { position: relative; max-width: 280px; }
 .dashboard-stats .modset-size small { color: var(--md-sys-color-on-surface-variant); line-height: 1.5; }
+.modset-size-tooltip {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  width: min(280px, calc(100vw - 64px));
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .redesigned-shell .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .redesigned-shell .metrics { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
 .workspace-toolbar { position: sticky; top: -28px; z-index: 10; background: var(--md-sys-color-surface); padding-top: 12px; }

@@ -1,7 +1,7 @@
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
-import { ArrowLeft, GitFork, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
+import { Home, GitFork, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, ModStatusFilter, SortMode } from "../types";
 
@@ -60,9 +60,11 @@ export function Sidebar({
   return <section className={`sidebar ${isMobileDrawerOpen ? "drawer-open" : ""}`} aria-label="Mod management" role={isMobileDrawerOpen ? "dialog" : undefined} aria-modal={isMobileDrawerOpen || undefined}>
     <button className="icon-button drawer-close" onClick={onClose} type="button" aria-label="Close mod list"><X size={18} /></button>
     <div className="mod-browser-heading"><h2>Mods {loadState.loaded && !loadState.error && <span>{totalModsCount}</span>}</h2>
-      <button className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>
+      <div className="mod-browser-actions">
+        <button className="icon-button" type="button" onClick={onShowDashboard} disabled={showDashboard} aria-label="Back to overview" title="Back to overview"><Home size={18} /></button>
+        <button className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>
+      </div>
     </div>
-    {!showDashboard && <button className="workspace-overview" type="button" onClick={onShowDashboard}><ArrowLeft size={16} /> Back to overview</button>}
     <label className="mod-search">Search mods<input value={searchQuery} onChange={event => onSearchChange(event.target.value)} placeholder="Name or Workshop ID" /></label>
     {isChildModset && <label className="checkbox-row child-mods-first" title="Show this child modset’s own mods before inherited parent mods. Sort by applies within each group."><input type="checkbox" checked={childModsFirst} onChange={event => onChildModsFirstChange(event.target.checked)} />Child mods first</label>}
     <div className={`browser-filters ${filtersOpen || statusFilter !== "all" ? "expanded" : ""}`}>
@@ -105,7 +107,7 @@ export function Sidebar({
     <p className="browser-result-count" aria-live="polite">{mods.length} of {totalModsCount} mods</p>
 
       <div className="mod-list">
-        {mods.map((mod) => (
+        {mods.map((mod, index) => (
           <button
             key={mod.id}
             ref={(node) => {
@@ -117,6 +119,16 @@ export function Sidebar({
             }}
             className={`mod-row ${!showDashboard && !showModsetAdmin && !showUserAdmin && selectedModId === mod.id ? "active" : ""}`}
             onClick={() => onOpenMod(mod.id)}
+            aria-current={!showDashboard && !showModsetAdmin && !showUserAdmin && selectedModId === mod.id ? "page" : undefined}
+            onKeyDown={event => {
+              if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              event.preventDefault();
+              const next = mods[index + (event.key === "ArrowDown" ? 1 : -1)];
+              if (!next) return;
+              modRowRefs.current.get(next.id)?.focus({ preventScroll: true });
+              onOpenMod(next.id);
+            }}
           >
             <StatusIcon status={mod.status} />
             <span>
