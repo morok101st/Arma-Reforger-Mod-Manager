@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Mod, ModVersion
+from app.mod_size import normalize_mod_size
 from app.scraper import ScrapedMod
 
 
@@ -16,7 +17,13 @@ def upsert_scraped_mod(db: Session, scraped: ScrapedMod) -> None:
     mod.description = scraped.description or mod.description
     mod.latest_version = scraped.latest_version or mod.latest_version
     mod.game_version = scraped.game_version or mod.game_version
-    mod.size = scraped.size or mod.size
+    # A successful fetch repairs corrupted legacy sizes, while valid cached
+    # metadata survives a temporarily missing or invalid incoming size.
+    incoming_size = normalize_mod_size(scraped.size)
+    if incoming_size is not None:
+        mod.size = incoming_size
+    elif normalize_mod_size(mod.size) is None:
+        mod.size = None
     mod.dependencies = scraped.dependencies
     mod.source_url = scraped.source_url
     mod.last_checked = scraped.last_checked
