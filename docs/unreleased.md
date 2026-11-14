@@ -19,10 +19,10 @@ Workshop extraction now reads structured **Version size**, **File size** or **Si
 
 ## Sync access
 
-Administrators manage a central **Administration → Sync access** overview with search, status filters and last-use information. Only administrators can issue one export-only key per modset and generate `armm-sync.json`, including a configurable export path and optional game server connection hints. Parent/child permissions are checked on every export. See [setup, import format and API](sync-access.md). This feature adds migration `005_modset_sync_access`.
+Administrators use **Administration → Sync access → Create sync access** to configure a modset through a wizard. Only existing accesses are listed as editable rows, with direct configuration downloads, status filters and last-use information. Connection settings and encrypted keys are saved for repeat downloads. One export-only key is allowed per modset; `armm-sync.json` includes a server-generated export path and optional game server hints. Parent/child permissions are checked on every export. See [setup, import format and API](sync-access.md). This feature adds migrations `005_modset_sync_access` and `006_sync_configuration`.
 
 ## Compatibility and verification
 
-No new services or required environment variables are introduced. The size/navigation changes need no migration; sync access adds the credential table through migration `005_modset_sync_access`. Group permissions, parent/child rules, export contents and scheduled-only Discord update alerts retain their existing behavior.
+No new services or required environment variables are introduced. The size/navigation changes need no migration; sync access adds the credential table through migrations `005_modset_sync_access` and `006_sync_configuration`. Group permissions, parent/child rules, export contents and scheduled-only Discord update alerts retain their existing behavior.
 
 Regression coverage includes size parsing/aggregation, structured Workshop extraction and metadata persistence, plus browser checks for the size hint and keyboard navigation. See [development checks](development.md); browser checks run separately from the standard CI tests/build.

@@ -229,12 +229,14 @@ class ModSetExportOrder(Base):
 
 
 class ModsetSyncAccess(Base):
-    """One revocable export credential per modset; raw keys are never persisted."""
+    """One revocable export credential per modset; recoverable keys are encrypted."""
     __tablename__ = "modset_sync_access"
 
     modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True)
     creator_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     key_hash: Mapped[str] = mapped_column(String(64))
+    encrypted_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    configuration: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     parent_id_at_creation: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

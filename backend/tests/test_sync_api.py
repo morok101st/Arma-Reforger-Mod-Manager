@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, inspect, select, text
 
 from app import main as app_main
-from app.migrations import _migrate_sync_access, migrate_schema
+from app.migrations import _migrate_sync_access, _migrate_sync_configuration, migrate_schema
 from app.models import Mod, ModSet, ModsetSyncAccess, User, UserMod, Group, GroupMembership, ModSetGroupPermission
 from app.routers.sync import _windows
 from tests.support import ApiTestCase
@@ -180,7 +180,7 @@ class SyncAccessTestCase(ApiTestCase):
             self.assertEqual(rows[child]["parent_modset_name"], "Parent")
             self.assertEqual(rows[child]["created_by"], "admin")
             self.assertTrue(rows[child]["usable"])
-            self.assertFalse(rows[parent]["enabled"])
+            self.assertNotIn(parent, rows)
             self.assertNotIn(key, response.text)
             self.assertNotIn("key_hash", response.text)
             with self.SessionLocal() as db:
@@ -193,6 +193,123 @@ class SyncAccessTestCase(ApiTestCase):
             self.assertTrue(rows[child]["enabled"])
             client.cookies.clear()
             self.assertEqual(client.get("/admin/sync-access", headers=self.headers(key)).status_code, 401)
+
+    def test_wizard_persists_settings_and_repeated_download_does_not_rotate_key(self):
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            mid = self.create(client)
+            untouched = self.create(client, "No access")
+            settings = {"name":"Community access", "baseUrl":"https://armm.example.com:8443", "gameServer":{"host":"gameserver.example.com","port":2001,"passwordRequired":True}}
+            response = client.post("/admin/sync-access", json={"modset_id":mid, **settings})
+            self.assertEqual(response.status_code, 201, response.text)
+            self.assertNotIn("access_key", response.json())
+            self.assertTrue(response.json()["downloadable"])
+            path = f"/admin/sync-access/{mid}/configuration"
+            first = client.get(path)
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertEqual(first.headers["cache-control"], "no-store")
+            config = first.json()
+            key = config["armm"]["accessKey"]
+            self.assertEqual(config["gameServer"], settings["gameServer"])
+            self.assertEqual(config["armm"]["exportPath"], f"/api/sync/modsets/{mid}/export")
+            self.assertEqual(client.get(path).json(), config)
+            with self.SessionLocal() as db:
+                row = db.get(ModsetSyncAccess, mid)
+                self.assertNotIn(key, row.encrypted_key)
+                self.assertEqual(row.key_hash, hashlib.sha256(key.encode()).hexdigest())
+                self.assertEqual(row.configuration, settings)
+            overview = client.get("/admin/sync-access")
+            self.assertEqual([r["modset_id"] for r in overview.json()], [mid])
+            self.assertNotIn(key, overview.text)
+            self.assertNotIn("encrypted_key", overview.text)
+            self.assertEqual(client.post("/admin/sync-access", json={"modset_id":mid, **settings}).status_code, 409)
+            edited = {"name":"Renamed", "baseUrl":"https://new.example.com"}
+            self.assertEqual(client.put(f"/admin/sync-access/{mid}", json=edited).status_code, 200)
+            updated = client.get(path).json()
+            self.assertEqual(updated["name"], "Renamed")
+            self.assertNotIn("gameServer", updated)
+            self.assertEqual(updated["armm"]["accessKey"], key)
+            self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code, 200)
+            self.assertEqual(client.put(f"/admin/sync-access/{mid}", json={**edited, "modset_id":untouched}).status_code, 422)
+            client.delete(f"/modsets/{mid}/sync-access")
+            self.assertEqual(client.get(path).status_code, 409)
+            self.assertEqual(client.put(f"/admin/sync-access/{mid}", json=edited).status_code, 200)
+            self.assertEqual(client.get(path).status_code, 409)
+            self.assertEqual(client.put(f"/admin/sync-access/{mid}", json={**edited,"replaceKey":True}).status_code, 200)
+            new_key = client.get(path).json()["armm"]["accessKey"]
+            self.assertNotEqual(new_key, key)
+            self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code, 401)
+            client.cookies.clear()
+            self.assertEqual(client.get(path,headers=self.headers(new_key)).status_code, 401)
+
+    def test_legacy_key_can_be_restored_without_rotation_and_bad_cipher_fails_closed(self):
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            mid = self.create(client)
+            key = self.issue(client, mid)
+            with self.SessionLocal() as db:
+                db.get(ModsetSyncAccess,mid).encrypted_key=None
+                db.commit()
+            settings = {"name":"Legacy", "baseUrl":"https://example.com"}
+            url = f"/admin/sync-access/{mid}"
+            self.assertEqual(client.put(url,json=settings).status_code,409)
+            self.assertEqual(client.put(url,json={**settings,"accessKey":"wrong"}).status_code,409)
+            self.assertEqual(client.put(url,json={**settings,"accessKey":key}).status_code,200)
+            path = url+"/configuration"
+            self.assertEqual(client.get(path).json()["armm"]["accessKey"],key)
+            with self.SessionLocal() as db:
+                db.get(ModsetSyncAccess,mid).encrypted_key="corrupt ciphertext"
+                db.commit()
+            self.assertEqual(client.get(path).status_code,409)
+            self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code,200)
+            self.assertEqual(client.put(url,json={**settings,"replaceKey":True}).status_code,200)
+            self.assertNotEqual(client.get(path).json()["armm"]["accessKey"],key)
+
+    def test_sync_settings_upgrade_preserves_existing_hashes_and_is_retryable(self):
+        migrate_schema(self.engine)
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            mid=self.create(client)
+            key=self.issue(client,mid)
+        with self.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE modset_sync_access DROP COLUMN encrypted_key"))
+            conn.execute(text("ALTER TABLE modset_sync_access DROP COLUMN configuration"))
+            conn.execute(text("DELETE FROM schema_migrations WHERE version='006_sync_configuration'"))
+        def fail(conn,cursor,statement,*args):
+            if statement.startswith("ALTER TABLE modset_sync_access ADD COLUMN configuration"):
+                raise RuntimeError("Interrupted sync settings migration")
+        event.listen(self.engine,"before_cursor_execute",fail)
+        try:
+            with self.assertRaisesRegex(RuntimeError,"Interrupted sync settings migration"):
+                _migrate_sync_configuration(self.engine)
+        finally:
+            event.remove(self.engine,"before_cursor_execute",fail)
+        self.assertNotIn("encrypted_key",{c["name"] for c in inspect(self.engine).get_columns("modset_sync_access")})
+        _migrate_sync_configuration(self.engine)
+        migrate_schema(self.engine)
+        with self.SessionLocal() as db:
+            row=db.get(ModsetSyncAccess,mid)
+            self.assertEqual(row.key_hash,hashlib.sha256(key.encode()).hexdigest())
+            self.assertIsNone(row.encrypted_key)
+            self.assertIsNone(row.configuration)
+
+    def test_wizard_endpoints_are_admin_only_and_reject_password_storage(self):
+        owner=self._create_user("owner", "very-secure-owner-pass")
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            mid=self.create(client)
+            with self.SessionLocal() as db:
+                db.get(ModSet,mid).owner_user_id=owner.id
+                db.commit()
+            settings={"name":"Access", "baseUrl":"https://example.com"}
+            response=client.post("/admin/sync-access",json={"modset_id":mid,**settings,"gameServer":{"host":"host","port":2001,"password":"secret"}})
+            self.assertEqual(response.status_code,422)
+            self.assertEqual(client.get("/admin/sync-access").json(),[])
+            client.cookies.clear()
+            client.post("/auth/login",json={"username":"owner","password":"very-secure-owner-pass"})
+            self.assertEqual(client.post("/admin/sync-access",json={"modset_id":mid,**settings}).status_code,403)
+            self.assertEqual(client.put(f"/admin/sync-access/{mid}",json=settings).status_code,403)
+            self.assertEqual(client.get(f"/admin/sync-access/{mid}/configuration").status_code,403)
 
     def test_rate_limit_and_repeatable_additive_migration(self):
         migrate_schema(self.engine)

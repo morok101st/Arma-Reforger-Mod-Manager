@@ -38,7 +38,7 @@ class Upgrade025Mixin:
         with self.engine.connect() as connection:
             self.assertEqual(connection.execute(text("SELECT COUNT(*) FROM mod_refresh_jobs")).scalar(), 0)
             self.assertEqual(set(connection.execute(text("SELECT version FROM schema_migrations")).scalars()),
-                             {"001_group_sharing", "002_mod_refresh_jobs", "003_base_modsets", "004_base_export_order", "005_modset_sync_access"})
+                             {"001_group_sharing", "002_mod_refresh_jobs", "003_base_modsets", "004_base_export_order", "005_modset_sync_access", "006_sync_configuration"})
 
     def test_failed_refresh_migration_rolls_back_and_retries(self):
         self.load_legacy()

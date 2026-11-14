@@ -1,61 +1,80 @@
 import React from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { Download, Pencil, Plus, RefreshCw } from "lucide-react";
 import type { createApiClient, SyncAccessOverview } from "../lib/api";
-import { CustomSelect } from "./common";
+import type { Modset } from "../types";
+import { CustomSelect, Dialog } from "./common";
 import { formatDate } from "../lib/utils";
-import { SyncAccessSection } from "./SyncAccessSection";
+import { useAsyncAction } from "../hooks/useAsyncAction";
+import { SyncAccessWizard } from "./SyncAccessWizard";
 
 type Filter = "all" | "active" | "disabled" | "blocked";
 const stateOf = (row: SyncAccessOverview) => row.usable ? "active" : row.enabled ? "blocked" : "disabled";
 
 export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}) {
   const [rows, setRows] = React.useState<SyncAccessOverview[]>([]);
+  const [modsets, setModsets] = React.useState<Modset[]>([]);
   const [loaded, setLoaded] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [attempt, setAttempt] = React.useState(0);
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState<Filter>("all");
-  const [selectedId, setSelectedId] = React.useState<number | null>(null);
-  const heading = React.useRef<HTMLHeadingElement>(null);
+  const [wizard, setWizard] = React.useState<{entry: SyncAccessOverview | null} | null>(null);
+  const [disableTarget, setDisableTarget] = React.useState<SyncAccessOverview | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const action = useAsyncAction();
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true); setError(null);
-    api.listSyncAccess().then(data => { if (!cancelled) { setRows(data); setLoaded(true); } })
+    Promise.all([api.listSyncAccess(),api.listAdminModsets()]).then(([data,sets]) => { if (!cancelled) { setRows(data);setModsets(sets);setLoaded(true); } })
       .catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : "Could not load sync access."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [api, attempt]);
-  React.useEffect(() => { if (selectedId !== null) heading.current?.focus(); }, [selectedId]);
-  const selected = rows.find(row => row.modset_id === selectedId);
-  const matches = rows.filter(row => (filter === "all" || stateOf(row) === filter) && `${row.modset_name} ${row.owner_username ?? ""} ${row.parent_modset_name ?? ""}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
-
+  const eligible = modsets.filter(set => !rows.some(row => row.modset_id === set.id));
+  const matches = rows.filter(row => (filter === "all" || stateOf(row) === filter) && `${row.configuration?.name ?? row.modset_name} ${row.modset_name} ${row.configuration?.gameServer?.host ?? ""}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  function download(row: SyncAccessOverview) {
+    setMessage(null);
+    action.run(async () => {
+      const config = await api.downloadSavedSync(row.modset_id);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(config,null,2)+"\n"],{type:"application/json"}));
+      const link=document.createElement("a");link.href=url;link.download="armm-sync.json";document.body.append(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      setMessage("Configuration downloaded. Keep it private; it contains the sync key.");
+    }).catch(()=>null);
+  }
   return <section className="content-section admin-section sync-admin">
-    <div className="section-title-row"><h3>Sync access</h3><button className="secondary-button compact" type="button" disabled={loading} onClick={() => setAttempt(value => value + 1)}><RefreshCw size={16} />Refresh</button></div>
-    <p className="muted">Administrator-managed desktop access. Each modset has at most one export-only key.</p>
-    {error && <div className="error-box" role="alert">{error} <button className="secondary-button compact" type="button" disabled={loading} onClick={() => setAttempt(value => value + 1)}>Retry sync overview</button></div>}
+    <div className="section-title-row"><h3>Sync access</h3><div className="dialog-actions">
+      <button className="secondary-button compact" type="button" disabled={loading || action.loading} onClick={()=>setAttempt(value=>value+1)}><RefreshCw size={16} />Refresh</button>
+      <button className="primary-button compact" type="button" disabled={!loaded || loading || Boolean(error) || !eligible.length} onClick={()=>setWizard({entry:null})}><Plus size={16} />Create sync access</button>
+    </div></div>
+    <p className="muted">Configured sync access only. Create an access to choose a modset and save its connection details.</p>
+    {error && <div className="error-box" role="alert">{error} <button className="secondary-button compact" type="button" disabled={loading} onClick={()=>setAttempt(value=>value+1)}>Retry sync overview</button></div>}
+    {action.error && <p className="error-box" role="alert">{action.error}</p>}
+    {message && <p role="status">{message}</p>}
     {!loaded && loading && <p role="status">Loading sync access…</p>}
-    {loaded && selected ? <div className="sync-admin-editor">
-      <button className="secondary-button compact" type="button" onClick={() => { setSelectedId(null); window.setTimeout(() => document.getElementById(`sync-manage-${selectedId}`)?.focus(), 0); }}><ArrowLeft size={16} />Back to sync overview</button>
-      <h4 ref={heading} tabIndex={-1}>{selected.modset_name}</h4>
-      <p className="muted">Owner: {selected.owner_username ?? "Unknown"}{selected.parent_modset_name ? ` · Parent: ${selected.parent_modset_name}` : ""}</p>
-      <div className="dialog-form"><SyncAccessSection key={selected.modset_id} modset={{id:selected.modset_id,name:selected.modset_name,parent_modset_id:selected.parent_modset_id}} api={api} onChanged={status => { setRows(previous => previous.map(row => row.modset_id === selected.modset_id ? {...row,...status} : row)); setAttempt(value => value + 1); }} /></div>
-    </div> : loaded && <>
-      <div className="modsets-filters">
-        <label>Search sync access<input type="search" placeholder="Modset, owner or parent" value={search} onChange={event => setSearch(event.target.value)} /></label>
-        <label>Status<CustomSelect<Filter> value={filter} onChange={setFilter} ariaLabel="Filter sync access" options={[{value:"all",label:"All modsets"},{value:"active",label:"Active"},{value:"disabled",label:"Disabled"},{value:"blocked",label:"Blocked"}]} /></label>
-        <span className="muted" role="status">{matches.length} of {rows.length} modsets · {rows.filter(row => row.usable).length} active</span>
-      </div>
-      {rows.length === 0 ? <p className="muted">No modsets exist yet. Create a modset before granting sync access.</p> : matches.length === 0 ? <p className="muted">No modsets match this search and status filter.</p> : <table className="modsets-table" aria-label="Sync access overview">
-        <thead><tr><th scope="col">Modset</th><th scope="col">Owner</th><th scope="col">Status</th><th scope="col">Usage</th><th scope="col">Actions</th></tr></thead>
-        <tbody>{matches.map(row => <tr key={row.modset_id}>
-          <td className="modset-name-cell"><strong>{row.modset_name}</strong>{row.parent_modset_name && <small>Parent: {row.parent_modset_name}</small>}</td>
-          <td><span className="mobile-cell-label">Owner</span>{row.owner_username ?? "Unknown"}</td>
-          <td><span className="mobile-cell-label">Status</span><strong>{row.usable ? "Active" : row.enabled ? "Blocked" : "Disabled"}</strong>{row.enabled && !row.usable && <small>Renew as an active administrator</small>}</td>
-          <td><span className="mobile-cell-label">Usage</span>{row.created_at ? <><small>Created: {formatDate(row.created_at)}</small><small>By: {row.created_by ?? "Deleted account"}</small><small>Last access: {formatDate(row.last_used_at) ?? "Never"}</small></> : <small>No key created</small>}</td>
-          <td><div className="modset-actions"><button className="secondary-button compact" type="button" id={`sync-manage-${row.modset_id}`} aria-label={`Manage sync access for ${row.modset_name}`} onClick={() => setSelectedId(row.modset_id)}>Manage</button></div></td>
+    {loaded && <>
+      {rows.length > 0 && <div className="modsets-filters">
+        <label>Search sync access<input type="search" placeholder="Name, modset or server" value={search} onChange={event=>setSearch(event.target.value)} /></label>
+        <label>Status<CustomSelect<Filter> value={filter} onChange={setFilter} ariaLabel="Filter sync access" options={[{value:"all",label:"All accesses"},{value:"active",label:"Active"},{value:"disabled",label:"Disabled"},{value:"blocked",label:"Blocked"}]} /></label>
+        <span className="muted" role="status">{matches.length} of {rows.length} accesses · {rows.filter(row=>row.usable).length} active</span>
+      </div>}
+      {rows.length === 0 ? <div className="modsets-empty"><h4>No sync access configured</h4><p className="muted">Use Create sync access to choose a modset, enter connection details and create an import file.</p>{!modsets.length && <p className="muted">Create a modset first.</p>}</div> : !matches.length ? <p className="muted">No sync access matches this search and status filter.</p> : <table className="modsets-table sync-access-table" aria-label="Sync access overview">
+        <thead><tr><th scope="col">Access</th><th scope="col">Connection</th><th scope="col">Status</th><th scope="col">Usage</th><th scope="col">Actions</th></tr></thead>
+        <tbody>{matches.map(row=><tr key={row.modset_id}>
+          <td className="modset-name-cell"><strong>{row.configuration?.name ?? row.modset_name}</strong><small>Modset: {row.modset_name}</small>{row.parent_modset_name && <small>Parent: {row.parent_modset_name}</small>}</td>
+          <td><span className="mobile-cell-label">Connection</span>{row.configuration ? <><small>{row.configuration.baseUrl}</small><small>{row.configuration.gameServer ? `${row.configuration.gameServer.host}:${row.configuration.gameServer.port}` : "No game server included"}</small></> : <small>Finish setup to save connection details</small>}</td>
+          <td><span className="mobile-cell-label">Status</span><strong>{row.usable ? "Active" : row.enabled ? "Blocked" : "Disabled"}</strong>{!row.downloadable && <small>{!row.configuration ? "Setup needed" : row.enabled && row.usable ? "Restore key to download" : "Enable to download"}</small>}</td>
+          <td><span className="mobile-cell-label">Usage</span><small>By: {row.created_by ?? "Deleted account"}</small><small>Last access: {formatDate(row.last_used_at) ?? "Never"}</small></td>
+          <td><div className="modset-actions">
+            <button className="secondary-button compact" type="button" disabled={action.loading} aria-label={`Edit sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setWizard({entry:row});}}><Pencil size={16} />{row.configuration ? "Edit" : "Finish setup"}</button>
+            <button className="secondary-button compact" type="button" disabled={action.loading || !row.downloadable} aria-label={`Download configuration ${row.configuration?.name ?? row.modset_name}`} onClick={()=>download(row)}><Download size={16} />Download</button>
+            {row.enabled && <button className="secondary-button compact" type="button" disabled={action.loading} onClick={()=>{action.setError(null);setDisableTarget(row);}}>Disable</button>}
+          </div></td>
         </tr>)}</tbody>
       </table>}
+      {rows.length > 0 && !eligible.length && <p className="muted">Every modset already has an access. Edit an existing entry to update or enable it.</p>}
     </>}
+    {wizard && <SyncAccessWizard api={api} entry={wizard.entry} modsets={wizard.entry ? modsets : eligible} onClose={()=>setWizard(null)} onSaved={()=>{setWizard(null);setAttempt(value=>value+1);setMessage("Sync access saved. Download its configuration from the row.");}} />}
+    {disableTarget && <Dialog title="Disable sync access" onClose={()=>setDisableTarget(null)}><div className="dialog-form"><p>Disable <strong>{disableTarget.configuration?.name ?? disableTarget.modset_name}</strong>? Existing app configurations will stop working.</p>{action.error && <p className="error-box" role="alert">{action.error}</p>}<div className="dialog-actions"><button className="secondary-button compact" type="button" onClick={()=>setDisableTarget(null)}>Cancel</button><button className="primary-button compact" type="button" disabled={action.loading} onClick={()=>action.run(async()=>{await api.disableSyncAccess(disableTarget.modset_id);setDisableTarget(null);setAttempt(value=>value+1);setMessage("Sync access disabled.");}).catch(()=>null)}>Confirm disable</button></div></div></Dialog>}
   </section>;
 }

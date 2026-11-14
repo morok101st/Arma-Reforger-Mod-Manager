@@ -23,6 +23,7 @@ from app.modset_permissions import require_modset_permission
 from app.modset_service import export_modset
 from app.router_helpers import audit_event
 from app.base_modsets import lock_inheritance_graph
+from app.sync_crypto import encrypt_sync_key, decrypt_sync_key
 
 router = APIRouter(tags=["sync"])
 NO_CACHE = {"Cache-Control": "no-store", "Pragma": "no-cache"}
@@ -66,7 +67,10 @@ def _status(db: Session, access: ModsetSyncAccess | None) -> dict:
     return {"enabled": bool(access and access.is_active), "usable": usable,
             "created_at": access.created_at.isoformat() if access else None,
             "last_used_at": access.last_used_at.isoformat() if access and access.last_used_at else None,
-            "base_url": (get_settings().armm_public_url or "").rstrip("/")}
+            "base_url": (get_settings().armm_public_url or "").rstrip("/"),
+            "configuration": access.configuration if access else None,
+            "key_available": bool(access and access.encrypted_key),
+            "downloadable": bool(access and access.configuration and access.encrypted_key and usable)}
 
 
 @router.get("/admin/sync-access")
@@ -78,6 +82,8 @@ def sync_overview(db: Session = Depends(get_db), user: User = Depends(require_ad
     rows = []
     for modset in modsets:
         access = accesses.get(modset.id)
+        if access is None:
+            continue
         parent = by_id.get(modset.base_modset_id)
         owner = users.get(modset.owner_user_id)
         creator = users.get(access.creator_user_id) if access else None
@@ -109,6 +115,7 @@ def create_sync_access(modset_id: int, request: Request, db: Session = Depends(g
         db.add(access)
     access.creator_user_id = user.id
     access.key_hash = _digest(key)
+    access.encrypted_key = encrypt_sync_key(key)
     access.is_active = True
     access.parent_id_at_creation = modset.base_modset_id
     access.created_at = datetime.now(timezone.utc)
@@ -148,11 +155,10 @@ class GameServer(BaseModel):
         return value
 
 
-class SyncConfiguration(BaseModel):
+class SyncSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=120)
     baseUrl: str = Field(min_length=1, max_length=2048)
-    accessKey: str = Field(min_length=1, max_length=128, repr=False)
     gameServer: GameServer | None = None
 
     @field_validator("name")
@@ -177,18 +183,93 @@ class SyncConfiguration(BaseModel):
         return value
 
 
+class SyncConfiguration(SyncSettings):
+    accessKey: str = Field(min_length=1, max_length=128, repr=False)
+
+
+class SyncCreate(SyncSettings):
+    modset_id: int = Field(gt=0)
+
+
+class SyncUpdate(SyncSettings):
+    accessKey: str | None = Field(default=None, min_length=1, max_length=128, repr=False)
+    replaceKey: bool = False
+
+
+def _import_file(modset_id: int, settings: dict, key: str) -> JSONResponse:
+    config = {"format": "armm-sync", "formatVersion": 1, "name": settings["name"],
+              "armm": {"baseUrl": settings["baseUrl"], "modsetId": modset_id,
+                       "exportPath": f"/api/sync/modsets/{modset_id}/export", "accessKey": key}}
+    if settings.get("gameServer") is not None:
+        config["gameServer"] = settings["gameServer"]
+    return JSONResponse(config, headers={**NO_CACHE, "Content-Disposition": 'attachment; filename="armm-sync.json"'})
+
+
+@router.post("/admin/sync-access", status_code=201)
+def create_configured_sync(payload: SyncCreate, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    lock_inheritance_graph(db)
+    modset = require_modset_permission(db, user, payload.modset_id, "manage")
+    if db.get(ModsetSyncAccess, modset.id) is not None:
+        raise HTTPException(409, "This modset already has sync access. Edit the existing entry.")
+    key = "armm_sync_" + secrets.token_urlsafe(32)
+    access = ModsetSyncAccess(modset_id=modset.id, creator_user_id=user.id,
+        key_hash=_digest(key), encrypted_key=encrypt_sync_key(key), is_active=True,
+        parent_id_at_creation=modset.base_modset_id, created_at=datetime.now(timezone.utc),
+        configuration=payload.model_dump(exclude={"modset_id"}, exclude_none=True))
+    db.add(access)
+    audit_event(db, action="sync_access_created", entity_type="modset", entity_id=str(modset.id), actor=user, request=request)
+    return JSONResponse(_status(db, access), status_code=201, headers=NO_CACHE)
+
+
+@router.put("/admin/sync-access/{modset_id}")
+def update_configured_sync(modset_id: int, payload: SyncUpdate, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    lock_inheritance_graph(db)
+    modset = require_modset_permission(db, user, modset_id, "manage")
+    access = db.get(ModsetSyncAccess, modset_id)
+    if access is None:
+        raise HTTPException(404, "Sync access not found.")
+    if payload.replaceKey:
+        key = "armm_sync_" + secrets.token_urlsafe(32)
+        access.key_hash = _digest(key)
+        access.encrypted_key = encrypt_sync_key(key)
+        access.creator_user_id = user.id
+        access.parent_id_at_creation = modset.base_modset_id
+        access.created_at = datetime.now(timezone.utc)
+        access.last_used_at = None
+        access.is_active = True
+    else:
+        key = decrypt_sync_key(access.encrypted_key)
+        if not key:
+            key = payload.accessKey or ""
+            if not key or not hmac.compare_digest(access.key_hash, _digest(key)):
+                raise HTTPException(409, "Enter the existing sync key or explicitly replace it to enable future downloads.")
+            access.encrypted_key = encrypt_sync_key(key)
+        if not hmac.compare_digest(access.key_hash, _digest(key)):
+            raise HTTPException(409, "The stored key cannot be recovered. Replace it explicitly.")
+    access.configuration = payload.model_dump(exclude={"accessKey", "replaceKey"}, exclude_none=True)
+    audit_event(db, action="sync_access_updated", entity_type="modset", entity_id=str(modset_id), actor=user, request=request)
+    return JSONResponse(_status(db, access), headers=NO_CACHE)
+
+
+@router.get("/admin/sync-access/{modset_id}/configuration")
+def download_configured_sync(modset_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    require_modset_permission(db, user, modset_id, "manage")
+    access = db.get(ModsetSyncAccess, modset_id)
+    if not access or not access.is_active or not _creator(db, access) or not access.configuration:
+        raise HTTPException(409, "Complete setup and enable sync access before downloading.", headers=NO_CACHE)
+    key = decrypt_sync_key(access.encrypted_key)
+    if not key or not hmac.compare_digest(access.key_hash, _digest(key)):
+        raise HTTPException(409, "The stored key cannot be recovered. Edit this access to restore or replace it.", headers=NO_CACHE)
+    return _import_file(modset_id, access.configuration, key)
+
+
 @router.post("/modsets/{modset_id}/sync-configuration")
 def sync_configuration(modset_id: int, payload: SyncConfiguration, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
     require_modset_permission(db, user, modset_id, "manage")
     access = db.get(ModsetSyncAccess, modset_id)
     if not access or not access.is_active or not _creator(db, access) or not hmac.compare_digest(access.key_hash, _digest(payload.accessKey)):
         raise HTTPException(409, "Enter the current active key or replace the key first.", headers=NO_CACHE)
-    config = {"format": "armm-sync", "formatVersion": 1, "name": payload.name,
-              "armm": {"baseUrl": payload.baseUrl, "modsetId": modset_id,
-                       "exportPath": f"/api/sync/modsets/{modset_id}/export", "accessKey": payload.accessKey}}
-    if payload.gameServer is not None:
-        config["gameServer"] = payload.gameServer.model_dump()
-    return JSONResponse(config, headers={**NO_CACHE, "Content-Disposition": 'attachment; filename="armm-sync.json"'})
+    return _import_file(modset_id, payload.model_dump(exclude={"accessKey"}, exclude_none=True), payload.accessKey)
 
 
 @router.get("/sync/modsets/{modset_id}/export")

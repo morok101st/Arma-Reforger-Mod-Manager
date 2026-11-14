@@ -29,7 +29,7 @@ class Upgrade024Mixin:
             with TestClient(app_main.app) as client:
                 self.assertEqual(client.get('/health').status_code, 200)
         with self.engine.connect() as connection:
-            self.assertEqual(set(connection.execute(text('SELECT version FROM schema_migrations')).scalars()), {'001_group_sharing', '002_mod_refresh_jobs', '003_base_modsets', '004_base_export_order', '005_modset_sync_access'})
+            self.assertEqual(set(connection.execute(text('SELECT version FROM schema_migrations')).scalars()), {'001_group_sharing', '002_mod_refresh_jobs', '003_base_modsets', '004_base_export_order', '005_modset_sync_access', '006_sync_configuration'})
             self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM groups')).scalar(), 0)
             self.assertEqual(connection.execute(text('SELECT COUNT(*) FROM modsets')).scalar(), 1)
 
@@ -91,7 +91,7 @@ class Upgrade024Mixin:
             self.assertEqual(export_modset(db, owner, 1)[0].modId, 'PARENT')
             self.assertEqual(decrypt_webhook_url(db.execute(text('SELECT webhook_url FROM discord_webhooks WHERE id = 1')).scalar()), 'https://discord.com/api/webhooks/legacy/test')
             self.assertEqual(db.execute(text('SELECT COUNT(*) FROM groups')).scalar(), 0)
-            self.assertEqual(db.execute(text('SELECT COUNT(*) FROM schema_migrations')).scalar(), 5)
+            self.assertEqual(db.execute(text('SELECT COUNT(*) FROM schema_migrations')).scalar(), 6)
             group = Group(name='New integration', description='After upgrade')
             db.add(group)
             db.flush()

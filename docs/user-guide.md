@@ -60,7 +60,7 @@ Administrators have emergency access without becoming owners. Copies receive ` (
 
 ## Sync access (unreleased)
 
-Administrators can open **Administration → Sync access**, search/filter the central overview and select **Manage** to create one export-only key per modset and download `armm-sync.json`. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. See [setup, permissions and key replacement](sync-access.md).
+Administrators open **Administration → Sync access → Create sync access** and follow a wizard to select the modset, name and connection details. Only configured accesses appear as rows with **Edit**, **Download** and **Disable** actions. Settings persist for later edits; repeated downloads reuse the current key. One access is allowed per modset. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. Existing entries may require **Finish setup** to save their settings and restore a recoverable key. See [setup, permissions and key replacement](sync-access.md).
 
 ## Administration and account settings
 

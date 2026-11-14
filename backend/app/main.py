@@ -49,7 +49,7 @@ async def security_middleware(request: Request, call_next):
     except HTTPException as exc:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
     response = await call_next(request)
-    if request.url.path.startswith("/sync/") or request.url.path.endswith(("/sync-access", "/sync-configuration")):
+    if request.url.path.startswith(("/sync/", "/admin/sync-access")) or request.url.path.endswith(("/sync-access", "/sync-configuration")):
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
     return response

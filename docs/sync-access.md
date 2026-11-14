@@ -1,14 +1,28 @@
 # Sync access (unreleased)
 
-This feature is available in the current source branch, not in the published 0.2.7 images. It adds migration `005_modset_sync_access` and no required environment variables. Startup creates one new credential table without changing existing modsets. Back up the development/deployment database and matching configuration before upgrading.
+Sync access is available on the current feature branch, not in published 0.2.7 images. Administrators manage configured accesses under **Administration → Sync access**. This page lists existing accesses only, including disabled or blocked entries; it does not repeat the modset directory.
 
-## Create a release
+## Create an access
 
-Open **Administration → Sync access** as an administrator. The overview lists every modset with its owner, parent, release status, creator and last successful access. Search or filter by Active, Disabled or Blocked, then choose **Manage**. Create a key, set the configuration name and public HTTPS origin, and download **armm-sync.json**. Changes apply immediately. Sync management is separate from modset editing and is not available to regular users, including modset owners. Anyone holding the key or file can read the selected modset's export without an ARMM login.
+Choose **Create sync access**. The wizard asks for:
 
-There is one active key per modset. Replacing it immediately invalidates all previous configurations. Disabling access also stops existing configurations. Duplicate modsets do not inherit sync credentials. The key is returned only when created/replaced; ARMM stores its SHA-256 hash. To download another configuration later, enter the existing key or explicitly replace it. No raw key is stored in browser local storage.
+1. **Modset and name:** select a modset without an existing access and choose the name shown in the sync app.
+2. **Connection details:** public ARMM HTTPS origin and optional game server hostname/IP, port and `passwordRequired`.
+3. **Review and save:** check the summary and explicitly authorize export of the selected modset, including inherited mods.
 
-Optional game server details are used for the download only. `passwordRequired` tells the desktop app to ask for a game server password; no game server password is accepted or stored by ARMM.
+Nothing is created until the final confirmation. Cancel discards the wizard draft. A failed save retains entered values. One configured access is allowed per modset, including disabled accesses; edit the existing entry instead of creating a duplicate.
+
+After saving, the access appears as a row with **Edit**, **Download** and **Disable** actions. Search by access name, modset or game server, or filter by Active, Disabled and Blocked. Connection settings persist for future edits and downloads. Game server passwords are never accepted or stored; `passwordRequired` only instructs the app to ask for one.
+
+## Edit, download and replace
+
+**Edit** reopens the wizard with saved values. Changing the name, URL or game server details preserves the existing key. The selected modset stays fixed. Download a fresh configuration after changing connection details; previously imported files retain their old settings.
+
+**Download** creates `armm-sync.json` from saved settings and the current key. Repeated downloads do not rotate the key. Anyone possessing the file can read the selected modset's export without an ARMM account.
+
+**Disable** asks for confirmation and blocks both export and configuration download. To enable or renew access, edit it and explicitly select **Replace the key and enable access**, then confirm the invalidation of previous keys. This also restores access under the acting administrator's authority. Replacing a key immediately invalidates old app configurations.
+
+Existing accesses from before the wizard are retained as rows marked **Setup needed**. Choose **Finish setup** to save connection details. If no recoverable key exists, supply the existing key once or explicitly replace it. Setup with the existing key preserves that key; settings-only edits do not silently enable disabled or blocked accesses.
 
 ## Import contract
 
@@ -31,16 +45,14 @@ Optional game server details are used for the download only. `passwordRequired` 
 }
 ```
 
-`baseUrl` is the public HTTPS origin, optionally with a port, without credentials, path, query or fragment. `exportPath` is a server-generated relative path beginning with `/`. The desktop app must use the imported path rather than constructing a fixed endpoint from the modset ID. A future path change can then be handled by importing a new configuration, provided authentication and the response contract remain compatible. The optional `gameServer` block is omitted when not requested.
-
-To retrieve the mod list, join `baseUrl` and `exportPath` on the same origin and send:
+`baseUrl` is the public HTTPS origin, optionally with a port, without credentials, path, query or fragment. `exportPath` is a server-generated relative path beginning with `/`. The app must join it to `baseUrl` on the same origin, rather than constructing a fixed endpoint from the modset ID. Future path changes can then be handled by a new import if authentication and the response contract stay compatible. The optional `gameServer` block is omitted when not selected.
 
 ```http
 GET /api/sync/modsets/42/export
 Authorization: Bearer armm_sync_EXAMPLE_ONLY
 ```
 
-The response is the existing ordered export array:
+The response remains the existing ordered array:
 
 ```json
 [
@@ -48,33 +60,37 @@ The response is the existing ordered export array:
 ]
 ```
 
-Only entries with installed versions are included. No update checks, writes or Discord notifications are triggered. The key grants no access to browser sessions, management routes, other modsets or the parent export. Keys in query strings are not supported. Responses are marked `Cache-Control: no-store`.
+Only installed versions are included. The key grants no write, refresh, management, direct parent-export or other-modset access. No Discord notifications are triggered. Query-string keys are not supported. Management and export responses use `Cache-Control: no-store`.
 
 ## Parent/child permissions
 
-A child release intentionally includes inherited parent mods with binding installed versions and the resolved child export order. Every request verifies that the release creator still exists, is active, still has the administrator role, can manage the child, and can read the parent. Administrators already have access to all modsets, so a release is an explicit administrative authorization independent of the owner's group grants. Losing any required permission blocks export. Restoring those permissions makes an otherwise active release usable again.
+Child access intentionally includes inherited parent mods, binding installed versions and the effective child export order. Every export verifies that its creator exists, is active, still has the administrator role and has required child/parent access. Administrators have access to all modsets; the release is an explicit administrative authorization independent of the owner's group grants.
 
-Changing, attaching or detaching the parent disables the release permanently until a key is explicitly created again. Normal parent mod/version/order changes appear in subsequent exports. Administrators can replace a release under their own authority; the new creator becomes the authority checked on future requests.
+Changing, attaching or detaching the parent disables the access. Normal parent mod/version/order changes appear in subsequent exports. Disabled/deleted/demoted creators block existing keys. An active administrator can renew by explicitly replacing the key. Older keys issued by ordinary owners remain blocked until renewed.
 
-Releases previously issued by regular modset owners are blocked until an administrator replaces their key. Disabling or demoting the issuing administrator also blocks existing keys. No schema migration is needed for this authorization change.
+## Persistence and upgrades
 
-## Endpoints and failure handling
+Migration `005_modset_sync_access` adds the credential table. Migration `006_sync_configuration` adds nullable saved configuration and encrypted-key columns, preserving existing hashes, keys and modsets. Both migrations are additive and retryable on SQLite/PostgreSQL. No additional service or environment variable is required.
 
-| Endpoint | Authentication | Purpose |
-| --- | --- | --- |
-| `GET /api/admin/sync-access` | Admin session | Overview of all modsets and release status; never returns raw keys or hashes |
-| `GET /api/modsets/{id}/sync-access` | Admin session | Status, creation/last-use dates, suggested public URL; never returns the key |
-| `POST /api/modsets/{id}/sync-access` | Admin session | Create or replace the sole key; returns it once |
-| `DELETE /api/modsets/{id}/sync-access` | Admin session | Disable the key |
-| `POST /api/modsets/{id}/sync-configuration` | Admin session | Validate current key and generate the import file |
-| `GET /api/sync/modsets/{id}/export` | Scoped bearer key | Export installed mods only |
+For repeat downloads, new keys are encrypted at rest with a domain-separated key derived from `ARMM_SECRET_KEY`; the SHA-256 hash remains the export authentication verifier. Raw keys and encrypted ciphertext are excluded from overview/status responses and audit details. Saved configuration contains only the display name, HTTPS origin and optional game server hints.
 
-Configuration generation accepts `name`, `baseUrl`, `accessKey` and optional `gameServer`. It generates `format`, `formatVersion`, `modsetId` and `exportPath`; clients cannot override the exported endpoint.
+Back up the database and matching `.env` before upgrading. Changing `ARMM_SECRET_KEY` prevents recovery of encrypted sync keys, although hash-based export authentication can still work. Edit affected accesses to restore their existing key or explicitly replace it. Keep imported files private and avoid logging Authorization headers.
 
-Invalid/missing/disabled keys return 401, unavailable creator permissions return 403, and rate limits return 429 with `Retry-After: 60`. Configuration generation returns 409 for a non-current or unusable key and 422 for invalid fields. Limits are 600 authenticated exports per minute per modset and 120 invalid attempts per minute per connecting IP. Limits are bounded in-memory counters per backend process; reverse-proxy connection addresses may be shared. Additional processes have separate counters.
+## API
 
-Management actions are audited without raw keys or configuration contents. Protect imported files and avoid logging Authorization headers in the desktop app or reverse proxy. API path flexibility does not make the key specific to the original desktop executable: anyone possessing it can fetch the scoped export.
+All management endpoints require an active administrator session; normal session-authenticated modset APIs keep their existing permissions.
 
-## Verification
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/admin/sync-access` | List existing accesses and their non-secret saved settings |
+| `POST /api/admin/sync-access` | Atomically create access with `modset_id`, `name`, `baseUrl` and optional `gameServer` |
+| `PUT /api/admin/sync-access/{id}` | Save `name`, `baseUrl`, optional `gameServer`; optionally restore `accessKey` or explicitly set `replaceKey: true` |
+| `GET /api/admin/sync-access/{id}/configuration` | Download saved configuration with the current recovered key |
+| `DELETE /api/modsets/{id}/sync-access` | Disable access |
+| `GET /api/sync/modsets/{id}/export` | Export installed mods using the scoped bearer key |
 
-Run backend tests, including isolated PostgreSQL cases, and frontend tests/build as described in [development](development.md). The mocked UI regression is `ARMM_TEST_URL=http://localhost:5173 npm run test:sync:browser`; it covers loading recovery, create/replace/disable, import contents and both themes at desktop/mobile widths. These browser checks do not access live application data.
+Earlier admin-only status, create/replace-key and ad-hoc configuration endpoints under `/api/modsets/{id}/sync-access` and `/api/modsets/{id}/sync-configuration` remain available for compatibility. They cannot bypass the administrator requirement.
+
+Invalid/missing/disabled export keys return 401, unavailable creator permissions return 403, and rate limits return 429 with `Retry-After: 60`. Duplicate creation or unavailable configuration/key returns 409; invalid settings return 422. Limits remain 600 authenticated exports per minute per modset and 120 invalid attempts per minute per connecting IP, with bounded process-local counters. Reverse-proxy addresses can be shared; separate backend processes have separate counters.
+
+Run backend tests, including isolated PostgreSQL cases, and frontend tests/build as described in [development](development.md). `npm run test:sync:browser` checks staged creation, failed-save recovery, reloads, persisted edits, repeat downloads, disable/replace and administrator guards in both themes at desktop/mobile widths. Browser API calls are mocked and do not modify live data.
