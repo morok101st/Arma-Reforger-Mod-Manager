@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Pencil, Plus, RefreshCw } from "lucide-react";
+import { Download, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import type { createApiClient, SyncAccessOverview } from "../lib/api";
 import type { Modset } from "../types";
 import { CustomSelect, Dialog } from "./common";
@@ -20,6 +20,7 @@ export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState<Filter>("all");
   const [wizard, setWizard] = React.useState<{entry: SyncAccessOverview | null} | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<SyncAccessOverview | null>(null);
   const [disableTarget, setDisableTarget] = React.useState<SyncAccessOverview | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const action = useAsyncAction();
@@ -68,6 +69,7 @@ export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}
           <td><div className="modset-actions">
             <button className="secondary-button compact" type="button" disabled={action.loading} aria-label={`Edit sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setWizard({entry:row});}}><Pencil size={16} />{row.configuration ? "Edit" : "Finish setup"}</button>
             <button className="secondary-button compact" type="button" disabled={action.loading || !row.downloadable} aria-label={`Download configuration ${row.configuration?.name ?? row.modset_name}`} onClick={()=>download(row)}><Download size={16} />Download</button>
+            <button className="secondary-button compact danger-button" type="button" disabled={action.loading} aria-label={`Delete sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setDeleteTarget(row);}}><Trash2 size={16} />Delete</button>
             {row.enabled && <button className="secondary-button compact" type="button" disabled={action.loading} onClick={()=>{action.setError(null);setDisableTarget(row);}}>Disable</button>}
           </div></td>
         </tr>)}</tbody>
@@ -75,6 +77,21 @@ export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}
       {rows.length > 0 && !eligible.length && <p className="muted">Every modset already has an access. Edit an existing entry to update or enable it.</p>}
     </>}
     {wizard && <SyncAccessWizard api={api} entry={wizard.entry} modsets={wizard.entry ? modsets : eligible} onClose={()=>setWizard(null)} onSaved={()=>{setWizard(null);setAttempt(value=>value+1);setMessage("Sync access saved. Download its configuration from the row.");}} />}
+    {deleteTarget && <Dialog title="Delete sync access" onClose={()=>setDeleteTarget(null)}>
+      <div className="dialog-form">
+        <p>Permanently delete <strong>{deleteTarget.configuration?.name ?? deleteTarget.modset_name}</strong>?</p>
+        <p className="muted">The key and saved connection settings will be removed. Existing app configurations will stop working. The modset <strong>{deleteTarget.modset_name}</strong> and its mods will be kept.</p>
+        {action.error && <p className="error-box" role="alert">{action.error}</p>}
+        <div className="dialog-actions">
+          <button className="secondary-button compact" type="button" disabled={action.loading} onClick={()=>setDeleteTarget(null)}>Cancel</button>
+          <button className="secondary-button compact danger-button" type="button" disabled={action.loading} onClick={()=>action.run(async()=>{
+            await api.deleteSyncAccess(deleteTarget.modset_id);
+            setRows(previous=>previous.filter(row=>row.modset_id!==deleteTarget.modset_id));
+            setDeleteTarget(null);setAttempt(value=>value+1);setMessage("Sync access deleted. Its modset is available for a new access.");
+          }).catch(()=>null)}>Delete permanently</button>
+        </div>
+      </div>
+    </Dialog>}
     {disableTarget && <Dialog title="Disable sync access" onClose={()=>setDisableTarget(null)}><div className="dialog-form"><p>Disable <strong>{disableTarget.configuration?.name ?? disableTarget.modset_name}</strong>? Existing app configurations will stop working.</p>{action.error && <p className="error-box" role="alert">{action.error}</p>}<div className="dialog-actions"><button className="secondary-button compact" type="button" onClick={()=>setDisableTarget(null)}>Cancel</button><button className="primary-button compact" type="button" disabled={action.loading} onClick={()=>action.run(async()=>{await api.disableSyncAccess(disableTarget.modset_id);setDisableTarget(null);setAttempt(value=>value+1);setMessage("Sync access disabled.");}).catch(()=>null)}>Confirm disable</button></div></div></Dialog>}
   </section>;
 }

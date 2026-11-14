@@ -7,7 +7,7 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
  for(const theme of ["dark","light"])for(const width of [1440,390,320]){
   const context=await browser.newContext({viewport:{width,height:1000},acceptDownloads:true}),page=await context.newPage();
   page.setDefaultTimeout(10000);
-  let role="admin",failCreate=true,key="armm_sync_browser_original",configuration=null,enabled=true;
+  let role="admin",failCreate=true,failDelete=true,key="armm_sync_browser_original",configuration=null,enabled=true;
   const entries=[],errors=[],writes=[];
   const sets=[{id:1,name:"Parent",parent_modset_id:null},{id:42,name:"Community Child",parent_modset_id:1,parent_modset_name:"Parent"}].map(s=>({...s,owner_username:"admin",is_owner:true,can_edit:true,can_delete:true,can_manage_access:true,tracked_mods_count:0,order_mode:"parent"}));
   page.on("pageerror",e=>errors.push(e.message));
@@ -24,6 +24,10 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
    if(path==="/admin/sync-access"&&method==="POST"){
     writes.push(path);if(failCreate){failCreate=false;return send({detail:"Save failed. Try again."},503);}
     const p=req.postDataJSON();assert.equal(p.modset_id,42);const {modset_id,...settings}=p;configuration=settings;entries.push(42);return send(row(),201);
+   }
+   if(path==="/admin/sync-access/42"&&method==="DELETE"){
+    if(failDelete){failDelete=false;return send({detail:"Delete failed. Try again."},503);}
+    entries.splice(0);configuration=null;return route.fulfill({status:204});
    }
    if(path==="/admin/sync-access/42"&&method==="PUT"){
     const {replaceKey,accessKey,...settings}=req.postDataJSON();configuration=settings;if(replaceKey){key="armm_sync_browser_replaced";enabled=true;}return send(row());
@@ -78,9 +82,24 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();
   await page.getByLabel("Replace the key and enable access. Existing configurations will stop working.").check();await page.getByLabel("Invalidate the previous key and enable this access.").check();
   await page.getByRole("button",{name:"Save sync access",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});await table.getByText("Active",{exact:true}).waitFor();assert.notEqual((await download()).armm.accessKey,first.armm.accessKey);
+  await page.getByRole("button",{name:"Delete sync access Community Server",exact:true}).click();
+  await page.getByRole("dialog").getByRole("button",{name:"Cancel",exact:true}).click();
+  assert.equal(entries.length,1);
+  await page.getByRole("button",{name:"Delete sync access Community Server",exact:true}).click();
+  if(process.env.ARMM_TEST_SCREENSHOTS)await page.screenshot({path:`${process.env.ARMM_TEST_SCREENSHOTS}/delete-${theme}-${width}.png`});
+  await page.getByRole("button",{name:"Delete permanently",exact:true}).click();
+  await page.getByRole("dialog").getByText("Delete failed. Try again.",{exact:true}).waitFor();
+  assert.equal(entries.length,1);
+  await page.getByRole("button",{name:"Delete permanently",exact:true}).click();
+  await page.getByRole("dialog").waitFor({state:"detached"});
+  await page.getByText("No sync access configured",{exact:true}).waitFor();
+  assert.equal(entries.length,0);
+  await page.getByRole("button",{name:"Create sync access",exact:true}).click();
+  await choose("Sync modset","Community Child");
+  await page.getByRole("dialog").getByRole("button",{name:"Cancel",exact:true}).click();
   assert.deepEqual(errors,[]);
   role="user";await page.goto(base+"/?view=admin&section=sync&modset=42");await page.getByText("You do not have access to this administration page.").waitFor();
   await context.close();
  }
- await browser.close();console.log("Sync wizard browser checks passed: configured entries only, staged creation/retry, persisted edits/downloads, explicit replacement, disable, admin guard; both themes at 320/390/1440px.");
+ await browser.close();console.log("Sync wizard browser checks passed: configured entries only, staged creation/retry, persisted edits/downloads, explicit replacement, disable, delete/cancel/retry/recreate, admin guard; both themes at 320/390/1440px.");
 })().catch(e=>{console.error(e);process.exit(1);});

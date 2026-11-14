@@ -9,7 +9,7 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
@@ -219,6 +219,19 @@ def create_configured_sync(payload: SyncCreate, request: Request, db: Session = 
     db.add(access)
     audit_event(db, action="sync_access_created", entity_type="modset", entity_id=str(modset.id), actor=user, request=request)
     return JSONResponse(_status(db, access), status_code=201, headers=NO_CACHE)
+
+
+@router.delete("/admin/sync-access/{modset_id}", status_code=204)
+def delete_configured_sync(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    lock_inheritance_graph(db)
+    modset = require_modset_permission(db, user, modset_id, "manage")
+    access = db.get(ModsetSyncAccess, modset_id)
+    if access is None:
+        raise HTTPException(404, "Sync access not found.")
+    db.delete(access)
+    audit_event(db, action="sync_access_deleted", entity_type="modset", entity_id=str(modset_id),
+                actor=user, request=request, detail={"modset_name": modset.name})
+    return Response(status_code=204, headers=NO_CACHE)
 
 
 @router.put("/admin/sync-access/{modset_id}")

@@ -184,6 +184,10 @@ export function createApiClient(onUnauthorized?: () => void) {
     async updateConfiguredSync(id: number, payload: SyncSettings & {accessKey?: string; replaceKey?: boolean}) {
       return readJsonOrThrow<SyncAccessStatus>(await request(`/admin/sync-access/${id}`, {method:"PUT",json:payload}), "Could not update sync access.");
     },
+    async deleteSyncAccess(id: number) {
+      const response = await request(`/admin/sync-access/${id}`, {method:"DELETE"});
+      if (!response.ok) await readJsonOrThrow<unknown>(response, "Could not delete sync access.");
+    },
     async downloadSavedSync(id: number) {
       return readJsonOrThrow<unknown>(await request(`/admin/sync-access/${id}/configuration`), "Could not download sync configuration.");
     },

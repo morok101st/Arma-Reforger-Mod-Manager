@@ -12,7 +12,7 @@ Choose **Create sync access**. The wizard asks for:
 
 Nothing is created until the final confirmation. Cancel discards the wizard draft. A failed save retains entered values. One configured access is allowed per modset, including disabled accesses; edit the existing entry instead of creating a duplicate.
 
-After saving, the access appears as a row with **Edit**, **Download** and **Disable** actions. Search by access name, modset or game server, or filter by Active, Disabled and Blocked. Connection settings persist for future edits and downloads. Game server passwords are never accepted or stored; `passwordRequired` only instructs the app to ask for one.
+After saving, the access appears as a row with **Edit**, **Download** and **Disable** actions. The development branch also adds **Delete** (not included in release 0.2.8). Search by access name, modset or game server, or filter by Active, Disabled and Blocked. Connection settings persist for future edits and downloads. Game server passwords are never accepted or stored; `passwordRequired` only instructs the app to ask for one.
 
 ## Edit, download and replace
 
@@ -21,6 +21,8 @@ After saving, the access appears as a row with **Edit**, **Download** and **Disa
 **Download** creates `armm-sync.json` from saved settings and the current key. Repeated downloads do not rotate the key. Anyone possessing the file can read the selected modset's export without an ARMM account.
 
 **Disable** asks for confirmation and blocks both export and configuration download. To enable or renew access, edit it and explicitly select **Replace the key and enable access**, then confirm the invalidation of previous keys. This also restores access under the acting administrator's authority. Replacing a key immediately invalidates old app configurations.
+
+**Delete** (development) asks for confirmation, permanently removes the saved key/settings and invalidates existing app configurations. The modset and its mods remain untouched and become eligible for a new access. This is separate from Disable, which preserves settings. Only administrators can delete; no migration is required.
 
 Existing accesses from before the wizard are retained as rows marked **Setup needed**. Choose **Finish setup** to save connection details. If no recoverable key exists, supply the existing key once or explicitly replace it. Setup with the existing key preserves that key; settings-only edits do not silently enable disabled or blocked accesses.
 
@@ -86,6 +88,7 @@ All management endpoints require an active administrator session; normal session
 | `POST /api/admin/sync-access` | Atomically create access with `modset_id`, `name`, `baseUrl` and optional `gameServer` |
 | `PUT /api/admin/sync-access/{id}` | Save `name`, `baseUrl`, optional `gameServer`; optionally restore `accessKey` or explicitly set `replaceKey: true` |
 | `GET /api/admin/sync-access/{id}/configuration` | Download saved configuration with the current recovered key |
+| `DELETE /api/admin/sync-access/{id}` | Permanently delete key/settings (development; 204, or 404 if absent) |
 | `DELETE /api/modsets/{id}/sync-access` | Disable access |
 | `GET /api/sync/modsets/{id}/export` | Export installed mods using the scoped bearer key |
 
