@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Pencil, Plus, RefreshCw, Trash2, MoreHorizontal, Ban } from "lucide-react";
 import type { createApiClient, SyncAccessOverview } from "../lib/api";
 import type { Modset } from "../types";
 import { CustomSelect, Dialog } from "./common";
@@ -67,10 +67,15 @@ export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}
           <td><span className="mobile-cell-label">Status</span><strong>{row.usable ? "Active" : row.enabled ? "Blocked" : "Disabled"}</strong>{!row.downloadable && <small>{!row.configuration ? "Setup needed" : row.enabled && row.usable ? "Restore key to download" : "Enable to download"}</small>}</td>
           <td><span className="mobile-cell-label">Usage</span><small>By: {row.created_by ?? "Deleted account"}</small><small>Last access: {formatDate(row.last_used_at) ?? "Never"}</small></td>
           <td><div className="modset-actions">
-            <button className="secondary-button compact" type="button" disabled={action.loading} aria-label={`Edit sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setWizard({entry:row});}}><Pencil size={16} />{row.configuration ? "Edit" : "Finish setup"}</button>
-            <button className="secondary-button compact" type="button" disabled={action.loading || !row.downloadable} aria-label={`Download configuration ${row.configuration?.name ?? row.modset_name}`} onClick={()=>download(row)}><Download size={16} />Download</button>
-            <button className="secondary-button compact danger-button" type="button" disabled={action.loading} aria-label={`Delete sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setDeleteTarget(row);}}><Trash2 size={16} />Delete</button>
-            {row.enabled && <button className="secondary-button compact" type="button" disabled={action.loading} onClick={()=>{action.setError(null);setDisableTarget(row);}}>Disable</button>}
+            <details className="modset-more" onClick={event=>{if((event.target as HTMLElement).closest("button")){event.currentTarget.querySelector("summary")?.focus();event.currentTarget.open=false;}}} onKeyDown={event=>{if(event.key==="Escape"){event.currentTarget.open=false;event.currentTarget.querySelector("summary")?.focus();}}}>
+              <summary aria-label={`More actions for sync access ${row.configuration?.name ?? row.modset_name}`} title="More actions"><MoreHorizontal size={18} /><span className="modset-more-label">More actions</span></summary>
+              <div>
+                <button type="button" disabled={action.loading} aria-label={`Edit sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setWizard({entry:row});}}><Pencil size={16} />{row.configuration ? "Edit" : "Finish setup"}</button>
+                <button type="button" disabled={action.loading || !row.downloadable} aria-label={`Download configuration ${row.configuration?.name ?? row.modset_name}`} onClick={()=>download(row)}><Download size={16} />Download</button>
+                {row.enabled && <button type="button" disabled={action.loading} onClick={()=>{action.setError(null);setDisableTarget(row);}}><Ban size={16} />Disable</button>}
+                <button className="modset-delete-action" type="button" disabled={action.loading} aria-label={`Delete sync access ${row.configuration?.name ?? row.modset_name}`} onClick={()=>{action.setError(null);setDeleteTarget(row);}}><Trash2 size={16} />Delete</button>
+              </div>
+            </details>
           </div></td>
         </tr>)}</tbody>
       </table>}
