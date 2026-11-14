@@ -12,7 +12,7 @@ Choose **Create sync access**. The wizard asks for:
 
 Nothing is created until the final confirmation. Cancel discards the wizard draft. A failed save retains entered values. One configured access is allowed per modset, including disabled accesses; edit the existing entry instead of creating a duplicate.
 
-After saving, the access appears as a row with **Edit**, **Download** and **Disable** actions. The development branch adds **Delete** and groups Edit, Download, Disable and Delete in the same **More actions** (three-dot) menu used by Modsets; these changes are not included in release 0.2.8. Search by access name, modset or game server, or filter by Active, Disabled and Blocked. Connection settings persist for future edits and downloads. Game server passwords are never accepted or stored; `passwordRequired` only instructs the app to ask for one.
+After saving, the access appears as a row with **Edit**, **Download** and **Disable** actions. The source on `main` adds **Delete** and groups Edit, Download, Disable and Delete in the same **More actions** (three-dot) menu used by Modsets; these changes are not included in release 0.2.8. Search by access name, modset or game server, or filter by Active, Disabled and Blocked. Connection settings persist for future edits and downloads. Game server passwords are never accepted or stored; `passwordRequired` only instructs the app to ask for one.
 
 ## Edit, download and replace
 
