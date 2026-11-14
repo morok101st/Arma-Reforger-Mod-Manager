@@ -54,6 +54,7 @@ const mods = names.map((name, i) => ({
       else if (p === '/refresh-jobs') data = [];
       else if (p === '/groups') data = [{ id: group.id, name: group.name }];
       else if (p === '/admin/groups') data = [group];
+      else if (/\/sync-access$/.test(p)) data = { enabled: false, usable: false, created_at: null, last_used_at: null, base_url: 'https://armm.example.com' };
       else if (/\/group-permissions$/.test(p)) data = [{ group_id: 1, permission: 'write' }];
       else if (p === '/users') data = [user, { ...user, id: 2, username: 'demo-editor', role: 'user' }, { ...user, id: 3, username: 'demo-integration', role: 'user' }].map(u => ({ ...u, is_active: true, created_at: stamp, last_login_at: stamp, email: null }));
       else if (p === '/discord-webhooks' || p === '/audit' || p.endsWith('/activity')) data = [];

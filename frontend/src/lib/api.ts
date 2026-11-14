@@ -167,6 +167,18 @@ export function createApiClient(onUnauthorized?: () => void) {
     async previewExportOrder(id: number, mode: "parent" | "independent", parentId: number) {
       return readJsonOrThrow<ModsetExport>(await request(`/modsets/${id}/order-preview?mode=${mode}&parent_modset_id=${parentId}`), "Could not preview export order.");
     },
+    async getSyncAccess(id: number) {
+      return readJsonOrThrow<{enabled: boolean; usable: boolean; created_at: string | null; last_used_at: string | null; base_url: string}>(await request(`/modsets/${id}/sync-access`), "Could not load sync access.");
+    },
+    async createSyncAccess(id: number) {
+      return readJsonOrThrow<Awaited<ReturnType<typeof this.getSyncAccess>> & {access_key: string}>(await request(`/modsets/${id}/sync-access`, {method: "POST"}), "Could not create sync access.");
+    },
+    async disableSyncAccess(id: number) {
+      return readJsonOrThrow<Awaited<ReturnType<typeof this.getSyncAccess>>>(await request(`/modsets/${id}/sync-access`, {method: "DELETE"}), "Could not disable sync access.");
+    },
+    async downloadSyncConfiguration(id: number, payload: {name: string; baseUrl: string; accessKey: string; gameServer?: {host: string; port: number; passwordRequired: boolean}}) {
+      return readJsonOrThrow<unknown>(await request(`/modsets/${id}/sync-configuration`, {method: "POST", json: payload}), "Could not create sync configuration.");
+    },
     async listModsets() {
       const response = await request("/modsets");
       return readJsonOrThrow<Modset[]>(response, "Could not load modsets.");

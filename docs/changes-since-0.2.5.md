@@ -1,6 +1,6 @@
 # Changes since 0.2.5
 
-This compares release `v0.2.5` (`68ee633`) with **0.2.6**. All changes below are included in 0.2.6, which is selected by the tracked GHCR deployment examples. See [release notes](releases/0.2.6.md).
+This compares release `v0.2.5` (`68ee633`) with **0.2.6**. All changes below shipped in 0.2.6. The tracked GHCR deployment examples now select 0.2.7; see [parent/child modsets](parent-child-modsets.md) for its additions and [unreleased changes](unreleased.md) for later source changes. See [release notes](releases/0.2.6.md).
 
 ## Interface redesign
 

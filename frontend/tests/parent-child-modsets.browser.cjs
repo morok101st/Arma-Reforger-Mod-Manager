@@ -18,7 +18,8 @@ const base=process.env.ARMM_TEST_URL||'http://127.0.0.1:4178';
  await context.route('**/api/**',async route=>{
   const r=route.request(),url=new URL(r.url()),path=url.pathname.replace('/api',''),method=r.method(),id=Number(url.searchParams.get('modset_id')||active),body=method==='GET'?null:r.postDataJSON();
   if(method!=='GET')writes.push({path,method,body});let data=[];
-  if(path==='/auth/me')data=user();
+  if(path.endsWith('/sync-access'))data={enabled:false,usable:false,created_at:null,last_used_at:null,base_url:'https://armm.example.com'};
+  else if(path==='/auth/me')data=user();
   else if(path==='/auth/config')data={local_login_enabled:true,oidc_enabled:false};
   else if(path==='/scheduler/status')data={scheduler_timezone:'Europe/Berlin',automatic_run_times:['10:00','19:00']};
   else if(path==='/modsets'&&method==='GET')data=sets;

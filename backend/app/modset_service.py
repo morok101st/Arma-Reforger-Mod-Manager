@@ -349,6 +349,10 @@ def change_base(db: Session, user: User, modset: ModSet, base_id: int | None, co
         for row in conflicts:
             set_inherited_order(db, modset.id, row.mod_id, row.load_order)
             db.delete(row)
+    from app.models import ModsetSyncAccess
+    access = db.get(ModsetSyncAccess, modset.id)
+    if access is not None:
+        access.is_active = False
     modset.base_modset_id = base_id
     db.flush()
     if base_id:

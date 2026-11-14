@@ -1,6 +1,6 @@
 # Interface gallery
 
-These captures show the real current frontend with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They describe **0.2.6** and must not be presented as screenshots of release 0.2.5. The ARMM logo is the existing application asset; no branding replacement was made.
+These captures show the frontend at the time of capture with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They describe **0.2.6** and do not show the later parent/child features or [unreleased source changes](unreleased.md). They must not be presented as captures of the current source revision or release 0.2.5. The ARMM logo is the existing application asset; no branding replacement was made.
 
 ## Workspace
 

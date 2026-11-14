@@ -9,6 +9,8 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 **Current release: 0.2.7.** Includes [parent/child modsets and list-based export ordering](docs/parent-child-modsets.md), binding inherited versions, parent-controlled ordering and Child mods first. Deployment examples select `0.2.7`. See [release notes](docs/releases/0.2.7.md) and the [upgrade guide](docs/upgrading.md).
 
+**Current source (`main`):** also includes estimated modset size, corrected Workshop file-size extraction, and dashboard/browser navigation improvements added after 0.2.7. These changes are not included in the published 0.2.7 images. It also adds [scoped desktop sync access](docs/sync-access.md) on this feature branch. See [unreleased changes](docs/unreleased.md); use a [source build](docs/development.md) to review them.
+
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 
 ## What the application does
@@ -25,7 +27,8 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Can optionally set orphaned dependency mods to `No installed version` when a parent mod is deleted or deactivated.
 - Stores changelog history per version including `Last modified`.
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
-- Supports per-modset export order. The development editor displays list positions and saves moves; legacy numeric API calls remain compatible.
+- The current source estimates modset size from Workshop metadata for installed mods, counting local, inherited and dependency mods once per ID. Unknown sizes are identified separately; actual disk usage can differ.
+- Supports per-modset export order. The editor displays list positions and saves moves; legacy numeric API calls remain compatible.
 - Can send Discord update alerts through admin-managed webhooks without code changes.
 - Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
 - Discord update alerts can link directly back into ARMM for the affected mod and modset.
@@ -94,7 +97,7 @@ Base path behind the frontend proxy: `/api`
 - `GET/POST/PATCH/DELETE /api/modsets...`
 - `POST /api/modsets/{modset_id}/activate`
 - `POST /api/modsets/{modset_id}/duplicate`
-- `PUT /api/modsets/{modset_id}/export-order` (development; complete ordered `mod_ids` list)
+- `PUT /api/modsets/{modset_id}/export-order` (complete ordered `mod_ids` list)
 - `PATCH /api/modsets/{modset_id}/load-order` (numeric compatibility endpoint)
 - `GET /api/modsets/{modset_id}/activity` (`limit`, `offset`)
 - `GET /api/modsets/{modset_id}/export`
@@ -203,14 +206,13 @@ Scheduled metadata lookup flow:
 ## Export load order
 
 Arma Reforger uses the order of entries in the exported `mods` array as the server load order.
-The development UI manages export order as a list with positions **1, 2, 3…**.
+The UI manages export order as a list with positions **1, 2, 3…**.
 
 - Move mods to the top, up, down or to the bottom; changes save automatically.
 - Existing order is preserved, including tie-breaking for previously equal values.
 - Browser/sidebar sorting remains separate from export order.
 - A child modset can follow its parent order and insert local mods, or keep its own independent order. See [parent/child modsets](docs/parent-child-modsets.md).
 - The UI saves complete ordered mod-ID lists. Numeric values remain internal and existing numeric API calls stay compatible.
-- Numeric API fields remain supported for compatibility; the UI saves the complete ordered sequence.
 
 ## Operations
 

@@ -19,4 +19,8 @@ Jobs use a unique modset/mod key and a new attempt ID on retry. PostgreSQL sessi
 
 The `armm-db-data` volume contains PostgreSQL data; `reforger-server-data` contains the dedicated-server installation. Metadata probes create temporary profiles inside the CLI service and clean them up unless debug retention is enabled. No new queue service or Redis is needed for persistent manual jobs.
 
-See [deployment examples](../docker-compose.example.yml), [job internals and migration](manual-refresh-upgrade.md), and the [Traefik chapter](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Traefik-and-Reverse-Proxy). This diagram describes **0.2.6**; durable jobs were added after 0.2.5.
+Modsets support one level of parent/child inheritance. Effective child content includes parent mods with binding installed versions plus local child mods. Parent read access is required in addition to child access. Export order is independent or follows the parent with local insertions; numeric storage remains compatible with older clients. See [parent/child behavior](parent-child-modsets.md).
+
+In the current source (unreleased), estimated modset size is calculated in the frontend from returned mod metadata. It adds no service, migration or environment setting. See [unreleased changes](unreleased.md).
+
+See [deployment examples](../docker-compose.example.yml), [job internals and migration](manual-refresh-upgrade.md), and the [Traefik chapter](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Traefik-and-Reverse-Proxy). The service diagram applies to **0.2.7** and the current source; durable jobs were introduced in 0.2.6. Parent/child behavior and the size estimate use these existing services.

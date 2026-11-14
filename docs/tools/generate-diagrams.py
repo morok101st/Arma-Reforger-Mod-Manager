@@ -22,7 +22,7 @@ def box(x,y,w,title,lines,accent=False):
  return s
 def arrow(d):return f'<path d="{d}" fill="none" stroke="#b0b0ac" stroke-width="2" marker-end="url(#arrow)"/>\n'
 s=start('ARMM services and update paths','Browser requests pass through HTTPS Traefik and Nginx to FastAPI. FastAPI stores state in PostgreSQL, scrapes Workshop pages, uses internal CLI probes for manual checks and sends scheduled alerts to Discord.',650)
-s+=label(40,78,'Release 0.2.6 · Service ports are internal unless shown as HTTPS')
+s+=label(40,78,'Release 0.2.7 + current source · Service ports are internal unless shown as HTTPS')
 for args in [(40,120,225,'Browser',['React interface','Signed session cookie']), (330,120,225,'Traefik',['HTTPS entry point','Routes to frontend']), (620,120,225,'Nginx frontend',['Port 8080 · SPA','/api → backend']), (910,120,250,'FastAPI backend',['Port 8000','Auth · jobs · scheduler'],True)]:s+=box(*args)
 for left,right in [(265,330),(555,620),(845,910)]:s+=arrow(f'M {left} 181 H {right-7}')
 s+=f'<path d="M 1035 242 V 285 H 152" fill="none" stroke="#b0b0ac" stroke-width="2"/>\n'

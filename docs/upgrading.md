@@ -1,6 +1,6 @@
 # Upgrading ARMM
 
-Documentation and tracked image examples describe **0.2.7**. Set `ARMM_IMAGE_TAG=0.2.7` to upgrade from 0.2.6. Use a [source build](development.md) only to review a source revision independently of published images.
+Tracked image examples select **0.2.7**. Documentation also identifies [unreleased source changes](unreleased.md); these are not included in the 0.2.7 images and introduce no new required settings. Size/navigation changes need no migration; the sync-access feature branch adds the credential table through `005_modset_sync_access` (see [sync access](sync-access.md)). Set `ARMM_IMAGE_TAG=0.2.7` to upgrade from 0.2.6. Use a [source build](development.md) only to review a source revision independently of published images.
 
 | Starting point | Changes requiring attention | Detailed guide |
 | --- | --- | --- |

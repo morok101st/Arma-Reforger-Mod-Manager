@@ -226,3 +226,16 @@ class ModSetExportOrder(Base):
     modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True)
     mod_id: Mapped[str] = mapped_column(ForeignKey("mods.id", ondelete="CASCADE"), primary_key=True)
     load_order: Mapped[int] = mapped_column(Integer, default=500)
+
+
+class ModsetSyncAccess(Base):
+    """One revocable export credential per modset; raw keys are never persisted."""
+    __tablename__ = "modset_sync_access"
+
+    modset_id: Mapped[int] = mapped_column(ForeignKey("modsets.id", ondelete="CASCADE"), primary_key=True)
+    creator_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    key_hash: Mapped[str] = mapped_column(String(64))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    parent_id_at_creation: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

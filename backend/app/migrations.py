@@ -20,6 +20,7 @@ def migrate_schema(engine: Engine) -> None:
         _migrate_groups(engine)
         _migrate_base_modsets(engine)
         _migrate_base_order(engine)
+        _migrate_sync_access(engine)
         return
 
     user_mod_columns = {column["name"] for column in inspector.get_columns("user_mods")}
@@ -79,6 +80,7 @@ def migrate_schema(engine: Engine) -> None:
     _migrate_groups(engine)
     _migrate_base_modsets(engine)
     _migrate_base_order(engine)
+    _migrate_sync_access(engine)
 
 
 def _migrate_groups(engine: Engine) -> None:
@@ -453,3 +455,15 @@ def _migrate_base_order(engine: Engine) -> None:
         if "before_mod_ids" not in {c["name"] for c in inspect(connection).get_columns("modset_export_orders")}:
             connection.execute(text("ALTER TABLE modset_export_orders ADD COLUMN before_mod_ids JSON"))
         connection.execute(text("INSERT INTO schema_migrations (version) VALUES ('004_base_export_order') ON CONFLICT DO NOTHING"))
+
+
+def _migrate_sync_access(engine: Engine) -> None:
+    from app.models import ModsetSyncAccess
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            connection.exec_driver_sql("BEGIN")
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("SELECT pg_advisory_xact_lock(674293501)"))
+        ModsetSyncAccess.__table__.create(bind=connection, checkfirst=True)
+        connection.execute(text("INSERT INTO schema_migrations (version) VALUES ('005_modset_sync_access') ON CONFLICT DO NOTHING"))

@@ -1,6 +1,6 @@
 # User guide
 
-This guide describes the interface in **0.2.7**, including changes made after 0.2.5. Screenshots use fictional data; see [release scope](changes-since-0.2.5.md).
+This guide describes **0.2.7** and explicitly marked [unreleased source changes](unreleased.md). Screenshots use fictional data and retain their documented [capture scope](screenshots.md).
 
 ## Workspace and version health
 
@@ -17,6 +17,14 @@ The Overview shows counts, the automatic schedule, Version health, Needs attenti
 
 Versions are normalized (including a leading v), compared as parsed versions where possible, and otherwise compared by natural numeric/text segments. Needs attention lists available updates first, then missing latest versions. It does not turn intentionally uninstalled mods into warnings.
 
+## Estimated modset size (unreleased)
+
+The current source shows **Estimated size** in Overview. It sums Workshop sizes for mods with an installed version, including inherited mods and dependencies, counting each mod ID once. Mods with **No installed version** are excluded.
+
+Sizes require an explicit supported unit (B, KB/MB/GB/TB or KiB/MiB/GiB/TiB). Missing or invalid sizes remain unknown. A partial total shows the number of unknown sizes; if all installed mods have unknown sizes, the value is **Unknown**. An empty installed set displays **0 B**. Totals use decimal units.
+
+This is Workshop metadata, not measured disk usage or a size lookup for the selected installed version. Hover over or focus the card for this explanation; Escape dismisses the hint. Corrected extraction applies during metadata refreshes, without a database migration.
+
 ## Inspect and update a mod
 
 Open a mod from the browser or overview. The detail page shows its name, copyable Workshop ID, metadata and installed/latest version comparison. **Workshop** opens its source page. **Check updates** starts a manual reliable check using the configured metadata provider.
@@ -27,11 +35,11 @@ A running individual manual check remains visible after reload and in another ta
 
 Deleting an active dependency may be blocked. Removing or deactivating a parent can offer a follow-up choice to set newly orphaned dependency-origin mods to No installed version. Dependencies remain identifiable even after manual editing.
 
-child modsets show **Child mods first** below search. It is enabled by default: own mods come before inherited parent mods, with **Sort by** applied within each group. Disable it for global sorting. Export order is unaffected.
+Child modsets show **Child mods first** below search. It is enabled by default: own mods come before inherited parent mods, with **Sort by** applied within each group. Disable it for global sorting. Export order is unaffected.
 
 ## Export order and activity
 
-open **Overview → Export order** and move entries top/up/down/bottom. Positions **1, 2, 3…** show the final export sequence; changes save automatically. Existing orders are preserved, including previous name/ID tie-breaks. Only mods with installed versions are exported. Browser sorting does not alter export order. Child modsets can follow the parent order and insert local mods, or keep an independent order; see [parent/child modsets](parent-child-modsets.md).
+Open **Overview → Export order** and move entries top/up/down/bottom. Positions **1, 2, 3…** show the final export sequence; changes save automatically. Existing orders are preserved, including previous name/ID tie-breaks. Only mods with installed versions are exported. Browser sorting does not alter export order. Child modsets can follow the parent order and insert local mods, or keep an independent order; see [parent/child modsets](parent-child-modsets.md).
 
 The overview **Changelog** records changes in this modset, such as add/remove/version edits, and supports paging. It is separate from a mod's version changelog and the administrator's central audit log. Both overview sections start collapsed.
 
@@ -49,6 +57,10 @@ Modsets start private. Administrators manage group membership; owners and admini
 | Manage group grants or delete source modset | No | No | Yes |
 
 Administrators have emergency access without becoming owners. Copies receive ` (copy)`, retain tracked entries, and start without group grants or inherited webhook scopes. Non-empty modsets can be deleted after confirmation; the last remaining modset is protected. The historical global Shared flag no longer grants access. See [group migration](group-sharing-upgrade.md) for installations older than 0.2.5.
+
+## Desktop sync access (unreleased)
+
+Owners and administrators can open **Modsets → Edit → Sync access** to create one export-only key per modset and download `armm-sync.json`. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. See [setup, permissions and key replacement](sync-access.md).
 
 ## Administration and account settings
 
@@ -71,6 +83,8 @@ Examples for a deployment at `https://armm.example.com`:
 ```
 
 Administration sections are `users`, `groups`, `discord`, `audit`. Browser URLs use `modset`; API requests use `modset_id`. Copy the address bar to share a view. Opening a link does not grant access or change the stored default modset. Missing/inaccessible targets show recovery controls rather than silently opening a different mod. Search, browser sorting/filtering and unsaved drafts are not encoded in the URL.
+
+In the current source (unreleased), focus a mod row and use Up/Down to open the adjacent mod in the displayed filtered and sorted list. Navigation stops at either end. The selected row scrolls into view. **Back to overview** uses a home icon.
 
 Tab moves between controls. Selects support Arrow keys, Home/End, typeahead, Enter, Tab and Escape. Modal dialogs contain focus, close with Escape and return focus to their opener. The mobile drawer follows the same focus behavior. A Skip to content link is available to keyboard users.
 
