@@ -12,6 +12,7 @@ import { ResourceStatus } from "./components/ResourceStatus";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
+import { SyncAccessAdmin } from "./components/SyncAccessAdmin";
 import { GroupAdmin } from "./components/GroupAdmin";
 
 export function App() {
@@ -255,6 +256,7 @@ export function App() {
             actionError={actions.error}
             groups={groups.groups}
             groupError={groups.error}
+            syncManagement={adminSection === "sync" ? <SyncAccessAdmin api={auth.api} /> : null}
             groupManagement={<GroupAdmin data={groups} users={admin.users} usersLoad={admin.loadStates.users} />}
             users={admin.users}
             webhooks={admin.discordWebhooks}

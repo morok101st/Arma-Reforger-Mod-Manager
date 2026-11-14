@@ -4,7 +4,7 @@ This feature is available in the current source branch, not in the published 0.2
 
 ## Create a release
 
-Open **Modsets → Edit → Sync access** as the owner or an administrator. Create a key, set the configuration name and public HTTPS origin, and download **armm-sync.json**. These actions apply immediately, independently of the dialog's Save button. Anyone holding the key or file can read the selected modset's export without an ARMM login.
+Open **Administration → Sync access** as an administrator. The overview lists every modset with its owner, parent, release status, creator and last successful access. Search or filter by Active, Disabled or Blocked, then choose **Manage**. Create a key, set the configuration name and public HTTPS origin, and download **armm-sync.json**. Changes apply immediately. Sync management is separate from modset editing and is not available to regular users, including modset owners. Anyone holding the key or file can read the selected modset's export without an ARMM login.
 
 There is one active key per modset. Replacing it immediately invalidates all previous configurations. Disabling access also stops existing configurations. Duplicate modsets do not inherit sync credentials. The key is returned only when created/replaced; ARMM stores its SHA-256 hash. To download another configuration later, enter the existing key or explicitly replace it. No raw key is stored in browser local storage.
 
@@ -52,18 +52,21 @@ Only entries with installed versions are included. No update checks, writes or D
 
 ## Parent/child permissions
 
-A child release intentionally includes inherited parent mods with binding installed versions and the resolved child export order. Every request verifies that the release creator still exists, is active, retains owner/administrator management rights to the child, and can read the parent. Losing any required permission blocks export. Restoring those permissions makes an otherwise active release usable again.
+A child release intentionally includes inherited parent mods with binding installed versions and the resolved child export order. Every request verifies that the release creator still exists, is active, still has the administrator role, can manage the child, and can read the parent. Administrators already have access to all modsets, so a release is an explicit administrative authorization independent of the owner's group grants. Losing any required permission blocks export. Restoring those permissions makes an otherwise active release usable again.
 
-Changing, attaching or detaching the parent disables the release permanently until a key is explicitly created again. Normal parent mod/version/order changes appear in subsequent exports. Owners and administrators can replace a release under their own authority; the new creator becomes the authority checked on future requests.
+Changing, attaching or detaching the parent disables the release permanently until a key is explicitly created again. Normal parent mod/version/order changes appear in subsequent exports. Administrators can replace a release under their own authority; the new creator becomes the authority checked on future requests.
+
+Releases previously issued by regular modset owners are blocked until an administrator replaces their key. Disabling or demoting the issuing administrator also blocks existing keys. No schema migration is needed for this authorization change.
 
 ## Endpoints and failure handling
 
 | Endpoint | Authentication | Purpose |
 | --- | --- | --- |
-| `GET /api/modsets/{id}/sync-access` | Owner/admin session | Status, creation/last-use dates, suggested public URL; never returns the key |
-| `POST /api/modsets/{id}/sync-access` | Owner/admin session | Create or replace the sole key; returns it once |
-| `DELETE /api/modsets/{id}/sync-access` | Owner/admin session | Disable the key |
-| `POST /api/modsets/{id}/sync-configuration` | Owner/admin session | Validate current key and generate the import file |
+| `GET /api/admin/sync-access` | Admin session | Overview of all modsets and release status; never returns raw keys or hashes |
+| `GET /api/modsets/{id}/sync-access` | Admin session | Status, creation/last-use dates, suggested public URL; never returns the key |
+| `POST /api/modsets/{id}/sync-access` | Admin session | Create or replace the sole key; returns it once |
+| `DELETE /api/modsets/{id}/sync-access` | Admin session | Disable the key |
+| `POST /api/modsets/{id}/sync-configuration` | Admin session | Validate current key and generate the import file |
 | `GET /api/sync/modsets/{id}/export` | Scoped bearer key | Export installed mods only |
 
 Configuration generation accepts `name`, `baseUrl`, `accessKey` and optional `gameServer`. It generates `format`, `formatVersion`, `modsetId` and `exportPath`; clients cannot override the exported endpoint.

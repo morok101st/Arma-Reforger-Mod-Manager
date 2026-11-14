@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth import require_current_user
+from app.auth import require_admin_user
 from app.config import get_settings
 from app.database import get_db
 from app.models import ModSet, ModsetSyncAccess, User
@@ -52,7 +52,7 @@ def _digest(key: str) -> str:
 def _creator(db: Session, access: ModsetSyncAccess) -> User | None:
     user = db.get(User, access.creator_user_id) if access.creator_user_id else None
     modset = db.get(ModSet, access.modset_id)
-    if not user or not user.is_active or not modset or modset.base_modset_id != access.parent_id_at_creation:
+    if not user or not user.is_active or user.role != "admin" or not modset or modset.base_modset_id != access.parent_id_at_creation:
         return None
     try:
         require_modset_permission(db, user, modset.id, "manage")
@@ -69,14 +69,35 @@ def _status(db: Session, access: ModsetSyncAccess | None) -> dict:
             "base_url": (get_settings().armm_public_url or "").rstrip("/")}
 
 
+@router.get("/admin/sync-access")
+def sync_overview(db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    modsets = db.scalars(select(ModSet).order_by(ModSet.name, ModSet.id)).all()
+    accesses = {row.modset_id: row for row in db.scalars(select(ModsetSyncAccess)).all()}
+    users = {row.id: row for row in db.scalars(select(User)).all()}
+    by_id = {row.id: row for row in modsets}
+    rows = []
+    for modset in modsets:
+        access = accesses.get(modset.id)
+        parent = by_id.get(modset.base_modset_id)
+        owner = users.get(modset.owner_user_id)
+        creator = users.get(access.creator_user_id) if access else None
+        rows.append({"modset_id": modset.id, "modset_name": modset.name,
+                     "owner_username": owner.username if owner else None,
+                     "parent_modset_id": modset.base_modset_id,
+                     "parent_modset_name": parent.name if parent else None,
+                     "created_by": creator.username if creator else None,
+                     **_status(db, access)})
+    return JSONResponse(rows, headers=NO_CACHE)
+
+
 @router.get("/modsets/{modset_id}/sync-access")
-def sync_status(modset_id: int, db: Session = Depends(get_db), user: User = Depends(require_current_user)):
+def sync_status(modset_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
     require_modset_permission(db, user, modset_id, "manage")
     return JSONResponse(_status(db, db.get(ModsetSyncAccess, modset_id)), headers=NO_CACHE)
 
 
 @router.post("/modsets/{modset_id}/sync-access")
-def create_sync_access(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_current_user)):
+def create_sync_access(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
     lock_inheritance_graph(db)
     modset = require_modset_permission(db, user, modset_id, "manage")
     # Lock the modset row even when no credential exists yet.
@@ -97,7 +118,7 @@ def create_sync_access(modset_id: int, request: Request, db: Session = Depends(g
 
 
 @router.delete("/modsets/{modset_id}/sync-access")
-def disable_sync_access(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_current_user)):
+def disable_sync_access(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
     lock_inheritance_graph(db)
     require_modset_permission(db, user, modset_id, "manage")
     access = db.get(ModsetSyncAccess, modset_id)
@@ -157,7 +178,7 @@ class SyncConfiguration(BaseModel):
 
 
 @router.post("/modsets/{modset_id}/sync-configuration")
-def sync_configuration(modset_id: int, payload: SyncConfiguration, db: Session = Depends(get_db), user: User = Depends(require_current_user)):
+def sync_configuration(modset_id: int, payload: SyncConfiguration, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
     require_modset_permission(db, user, modset_id, "manage")
     access = db.get(ModsetSyncAccess, modset_id)
     if not access or not access.is_active or not _creator(db, access) or not hmac.compare_digest(access.key_hash, _digest(payload.accessKey)):
@@ -180,7 +201,7 @@ def sync_export(modset_id: int, request: Request, authorization: str | None = He
     _rate_limit(f"modset:{modset_id}", 600)
     creator = _creator(db, access)
     if creator is None:
-        raise HTTPException(403, "Sync access is unavailable. Ask the modset owner to renew sync access.", headers=NO_CACHE)
+        raise HTTPException(403, "Sync access is unavailable. Ask an administrator to renew sync access.", headers=NO_CACHE)
     rows = export_modset(db, creator, modset_id)
     access.last_used_at = datetime.now(timezone.utc)
     db.commit()

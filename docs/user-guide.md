@@ -60,11 +60,11 @@ Administrators have emergency access without becoming owners. Copies receive ` (
 
 ## Desktop sync access (unreleased)
 
-Owners and administrators can open **Modsets → Edit → Sync access** to create one export-only key per modset and download `armm-sync.json`. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. See [setup, permissions and key replacement](sync-access.md).
+Administrators can open **Administration → Sync access**, search/filter the central overview and select **Manage** to create one export-only key per modset and download `armm-sync.json`. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. See [setup, permissions and key replacement](sync-access.md).
 
 ## Administration and account settings
 
-Administrators open **Administration** and choose **Users**, **Groups**, **Discord** or **Audit log**. Users and groups have local search. In the user editor, changed role, enabled state, memberships and an optional password save in one transaction. Failure keeps the draft for correction; it does not leave half-applied account changes. A password/role/status change invalidates existing sessions as applicable; membership changes are enforced on subsequent requests.
+Administrators open **Administration** and choose **Users**, **Groups**, **Discord**, **Sync access** (unreleased) or **Audit log**. Users and groups have local search. In the user editor, changed role, enabled state, memberships and an optional password save in one transaction. Failure keeps the draft for correction; it does not leave half-applied account changes. A password/role/status change invalidates existing sessions as applicable; membership changes are enforced on subsequent requests.
 
 Use **Groups** to manage members, and **Discord** to select webhook modset scopes. Empty scope on creation defaults to all current modsets; a future private copy is not added automatically. Update alerts remain limited to scheduled runs at 10:00 and 19:00 in the configured timezone; the explicit webhook test action sends a test message.
 
@@ -82,7 +82,7 @@ Examples for a deployment at `https://armm.example.com`:
 /?view=account&modset=42
 ```
 
-Administration sections are `users`, `groups`, `discord`, `audit`. Browser URLs use `modset`; API requests use `modset_id`. Copy the address bar to share a view. Opening a link does not grant access or change the stored default modset. Missing/inaccessible targets show recovery controls rather than silently opening a different mod. Search, browser sorting/filtering and unsaved drafts are not encoded in the URL.
+Administration sections are `users`, `groups`, `discord`, `sync`, `audit`. Browser URLs use `modset`; API requests use `modset_id`. Copy the address bar to share a view. Opening a link does not grant access or change the stored default modset. Missing/inaccessible targets show recovery controls rather than silently opening a different mod. Search, browser sorting/filtering and unsaved drafts are not encoded in the URL.
 
 In the current source (unreleased), focus a mod row and use Up/Down to open the adjacent mod in the displayed filtered and sorted list. Navigation stops at either end. The selected row scrolls into view. **Back to overview** uses a home icon.
 

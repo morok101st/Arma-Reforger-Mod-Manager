@@ -19,7 +19,7 @@ Workshop extraction now reads structured **Version size**, **File size** or **Si
 
 ## Desktop sync access
 
-Owners and administrators can issue one export-only key per modset and generate `armm-sync.json`, including a configurable export path and optional game server connection hints. Parent/child permissions are checked on every export. See [setup, import format and API](sync-access.md). This feature adds migration `005_modset_sync_access`.
+Administrators manage a central **Administration → Sync access** overview with search, status filters and last-use information. Only administrators can issue one export-only key per modset and generate `armm-sync.json`, including a configurable export path and optional game server connection hints. Parent/child permissions are checked on every export. See [setup, import format and API](sync-access.md). This feature adds migration `005_modset_sync_access`.
 
 ## Compatibility and verification
 

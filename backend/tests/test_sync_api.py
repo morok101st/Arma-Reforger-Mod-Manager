@@ -109,6 +109,9 @@ class SyncAccessTestCase(ApiTestCase):
             with self.SessionLocal() as db:
                 db.add(UserMod(modset_id=child, mod_id="C", current_version="1.0")); db.commit()
             self.assertEqual(client.put(f"/modsets/{child}/export-order", json={"mod_ids":["C","P"]}).status_code, 204)
+            self.assertEqual(client.post(f"/modsets/{child}/sync-access").status_code, 403)
+            client.cookies.clear()
+            self.login_admin(client)
             key = self.issue(client, child)
             path = f"/sync/modsets/{child}/export"
             response = client.get(path, headers=self.headers(key))
@@ -118,7 +121,8 @@ class SyncAccessTestCase(ApiTestCase):
             self.assertEqual(client.get(f"/sync/modsets/{parent}/export", headers=self.headers(key)).status_code, 401)
             with self.SessionLocal() as db:
                 grant = db.get(ModSetGroupPermission, (parent, group_id)); db.delete(grant); db.commit()
-            self.assertEqual(client.get(path, headers=self.headers(key)).status_code, 403)
+            # The administrator explicitly authorizes the child export independently of the owner grants.
+            self.assertEqual(client.get(path, headers=self.headers(key)).status_code, 200)
             with self.SessionLocal() as db:
                 db.add(ModSetGroupPermission(modset_id=parent, group_id=group_id, permission="read")); db.commit()
             self.assertEqual(client.get(path, headers=self.headers(key)).status_code, 200)
@@ -145,7 +149,9 @@ class SyncAccessTestCase(ApiTestCase):
             self.assertEqual(client.get(path, headers=self.headers(key)).status_code, 403)
             client.cookies.clear()
             client.post("/auth/login", json={"username":"owner", "password":"very-secure-owner-pass"})
-            key = self.issue(client, mid)
+            self.assertEqual(client.post(f"/modsets/{mid}/sync-access").status_code, 403)
+            self.assertEqual(client.get("/admin/sync-access").status_code, 403)
+            self.assertEqual(client.post(f"/modsets/{mid}/sync-configuration", json={"name":"Owner", "baseUrl":"https://example.com", "accessKey":key}).status_code, 403)
             with self.SessionLocal() as db:
                 group = Group(name="Writers"); db.add(group); db.flush()
                 db.add_all([GroupMembership(group_id=group.id, user_id=reader.id), ModSetGroupPermission(modset_id=mid, group_id=group.id, permission="write")]); db.commit()
@@ -155,6 +161,38 @@ class SyncAccessTestCase(ApiTestCase):
             with self.SessionLocal() as db:
                 db.get(ModSet, mid).owner_user_id = reader.id; db.commit()
             self.assertEqual(client.get(path, headers=self.headers(key)).status_code, 403)
+
+    def test_admin_overview_and_legacy_owner_keys_are_blocked(self):
+        owner = self._create_user("owner", "very-secure-owner-pass")
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            parent = self.create(client, "Parent")
+            child = self.create(client, "Child", parent_modset_id=parent)
+            key = self.issue(client, child)
+            with self.SessionLocal() as db:
+                db.get(ModSet, child).owner_user_id = owner.id
+                db.commit()
+            response = client.get("/admin/sync-access")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["cache-control"], "no-store")
+            rows = {row["modset_id"]:row for row in response.json()}
+            self.assertEqual(rows[child]["owner_username"], "owner")
+            self.assertEqual(rows[child]["parent_modset_name"], "Parent")
+            self.assertEqual(rows[child]["created_by"], "admin")
+            self.assertTrue(rows[child]["usable"])
+            self.assertFalse(rows[parent]["enabled"])
+            self.assertNotIn(key, response.text)
+            self.assertNotIn("key_hash", response.text)
+            with self.SessionLocal() as db:
+                # Simulate a release issued by an owner before admin-only management.
+                db.get(ModsetSyncAccess, child).creator_user_id = owner.id
+                db.commit()
+            self.assertEqual(client.get(f"/sync/modsets/{child}/export", headers=self.headers(key)).status_code, 403)
+            rows = {row["modset_id"]:row for row in client.get("/admin/sync-access").json()}
+            self.assertFalse(rows[child]["usable"])
+            self.assertTrue(rows[child]["enabled"])
+            client.cookies.clear()
+            self.assertEqual(client.get("/admin/sync-access", headers=self.headers(key)).status_code, 401)
 
     def test_rate_limit_and_repeatable_additive_migration(self):
         migrate_schema(self.engine)

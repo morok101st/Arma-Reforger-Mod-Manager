@@ -2,7 +2,7 @@ import type { UserAccountUpdate } from "../types";
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
-import { Pencil, Plus, RefreshCw, Save, Users, UsersRound, Webhook, ScrollText } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Save, Users, UsersRound, Webhook, ScrollText, KeyRound } from "lucide-react";
 
 import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
@@ -10,7 +10,7 @@ import { CustomSelect, Dialog, Info } from "./common";
 import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
 import type { UserGroup } from "../types";
 
-export type AdminSection = "account" | "users" | "groups" | "discord" | "audit";
+export type AdminSection = "account" | "users" | "groups" | "discord" | "sync" | "audit";
 
 export function UserAdmin({
   loadStates,
@@ -21,6 +21,7 @@ export function UserAdmin({
   groups,
   groupError,
   groupManagement,
+  syncManagement,
   users,
   webhooks,
   modsets,
@@ -50,6 +51,7 @@ export function UserAdmin({
   groups: UserGroup[];
   groupError: string | null;
   groupManagement: React.ReactNode;
+  syncManagement: React.ReactNode;
   users: UserAccount[];
   webhooks: DiscordWebhook[];
   modsets: Modset[];
@@ -138,11 +140,11 @@ export function UserAdmin({
   return (
     <>
       <header className="administration-heading"><h2>{effectiveSection === "account" ? "Account settings" : "Administration"}</h2>
-        <p className="muted">{effectiveSection === "account" ? "Your session, sign-in method and password." : "Manage people, permissions and update notifications."}</p>
+        <p className="muted">{effectiveSection === "account" ? "Your session, sign-in method and password." : "Manage people, permissions, desktop sync access and update notifications."}</p>
       </header>
       <div className={`admin-workspace ${effectiveSection === "account" ? "account-workspace" : ""}`}>
         {currentUser.role === "admin" && effectiveSection !== "account" && <nav className="admin-navigation" aria-label="Administration sections">
-          {([{id:"users",label:"Users",icon:Users},{id:"groups",label:"Groups",icon:UsersRound},{id:"discord",label:"Discord",icon:Webhook},{id:"audit",label:"Audit log",icon:ScrollText}] as const).map(item => <button type="button" key={item.id} aria-current={effectiveSection === item.id ? "page" : undefined} onClick={() => { setFormError(null); onSectionChange(item.id); }}><item.icon size={18} />{item.label}</button>)}
+          {([{id:"users",label:"Users",icon:Users},{id:"groups",label:"Groups",icon:UsersRound},{id:"discord",label:"Discord",icon:Webhook},{id:"sync",label:"Sync access",icon:KeyRound},{id:"audit",label:"Audit log",icon:ScrollText}] as const).map(item => <button type="button" key={item.id} aria-current={effectiveSection === item.id ? "page" : undefined} onClick={() => { setFormError(null); onSectionChange(item.id); }}><item.icon size={18} />{item.label}</button>)}
         </nav>}
         <div className="admin-content">
         {actionError && <p className="error-box" role="alert">{actionError}</p>}
@@ -224,6 +226,7 @@ export function UserAdmin({
           </section>}
 
           {effectiveSection === "groups" && groupManagement}
+          {effectiveSection === "sync" && syncManagement}
 
           {effectiveSection === "discord" && <>
             <ResourceStatus state={loadStates.webhooks} label="Discord webhooks" />

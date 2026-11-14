@@ -1,5 +1,4 @@
 import React from "react";
-import { SyncAccessSection } from "./SyncAccessSection";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
 
@@ -127,7 +126,6 @@ export function ModsetEditDialog({ modset, modsets, groups, groupsLoad, modsetsL
         </div>}
         {loaded && groupsReady && !groups.length && <p className="muted">No groups available. Ask an administrator to create a group.</p>}
       </fieldset>}
-      {modset.can_manage_access && <SyncAccessSection modset={modset} api={api} parentChanged={parentChanged} />}
       {action.error && <div className="error-box" role="alert">{action.error}{!loaded && <button className="secondary-button compact" type="button" onClick={() => setLoadAttempt(value => value + 1)} disabled={action.loading}>Retry loading permissions</button>}</div>}
       <div className="dialog-actions"><button className="secondary-button compact" onClick={onClose} type="button">Cancel</button>
         <button className="primary-button compact" disabled={!modsetsLoad.loaded || Boolean(modsetsLoad.error) || !loaded || (modset.can_manage_access && !groupsReady) || action.loading || !name.trim() || !changed || !parentReady || !orderReady}>Save</button>

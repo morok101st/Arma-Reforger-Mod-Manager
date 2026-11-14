@@ -63,6 +63,7 @@ test("all application destinations survive URL serialization", () => {
   for (const search of [
     "?modset=2&mod=ABC",
     "?view=modsets&modset=2",
+    "?view=admin&section=sync&modset=2",
     "?view=account&modset=2",
     ...["users", "groups", "discord", "audit"].map(
       (section) => `?view=admin&section=${section}&modset=2`,
