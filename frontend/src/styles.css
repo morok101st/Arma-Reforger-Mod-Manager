@@ -2295,11 +2295,9 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .modset-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .modset-actions > button { padding-inline: 12px; }
 .modset-more { position: relative; }
-.modset-more summary { list-style: none; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; cursor: pointer; }
+.modset-more summary { background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); list-style: none; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; cursor: pointer; }
 .modset-more summary::-webkit-details-marker { display: none; }
 .modset-more summary:hover { background: var(--md-sys-color-surface-hover); }
-.modsets-table tr.current .modset-more summary { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); border-color: var(--md-sys-color-outline); }
-.modsets-table tr.current .modset-more summary:hover { background: var(--md-sys-color-surface-hover); }
 
 .modset-more > div { position: absolute; right: 0; top: calc(100% + 6px); z-index: 22; width: 190px; background: var(--md-sys-color-surface-container-high); box-shadow: var(--elevation-2); border-radius: 12px; padding: 8px; }
 .modset-more button { display: flex; align-items: center; gap: 10px; min-height: 44px; border: 0; background: transparent; color: var(--md-sys-color-on-surface); text-align: left; padding: 8px 12px; width: 100%; cursor: pointer; border-radius: 8px; }
