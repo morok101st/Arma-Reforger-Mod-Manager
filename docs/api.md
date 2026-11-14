@@ -52,6 +52,6 @@ Export uses `GET /api/modsets/{modset_id}/export`. Entries are `{modId, name, ve
 
 Modset activity and administrator audit reads support `limit`/`offset`. Audit category filters in the UI are client-side. Browser navigation uses `modset`, while the API uses `modset_id`; see [URL examples](user-guide.md#links-keyboard-access-and-recovery).
 
-## Desktop sync access (unreleased)
+## Sync access (unreleased)
 
 The feature branch adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.

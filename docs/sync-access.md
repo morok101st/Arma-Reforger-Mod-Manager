@@ -1,4 +1,4 @@
-# Desktop sync access (unreleased)
+# Sync access (unreleased)
 
 This feature is available in the current source branch, not in the published 0.2.7 images. It adds migration `005_modset_sync_access` and no required environment variables. Startup creates one new credential table without changing existing modsets. Back up the development/deployment database and matching configuration before upgrading.
 

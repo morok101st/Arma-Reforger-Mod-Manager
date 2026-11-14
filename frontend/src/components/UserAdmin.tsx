@@ -140,7 +140,7 @@ export function UserAdmin({
   return (
     <>
       <header className="administration-heading"><h2>{effectiveSection === "account" ? "Account settings" : "Administration"}</h2>
-        <p className="muted">{effectiveSection === "account" ? "Your session, sign-in method and password." : "Manage people, permissions, desktop sync access and update notifications."}</p>
+        <p className="muted">{effectiveSection === "account" ? "Your session, sign-in method and password." : "Manage people, permissions, sync access and update notifications."}</p>
       </header>
       <div className={`admin-workspace ${effectiveSection === "account" ? "account-workspace" : ""}`}>
         {currentUser.role === "admin" && effectiveSection !== "account" && <nav className="admin-navigation" aria-label="Administration sections">

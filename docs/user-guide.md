@@ -58,7 +58,7 @@ Modsets start private. Administrators manage group membership; owners and admini
 
 Administrators have emergency access without becoming owners. Copies receive ` (copy)`, retain tracked entries, and start without group grants or inherited webhook scopes. Non-empty modsets can be deleted after confirmation; the last remaining modset is protected. The historical global Shared flag no longer grants access. See [group migration](group-sharing-upgrade.md) for installations older than 0.2.5.
 
-## Desktop sync access (unreleased)
+## Sync access (unreleased)
 
 Administrators can open **Administration → Sync access**, search/filter the central overview and select **Manage** to create one export-only key per modset and download `armm-sync.json`. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. See [setup, permissions and key replacement](sync-access.md).
 

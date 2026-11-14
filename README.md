@@ -9,7 +9,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 **Current release: 0.2.7.** Includes [parent/child modsets and list-based export ordering](docs/parent-child-modsets.md), binding inherited versions, parent-controlled ordering and Child mods first. Deployment examples select `0.2.7`. See [release notes](docs/releases/0.2.7.md) and the [upgrade guide](docs/upgrading.md).
 
-**Current source (`main`):** also includes estimated modset size, corrected Workshop file-size extraction, and dashboard/browser navigation improvements added after 0.2.7. These changes are not included in the published 0.2.7 images. It also adds [scoped desktop sync access](docs/sync-access.md) on this feature branch. See [unreleased changes](docs/unreleased.md); use a [source build](docs/development.md) to review them.
+**Current source (`main`):** also includes estimated modset size, corrected Workshop file-size extraction, and dashboard/browser navigation improvements added after 0.2.7. These changes are not included in the published 0.2.7 images. It also adds [scoped sync access](docs/sync-access.md) on this feature branch. See [unreleased changes](docs/unreleased.md); use a [source build](docs/development.md) to review them.
 
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 

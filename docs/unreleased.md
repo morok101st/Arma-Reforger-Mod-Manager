@@ -1,6 +1,6 @@
 # Unreleased changes after 0.2.7
 
-These notes cover the changes on `main` after 0.2.7 and desktop sync access on `feature/modset-sync-access`. They are not included in the published `v0.2.7` images. Deployment examples remain pinned to 0.2.7. Use a [source build](development.md) to review this work; no newer release tag is implied.
+These notes cover the changes on `main` after 0.2.7 and sync access on `feature/modset-sync-access`. They are not included in the published `v0.2.7` images. Deployment examples remain pinned to 0.2.7. Use a [source build](development.md) to review this work; no newer release tag is implied.
 
 ## Estimated modset size
 
@@ -17,7 +17,7 @@ Workshop extraction now reads structured **Version size**, **File size** or **Si
 - The size explanation appears on hover/focus instead of remaining permanently visible.
 - Active and parent badges in modset management use styling consistent with webhook scope badges.
 
-## Desktop sync access
+## Sync access
 
 Administrators manage a central **Administration → Sync access** overview with search, status filters and last-use information. Only administrators can issue one export-only key per modset and generate `armm-sync.json`, including a configurable export path and optional game server connection hints. Parent/child permissions are checked on every export. See [setup, import format and API](sync-access.md). This feature adds migration `005_modset_sync_access`.
 
