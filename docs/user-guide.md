@@ -45,7 +45,7 @@ The overview **Changelog** records changes in this modset, such as add/remove/ve
 
 ## Modsets and group access
 
-Open **Modsets** to search by name/owner or filter owned/group-access modsets. Select a name to open its workspace. **Edit** combines the name with group grants; **Export** downloads JSON. **More actions** contains duplication and deletion.
+Open **Modsets** to search by name/owner or filter owned/group-access modsets. Select a name to open its workspace. **Edit** combines the name with group grants; **Export** downloads JSON. In the current source (unreleased), **More actions** groups **Edit**, **Export**, **Duplicate** and **Delete**; Edit and Export are no longer separate row buttons.
 
 Modsets start private. Administrators manage group membership; owners and administrators grant groups **Read** or **Write**. The strongest applicable grant wins.
 

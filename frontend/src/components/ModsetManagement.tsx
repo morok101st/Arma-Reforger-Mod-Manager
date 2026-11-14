@@ -119,11 +119,11 @@ export function ModsetManagement({
           <td><span className="mobile-cell-label">Access</span><span>{modset.has_group_access ? "Group access" : "Private"}</span><small>{modset.can_edit ? "Can edit" : "Read only"}</small></td>
           <td className="modset-count"><span className="mobile-cell-label">Mods</span>{modset.tracked_mods_count}</td>
           <td><div className="modset-actions">
-            <button className="secondary-button compact" type="button" disabled={loading || !modset.can_edit} onClick={() => openEditDialog(modset)}><Pencil size={16} /> Edit</button>
-            <button className="secondary-button compact" type="button" disabled={loading} onClick={() => exportModset(modset.id, modset.name).catch(() => null)}><Download size={16} /> Export</button>
-            <details className="modset-more" onClick={event => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+            <details className="modset-more" onClick={event => { if ((event.target as HTMLElement).closest("button")) { event.currentTarget.querySelector("summary")?.focus(); event.currentTarget.open = false; } }} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
               <summary aria-label={`More actions for ${modset.name}`} title="More actions"><MoreHorizontal size={18} /><span className="modset-more-label">More actions</span></summary>
               <div>
+                <button type="button" disabled={loading || !modset.can_edit} onClick={() => openEditDialog(modset)}><Pencil size={16} /> Edit</button>
+                <button type="button" disabled={loading} onClick={() => exportModset(modset.id, modset.name).catch(() => null)}><Download size={16} /> Export</button>
                 <button type="button" disabled={loading} onClick={() => duplicateModset(modset.id).catch(() => null)}><Copy size={16} /> Duplicate</button>
                 <button className="modset-delete-action" type="button" disabled={loading || !modset.can_delete || Boolean(modset.child_modsets_count) || modsets.length <= 1} title={modset.child_modsets_count ? "Detach child modsets before deleting their parent." : modsets.length <= 1 ? "The last modset cannot be deleted." : undefined} onClick={() => setDeleteModsetId(modset.id)}><Trash2 size={16} /> Delete</button>
               </div>
