@@ -7,7 +7,7 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
  for(const theme of ["dark","light"])for(const width of [1440,390,320]){
   const context=await browser.newContext({viewport:{width,height:1000},acceptDownloads:true}),page=await context.newPage();
   page.setDefaultTimeout(10000);
-  let role="admin",failCreate=true,key="armm_sync_browser_original",configuration=null,enabled=true;
+  let role="admin",failCreate=true,failDelete=true,key="armm_sync_browser_original",configuration=null,enabled=true;
   const entries=[],errors=[],writes=[];
   const sets=[{id:1,name:"Parent",parent_modset_id:null},{id:42,name:"Community Child",parent_modset_id:1,parent_modset_name:"Parent"}].map(s=>({...s,owner_username:"admin",is_owner:true,can_edit:true,can_delete:true,can_manage_access:true,tracked_mods_count:0,order_mode:"parent"}));
   page.on("pageerror",e=>errors.push(e.message));
@@ -24,6 +24,10 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
    if(path==="/admin/sync-access"&&method==="POST"){
     writes.push(path);if(failCreate){failCreate=false;return send({detail:"Save failed. Try again."},503);}
     const p=req.postDataJSON();assert.equal(p.modset_id,42);const {modset_id,...settings}=p;configuration=settings;entries.push(42);return send(row(),201);
+   }
+   if(path==="/admin/sync-access/42"&&method==="DELETE"){
+    if(failDelete){failDelete=false;return send({detail:"Delete failed. Try again."},503);}
+    entries.splice(0);configuration=null;return route.fulfill({status:204});
    }
    if(path==="/admin/sync-access/42"&&method==="PUT"){
     const {replaceKey,accessKey,...settings}=req.postDataJSON();configuration=settings;if(replaceKey){key="armm_sync_browser_replaced";enabled=true;}return send(row());
@@ -60,10 +64,12 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   await page.getByRole("dialog").waitFor({state:"detached"});
   const table=page.getByRole("table",{name:"Sync access overview"});await table.getByText("Community Server",{exact:true}).waitFor();
   assert.equal(await table.locator("tbody tr").count(),1);
-  async function download(){const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Download configuration Community Server",exact:true}).click();const d=await pending;assert.equal(d.suggestedFilename(),"armm-sync.json");return JSON.parse(await fs.readFile(await d.path(),"utf8"));}
+  assert.equal(await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).count(),0);
+  async function openActions(){const menu=page.locator(".sync-access-table .modset-more").first();if(!await menu.evaluate(node=>node.open))await menu.locator("summary").click();}
+  async function download(){await openActions();const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Download configuration Community Server",exact:true}).click();const d=await pending;assert.equal(d.suggestedFilename(),"armm-sync.json");return JSON.parse(await fs.readFile(await d.path(),"utf8"));}
   const first=await download();assert.equal(first.armm.exportPath,"/api/sync/modsets/42/export");assert.deepEqual(first.gameServer,{host:"gameserver.example.com",port:2001,passwordRequired:true});
   await page.reload();await table.getByText("Community Server",{exact:true}).waitFor();assert.deepEqual(await download(),first);
-  await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();
+  await openActions();await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();
   assert.equal(await page.getByLabel("Access name",{exact:true}).inputValue(),"Community Server");
   await page.getByRole("button",{name:"Next",exact:true}).click();assert.equal(await page.getByLabel("Game server host").inputValue(),"gameserver.example.com");
   await page.getByLabel("Game server port").fill("2002");await page.getByRole("button",{name:"Next",exact:true}).click();
@@ -71,16 +77,34 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   assert.equal((await download()).armm.accessKey,first.armm.accessKey);assert.equal((await download()).gameServer.port,2002);
   await page.getByLabel("Search sync access").fill("not found");await page.getByText("No sync access matches this search and status filter.").waitFor();await page.getByLabel("Search sync access").fill("");
   if(process.env.ARMM_TEST_SCREENSHOTS)await page.screenshot({path:`${process.env.ARMM_TEST_SCREENSHOTS}/accesses-${theme}-${width}.png`});
+  await openActions();
+  if(process.env.ARMM_TEST_SCREENSHOTS)await page.screenshot({path:`${process.env.ARMM_TEST_SCREENSHOTS}/menu-${theme}-${width}.png`});
+  await page.locator(".sync-access-table summary").focus();await page.keyboard.press("Escape");
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.getByRole("button",{name:"Disable",exact:true}).click();await page.getByRole("button",{name:"Confirm disable",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});
-  await table.getByText("Disabled",{exact:true}).waitFor();assert.equal(await page.getByRole("button",{name:"Download configuration Community Server",exact:true}).isDisabled(),true);
+  await openActions();await page.getByRole("button",{name:"Disable",exact:true}).click();await page.getByRole("button",{name:"Confirm disable",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});
+  await table.getByText("Disabled",{exact:true}).waitFor();await openActions();assert.equal(await page.getByRole("button",{name:"Download configuration Community Server",exact:true}).isDisabled(),true);
   await choose("Filter sync access","Active");await page.getByText("No sync access matches this search and status filter.").waitFor();await choose("Filter sync access","All accesses");
-  await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();
+  await openActions();await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();
   await page.getByLabel("Replace the key and enable access. Existing configurations will stop working.").check();await page.getByLabel("Invalidate the previous key and enable this access.").check();
   await page.getByRole("button",{name:"Save sync access",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});await table.getByText("Active",{exact:true}).waitFor();assert.notEqual((await download()).armm.accessKey,first.armm.accessKey);
+  await openActions();await page.getByRole("button",{name:"Delete sync access Community Server",exact:true}).click();
+  await page.getByRole("dialog").getByRole("button",{name:"Cancel",exact:true}).click();
+  assert.equal(entries.length,1);
+  await openActions();await page.getByRole("button",{name:"Delete sync access Community Server",exact:true}).click();
+  if(process.env.ARMM_TEST_SCREENSHOTS)await page.screenshot({path:`${process.env.ARMM_TEST_SCREENSHOTS}/delete-${theme}-${width}.png`});
+  await page.getByRole("button",{name:"Delete permanently",exact:true}).click();
+  await page.getByRole("dialog").getByText("Delete failed. Try again.",{exact:true}).waitFor();
+  assert.equal(entries.length,1);
+  await page.getByRole("button",{name:"Delete permanently",exact:true}).click();
+  await page.getByRole("dialog").waitFor({state:"detached"});
+  await page.getByText("No sync access configured",{exact:true}).waitFor();
+  assert.equal(entries.length,0);
+  await page.getByRole("button",{name:"Create sync access",exact:true}).click();
+  await choose("Sync modset","Community Child");
+  await page.getByRole("dialog").getByRole("button",{name:"Cancel",exact:true}).click();
   assert.deepEqual(errors,[]);
   role="user";await page.goto(base+"/?view=admin&section=sync&modset=42");await page.getByText("You do not have access to this administration page.").waitFor();
   await context.close();
  }
- await browser.close();console.log("Sync wizard browser checks passed: configured entries only, staged creation/retry, persisted edits/downloads, explicit replacement, disable, admin guard; both themes at 320/390/1440px.");
+ await browser.close();console.log("Sync wizard browser checks passed: configured entries only, staged creation/retry, persisted edits/downloads, explicit replacement, disable, delete/cancel/retry/recreate, admin guard; both themes at 320/390/1440px.");
 })().catch(e=>{console.error(e);process.exit(1);});

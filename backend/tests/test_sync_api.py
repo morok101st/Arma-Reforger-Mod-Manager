@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, event, inspect, select, text
 
 from app import main as app_main
 from app.migrations import _migrate_sync_access, _migrate_sync_configuration, migrate_schema
-from app.models import Mod, ModSet, ModsetSyncAccess, User, UserMod, Group, GroupMembership, ModSetGroupPermission
+from app.models import AuditLog, Mod, ModSet, ModsetSyncAccess, User, UserMod, Group, GroupMembership, ModSetGroupPermission
 from app.routers.sync import _windows
 from tests.support import ApiTestCase
 
@@ -310,6 +310,82 @@ class SyncAccessTestCase(ApiTestCase):
             self.assertEqual(client.post("/admin/sync-access",json={"modset_id":mid,**settings}).status_code,403)
             self.assertEqual(client.put(f"/admin/sync-access/{mid}",json=settings).status_code,403)
             self.assertEqual(client.get(f"/admin/sync-access/{mid}/configuration").status_code,403)
+
+    def test_delete_revokes_key_preserves_parent_child_exports_and_allows_recreation(self):
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            parent=self.create(client,"Parent")
+            child=self.create(client,"Child",parent_modset_id=parent)
+            with self.SessionLocal() as db:
+                db.add_all([Mod(id="P",name="Parent mod"),Mod(id="C",name="Child mod")]);db.flush()
+                db.add_all([UserMod(modset_id=parent,mod_id="P",current_version="1.0"),UserMod(modset_id=child,mod_id="C",current_version="2.0")]);db.commit()
+            settings={"modset_id":child,"name":"Delete me","baseUrl":"https://example.com"}
+            self.assertEqual(client.post("/admin/sync-access",json=settings).status_code,201)
+            key=client.get(f"/admin/sync-access/{child}/configuration").json()["armm"]["accessKey"]
+            before={mid:client.get(f"/modsets/{mid}/export").json() for mid in (parent,child)}
+            response=client.delete(f"/admin/sync-access/{child}")
+            self.assertEqual(response.status_code,204,response.text)
+            self.assertEqual(response.content,b"")
+            self.assertEqual(response.headers["cache-control"],"no-store")
+            self.assertEqual(client.get("/admin/sync-access").json(),[])
+            self.assertEqual(client.get(f"/sync/modsets/{child}/export",headers=self.headers(key)).status_code,401)
+            self.assertEqual(client.get(f"/admin/sync-access/{child}/configuration").status_code,409)
+            self.assertEqual(client.delete(f"/admin/sync-access/{child}").status_code,404)
+            for mid,expected in before.items():
+                self.assertEqual(client.get(f"/modsets/{mid}/export").json(),expected)
+            with self.SessionLocal() as db:
+                self.assertIsNone(db.get(ModsetSyncAccess,child))
+                self.assertEqual(db.get(ModSet,child).base_modset_id,parent)
+                audit=db.scalar(select(AuditLog).where(AuditLog.action=="sync_access_deleted"))
+                self.assertEqual(audit.detail,{"modset_name":"Child"})
+                self.assertNotIn(key,str(audit.detail))
+            self.assertEqual(client.post("/admin/sync-access",json=settings).status_code,201)
+            new_key=client.get(f"/admin/sync-access/{child}/configuration").json()["armm"]["accessKey"]
+            self.assertNotEqual(key,new_key)
+            self.assertEqual(client.get(f"/sync/modsets/{child}/export",headers=self.headers(key)).status_code,401)
+            self.assertEqual(client.get(f"/sync/modsets/{child}/export",headers=self.headers(new_key)).json(),before[child])
+
+    def test_delete_disabled_legacy_and_blocked_accesses(self):
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            for state in ("disabled","legacy","blocked"):
+                with self.subTest(state=state):
+                    mid=self.create(client,state)
+                    key=self.issue(client,mid)
+                    with self.SessionLocal() as db:
+                        row=db.get(ModsetSyncAccess,mid)
+                        if state=="disabled":row.is_active=False
+                        if state=="legacy":row.encrypted_key=None
+                        if state=="blocked":row.creator_user_id=None
+                        db.commit()
+                    self.assertEqual(client.delete(f"/admin/sync-access/{mid}").status_code,204)
+                    with self.SessionLocal() as db:self.assertIsNone(db.get(ModsetSyncAccess,mid))
+                    self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code,401)
+
+    def test_delete_rejects_owner_anonymous_and_bearer_management(self):
+        owner=self._create_user("owner","very-secure-owner-pass")
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            mid=self.create(client)
+            key=self.issue(client,mid)
+            with self.SessionLocal() as db:db.get(ModSet,mid).owner_user_id=owner.id;db.commit()
+            client.cookies.clear()
+            self.assertEqual(client.delete(f"/admin/sync-access/{mid}").status_code,401)
+            self.assertEqual(client.delete(f"/admin/sync-access/{mid}",headers=self.headers(key)).status_code,401)
+            client.post("/auth/login",json={"username":"owner","password":"very-secure-owner-pass"})
+            self.assertEqual(client.delete(f"/admin/sync-access/{mid}").status_code,403)
+            with self.SessionLocal() as db:self.assertIsNotNone(db.get(ModsetSyncAccess,mid))
+            self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code,200)
+
+    def test_failed_delete_audit_rolls_back_access_removal(self):
+        with TestClient(app_main.app,raise_server_exceptions=False) as client:
+            self.login_admin(client)
+            mid=self.create(client)
+            key=self.issue(client,mid)
+            with patch("app.routers.sync.audit_event",side_effect=RuntimeError("Audit unavailable")):
+                self.assertEqual(client.delete(f"/admin/sync-access/{mid}").status_code,500)
+            with self.SessionLocal() as db:self.assertIsNotNone(db.get(ModsetSyncAccess,mid))
+            self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code,200)
 
     def test_rate_limit_and_repeatable_additive_migration(self):
         migrate_schema(self.engine)
