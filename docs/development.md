@@ -1,6 +1,6 @@
 # Source builds and documentation tooling
 
-Release installations use the tracked GHCR example, currently selecting **0.2.7**. To review a source revision independently of published images, build that revision locally instead of inventing an image tag.
+Release installations use the tracked GHCR example, currently selecting **0.2.8**. To review a source revision independently of published images, build that revision locally instead of inventing an image tag.
 
 ## Build the current source
 

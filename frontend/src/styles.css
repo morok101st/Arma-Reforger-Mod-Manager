@@ -2295,9 +2295,10 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .modset-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .modset-actions > button { padding-inline: 12px; }
 .modset-more { position: relative; }
-.modset-more summary { list-style: none; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; cursor: pointer; }
+.modset-more summary { background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); list-style: none; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; cursor: pointer; }
 .modset-more summary::-webkit-details-marker { display: none; }
 .modset-more summary:hover { background: var(--md-sys-color-surface-hover); }
+
 .modset-more > div { position: absolute; right: 0; top: calc(100% + 6px); z-index: 22; width: 190px; background: var(--md-sys-color-surface-container-high); box-shadow: var(--elevation-2); border-radius: 12px; padding: 8px; }
 .modset-more button { display: flex; align-items: center; gap: 10px; min-height: 44px; border: 0; background: transparent; color: var(--md-sys-color-on-surface); text-align: left; padding: 8px 12px; width: 100%; cursor: pointer; border-radius: 8px; }
 .modset-more button:hover:not(:disabled) { background: var(--md-sys-color-surface-hover); }
@@ -2377,7 +2378,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 }
 @media (max-width: 900px) {
   .admin-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .admin-navigation { position: static; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .admin-navigation { position: static; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
   .admin-navigation button { justify-content: center; padding: 10px 6px; font-size: 13px; }
   .admin-navigation button svg { flex-shrink: 0; }
 }
@@ -2485,3 +2486,39 @@ summary:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-
 .modset-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .modset-name-cell .modset-badges:not(:empty) { margin-top: 6px; }
 .modset-badges .resource-info-badge { max-width: 100%; overflow-wrap: anywhere; }
+
+.sync-admin-editor { display: grid; gap: 16px; min-width: 0; max-width: 680px; }
+.sync-admin-editor > .secondary-button { justify-self: start; }
+.sync-admin-editor h4 { margin: 0; font-size: 20px; }
+.sync-admin-editor p { margin: 0; }
+.sync-admin .modsets-table { table-layout: auto; }
+.sync-admin .modsets-table td { overflow-wrap: anywhere; }
+
+.sync-admin .modsets-table th:first-child { width: 28%; }
+.sync-admin .modsets-table th:nth-child(2),
+.sync-admin .modsets-table th:nth-child(3),
+.sync-admin .modsets-table th:last-child { width: 14%; }
+.sync-admin .modsets-table th:nth-child(4) { width: 30%; }
+@media (max-width: 1100px) {
+  .sync-admin .modsets-table tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sync-admin .modsets-table td:nth-child(4) { grid-column: 1 / -1; }
+}
+
+.sync-wizard-steps { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 0; list-style: none; font-size: 13px; color: var(--md-sys-color-on-surface-variant); }
+.sync-wizard-steps [aria-current="step"] { color: var(--md-sys-color-primary); font-weight: 600; }
+.sync-wizard h3 { margin: 0; font-size: 20px; }
+.sync-wizard-fields { display: grid; gap: 16px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.sync-wizard-summary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 20px; margin: 0; }
+.sync-wizard-summary dt { color: var(--md-sys-color-on-surface-variant); }
+.sync-wizard-summary dd { margin: 0; overflow-wrap: anywhere; }
+@media (min-width: 1101px) {
+  .sync-admin .sync-access-table th:first-child { width: 22%; }
+  .sync-admin .sync-access-table th:nth-child(2) { width: 22%; }
+  .sync-admin .sync-access-table th:nth-child(3) { width: 12%; }
+  .sync-admin .sync-access-table th:nth-child(4) { width: 20%; }
+  .sync-admin .sync-access-table th:last-child { width: 24%; }
+}
+@media (max-width: 600px) {
+  .sync-wizard-summary { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .sync-wizard-summary dd { margin-bottom: 12px; }
+}

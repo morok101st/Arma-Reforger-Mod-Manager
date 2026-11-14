@@ -4,7 +4,7 @@
 <rect width="1200" height="650" rx="16" fill="#141414"/>
 <g font-family="Arial, Helvetica, sans-serif" fill="#eeeeec">
 <text x="40" y="47" font-size="27" font-weight="600">ARMM services and update paths</text>
-<text x="40" y="78" font-size="16" fill="#b0b0ac" font-weight="400">Release 0.2.6 · Service ports are internal unless shown as HTTPS</text>
+<text x="40" y="78" font-size="16" fill="#b0b0ac" font-weight="400">Release 0.2.8 · Service ports are internal unless shown as HTTPS</text>
 <rect x="40" y="120" width="225" height="122" rx="12" fill="#242424" stroke="#555550"/>
 <text x="58" y="153" font-size="20" fill="#eeeeec" font-weight="600">Browser</text>
 <text x="58" y="184" font-size="16" fill="#b0b0ac" font-weight="400">React interface</text>

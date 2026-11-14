@@ -16,6 +16,7 @@ from app.routers.modsets import router as modsets_router
 from app.routers.mods import router as mods_router
 from app.routers.system import router as system_router
 from app.routers.groups import router as groups_router
+from app.routers.sync import router as sync_router
 from app.scheduler import start_scheduler
 from app.refresh_jobs import start_refresh_workers
 
@@ -27,7 +28,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(
         bind=engine,
         tables=[table for table in Base.metadata.tables.values() if table.name not in {
-            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions", "mod_refresh_jobs", "modset_export_orders",
+            "discord_webhook_modsets", "groups", "group_memberships", "modset_group_permissions", "mod_refresh_jobs", "modset_export_orders", "modset_sync_access",
         }],
     )
     migrate_schema(engine)
@@ -47,14 +48,18 @@ async def security_middleware(request: Request, call_next):
         enforce_origin_for_unsafe_methods(request)
     except HTTPException as exc:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    return await call_next(request)
+    response = await call_next(request)
+    if request.url.path.startswith(("/sync/", "/admin/sync-access")) or request.url.path.endswith(("/sync-access", "/sync-configuration")):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    return response
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Arma Reforger Mod Manager API",
-        version="0.2.7",
+        version="0.2.8",
         root_path="/api",
         docs_url=None,
         redoc_url=None,
@@ -75,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(modsets_router)
     app.include_router(mods_router)
     app.include_router(groups_router)
+    app.include_router(sync_router)
 
     def custom_openapi() -> dict[str, object]:
         if app.openapi_schema:

@@ -1,6 +1,6 @@
 # Interface gallery
 
-These captures show the real current frontend with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They describe **0.2.6** and must not be presented as screenshots of release 0.2.5. The ARMM logo is the existing application asset; no branding replacement was made.
+These captures show the **0.2.8** frontend with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They include estimated size, the consolidated Modsets actions and administrator Sync access. Captures are generated from the release source using the read-only mocked API fixture below. The ARMM logo is the existing application asset.
 
 ## Workspace
 
@@ -18,13 +18,23 @@ The Workshop ID has its own copy action. Installed/latest comparison, checks and
 
 ![Modset management with ownership filters and row actions](images/modsets-dark.png)
 
-Names open the workspace; Edit combines name and group permissions. Duplicate/Delete live in additional actions.
+Names open the workspace; Edit combines name and group permissions. Edit, Export, Duplicate and Delete live in additional actions.
 
 ## Administration
 
 ![Administration Users section with focused section navigation](images/administration-dark.png)
 
 Users, Groups, Discord and Audit log are separate sections. Personal Account settings are accessed independently.
+
+## Sync access
+
+![Configured Sync access entries](images/sync-access-dark.png)
+
+Only configured accesses are listed, with Edit, Download and Disable actions.
+
+![Sync access setup wizard review](images/sync-wizard-dark.png)
+
+The wizard collects a modset, name and connection hints before final confirmation. This capture does not submit the wizard or create credentials.
 
 ## Light mode and mobile
 

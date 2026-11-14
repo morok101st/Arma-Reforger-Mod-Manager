@@ -19,6 +19,10 @@ import type {
   GroupPermission,
 } from "../types";
 
+export type SyncSettings = {name: string; baseUrl: string; gameServer?: {host: string; port: number; passwordRequired: boolean}};
+export type SyncAccessStatus = {configuration: SyncSettings | null; downloadable: boolean; key_available: boolean; enabled: boolean; usable: boolean; created_at: string | null; last_used_at: string | null; base_url: string};
+export type SyncAccessOverview = SyncAccessStatus & {modset_id: number; modset_name: string; owner_username: string | null; parent_modset_id: number | null; parent_modset_name: string | null; created_by: string | null};
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 type ApiRequestOptions = RequestInit & {
@@ -54,7 +58,11 @@ export function createApiClient(onUnauthorized?: () => void) {
   async function readJsonOrThrow<T>(response: Response, fallbackMessage: string): Promise<T> {
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.detail ?? fallbackMessage);
+      const detail = payload?.detail;
+      const message = typeof detail === "string" ? detail : Array.isArray(detail)
+        ? detail.map((item: {loc?: (string | number)[]; msg?: string}) => `${item.loc?.filter(part => part !== "body").join(".") ?? "Input"}: ${item.msg ?? "Invalid value"}`).join(" ")
+        : fallbackMessage;
+      throw new Error(message);
     }
     return (await response.json()) as T;
   }
@@ -166,6 +174,30 @@ export function createApiClient(onUnauthorized?: () => void) {
     },
     async previewExportOrder(id: number, mode: "parent" | "independent", parentId: number) {
       return readJsonOrThrow<ModsetExport>(await request(`/modsets/${id}/order-preview?mode=${mode}&parent_modset_id=${parentId}`), "Could not preview export order.");
+    },
+    async listSyncAccess() {
+      return readJsonOrThrow<SyncAccessOverview[]>(await request("/admin/sync-access"), "Could not load sync access overview.");
+    },
+    async createConfiguredSync(payload: SyncSettings & {modset_id: number}) {
+      return readJsonOrThrow<SyncAccessStatus>(await request("/admin/sync-access", {method:"POST",json:payload}), "Could not create sync access.");
+    },
+    async updateConfiguredSync(id: number, payload: SyncSettings & {accessKey?: string; replaceKey?: boolean}) {
+      return readJsonOrThrow<SyncAccessStatus>(await request(`/admin/sync-access/${id}`, {method:"PUT",json:payload}), "Could not update sync access.");
+    },
+    async downloadSavedSync(id: number) {
+      return readJsonOrThrow<unknown>(await request(`/admin/sync-access/${id}/configuration`), "Could not download sync configuration.");
+    },
+    async getSyncAccess(id: number) {
+      return readJsonOrThrow<SyncAccessStatus>(await request(`/modsets/${id}/sync-access`), "Could not load sync access.");
+    },
+    async createSyncAccess(id: number) {
+      return readJsonOrThrow<SyncAccessStatus & {access_key: string}>(await request(`/modsets/${id}/sync-access`, {method: "POST"}), "Could not create sync access.");
+    },
+    async disableSyncAccess(id: number) {
+      return readJsonOrThrow<SyncAccessStatus>(await request(`/modsets/${id}/sync-access`, {method: "DELETE"}), "Could not disable sync access.");
+    },
+    async downloadSyncConfiguration(id: number, payload: {name: string; baseUrl: string; accessKey: string; gameServer?: {host: string; port: number; passwordRequired: boolean}}) {
+      return readJsonOrThrow<unknown>(await request(`/modsets/${id}/sync-configuration`, {method: "POST", json: payload}), "Could not create sync configuration.");
     },
     async listModsets() {
       const response = await request("/modsets");

@@ -4,7 +4,7 @@
 
 The standard deployment has four services: Nginx/React frontend, FastAPI backend, PostgreSQL 16 and internal `reforger-cli`. Traefik terminates HTTPS and routes only to the frontend's port **8080**. Nginx serves the SPA and proxies `/api/...` to backend port **8000**. The CLI metadata API uses internal port **8081**; it is not publicly exposed.
 
-PostgreSQL stores users/session-version counters, groups/grants, modsets, tracked versions/order, changelogs, audit records, encrypted webhooks/delivery deduplication and manual-job state. The signed session cookie itself lives in the client; there is no database session table.
+PostgreSQL stores users/session-version counters, groups/grants, modsets, tracked versions/order, changelogs, audit records, encrypted webhooks/sync keys, saved sync configuration, delivery deduplication and manual-job state. The signed session cookie itself lives in the client; there is no database session table.
 
 | Path | Execution | Metadata | Discord update alerts |
 | --- | --- | --- | --- |
@@ -19,4 +19,10 @@ Jobs use a unique modset/mod key and a new attempt ID on retry. PostgreSQL sessi
 
 The `armm-db-data` volume contains PostgreSQL data; `reforger-server-data` contains the dedicated-server installation. Metadata probes create temporary profiles inside the CLI service and clean them up unless debug retention is enabled. No new queue service or Redis is needed for persistent manual jobs.
 
-See [deployment examples](../docker-compose.example.yml), [job internals and migration](manual-refresh-upgrade.md), and the [Traefik chapter](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Traefik-and-Reverse-Proxy). This diagram describes **0.2.6**; durable jobs were added after 0.2.5.
+Modsets support one level of parent/child inheritance. Effective child content includes parent mods with binding installed versions plus local child mods. Parent read access is required in addition to child access. Export order is independent or follows the parent with local insertions; numeric storage remains compatible with older clients. See [parent/child behavior](parent-child-modsets.md).
+
+Estimated modset size is calculated in the frontend from returned mod metadata. It adds no service, migration or environment setting. See [changes since 0.2.7](changes-since-0.2.7.md).
+
+Sync access adds an administrator-only setup/configuration API and a scoped bearer export API in FastAPI; it uses the existing PostgreSQL database and requires no additional service. See [sync access](sync-access.md) for encryption, rights and import fields.
+
+See [deployment examples](../docker-compose.example.yml), [job internals and migration](manual-refresh-upgrade.md), and the [Traefik chapter](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Traefik-and-Reverse-Proxy). The service diagram applies to **0.2.8**; durable jobs were introduced in 0.2.6. Parent/child behavior and the size estimate use these existing services.

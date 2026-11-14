@@ -1,6 +1,6 @@
 export type AppRoute = {
   view: "workspace" | "modsets" | "admin" | "account";
-  section: "users" | "groups" | "discord" | "audit";
+  section: "users" | "groups" | "discord" | "sync" | "audit";
   modsetId: number | null;
   modId: string | null;
   invalid: boolean;
@@ -14,7 +14,7 @@ export function readRoute(search: string): AppRoute {
   const id = rawId === null ? null : Number(rawId);
   const validId = id !== null && Number.isSafeInteger(id) && id > 0;
   const validView = ["workspace", "modsets", "admin", "account"].includes(view);
-  const validSection = ["users", "groups", "discord", "audit"].includes(section);
+  const validSection = ["users", "groups", "discord", "sync", "audit"].includes(section);
   return {
     view: validView ? view as AppRoute["view"] : "workspace",
     section: validSection ? section as AppRoute["section"] : "users",
