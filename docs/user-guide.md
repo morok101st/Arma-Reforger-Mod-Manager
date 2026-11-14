@@ -1,6 +1,6 @@
 # User guide
 
-This guide describes **0.2.7** and explicitly marked [unreleased source changes](unreleased.md). Screenshots use fictional data and retain their documented [capture scope](screenshots.md).
+This guide describes **0.2.8**; see [changes since 0.2.7](changes-since-0.2.7.md). Screenshots use fictional data and retain their documented [capture scope](screenshots.md).
 
 ## Workspace and version health
 
@@ -17,9 +17,9 @@ The Overview shows counts, the automatic schedule, Version health, Needs attenti
 
 Versions are normalized (including a leading v), compared as parsed versions where possible, and otherwise compared by natural numeric/text segments. Needs attention lists available updates first, then missing latest versions. It does not turn intentionally uninstalled mods into warnings.
 
-## Estimated modset size (unreleased)
+## Estimated modset size
 
-The current source shows **Estimated size** in Overview. It sums Workshop sizes for mods with an installed version, including inherited mods and dependencies, counting each mod ID once. Mods with **No installed version** are excluded.
+Overview shows **Estimated size** in Overview. It sums Workshop sizes for mods with an installed version, including inherited mods and dependencies, counting each mod ID once. Mods with **No installed version** are excluded.
 
 Sizes require an explicit supported unit (B, KB/MB/GB/TB or KiB/MiB/GiB/TiB). Missing or invalid sizes remain unknown. A partial total shows the number of unknown sizes; if all installed mods have unknown sizes, the value is **Unknown**. An empty installed set displays **0 B**. Totals use decimal units.
 
@@ -45,7 +45,7 @@ The overview **Changelog** records changes in this modset, such as add/remove/ve
 
 ## Modsets and group access
 
-Open **Modsets** to search by name/owner or filter owned/group-access modsets. Select a name to open its workspace. **Edit** combines the name with group grants; **Export** downloads JSON. In the current source (unreleased), **More actions** groups **Edit**, **Export**, **Duplicate** and **Delete**; Edit and Export are no longer separate row buttons.
+Open **Modsets** to search by name/owner or filter owned/group-access modsets. Select a name to open its workspace. **Edit** combines the name with group grants; **Export** downloads JSON. **More actions** groups **Edit**, **Export**, **Duplicate** and **Delete**; Edit and Export are no longer separate row buttons.
 
 Modsets start private. Administrators manage group membership; owners and administrators grant groups **Read** or **Write**. The strongest applicable grant wins.
 
@@ -58,13 +58,13 @@ Modsets start private. Administrators manage group membership; owners and admini
 
 Administrators have emergency access without becoming owners. Copies receive ` (copy)`, retain tracked entries, and start without group grants or inherited webhook scopes. Non-empty modsets can be deleted after confirmation; the last remaining modset is protected. The historical global Shared flag no longer grants access. See [group migration](group-sharing-upgrade.md) for installations older than 0.2.5.
 
-## Sync access (unreleased)
+## Sync access
 
 Administrators open **Administration → Sync access → Create sync access** and follow a wizard to select the modset, name and connection details. Only configured accesses appear as rows with **Edit**, **Download** and **Disable** actions. Settings persist for later edits; repeated downloads reuse the current key. One access is allowed per modset. The file includes the current `exportPath`; the desktop app uses it directly. Optional game server hints include `passwordRequired`, never a password. Parent/child rights are checked on every export. Existing entries may require **Finish setup** to save their settings and restore a recoverable key. See [setup, permissions and key replacement](sync-access.md).
 
 ## Administration and account settings
 
-Administrators open **Administration** and choose **Users**, **Groups**, **Discord**, **Sync access** (unreleased) or **Audit log**. Users and groups have local search. In the user editor, changed role, enabled state, memberships and an optional password save in one transaction. Failure keeps the draft for correction; it does not leave half-applied account changes. A password/role/status change invalidates existing sessions as applicable; membership changes are enforced on subsequent requests.
+Administrators open **Administration** and choose **Users**, **Groups**, **Discord**, **Sync access**  or **Audit log**. Users and groups have local search. In the user editor, changed role, enabled state, memberships and an optional password save in one transaction. Failure keeps the draft for correction; it does not leave half-applied account changes. A password/role/status change invalidates existing sessions as applicable; membership changes are enforced on subsequent requests.
 
 Use **Groups** to manage members, and **Discord** to select webhook modset scopes. Empty scope on creation defaults to all current modsets; a future private copy is not added automatically. Update alerts remain limited to scheduled runs at 10:00 and 19:00 in the configured timezone; the explicit webhook test action sends a test message.
 
@@ -84,7 +84,7 @@ Examples for a deployment at `https://armm.example.com`:
 
 Administration sections are `users`, `groups`, `discord`, `sync`, `audit`. Browser URLs use `modset`; API requests use `modset_id`. Copy the address bar to share a view. Opening a link does not grant access or change the stored default modset. Missing/inaccessible targets show recovery controls rather than silently opening a different mod. Search, browser sorting/filtering and unsaved drafts are not encoded in the URL.
 
-In the current source (unreleased), focus a mod row and use Up/Down to open the adjacent mod in the displayed filtered and sorted list. Navigation stops at either end. The selected row scrolls into view. **Back to overview** uses a home icon.
+Focus a mod row and use Up/Down to open the adjacent mod in the displayed filtered and sorted list. Navigation stops at either end. The selected row scrolls into view. **Back to overview** uses a home icon.
 
 Tab moves between controls. Selects support Arrow keys, Home/End, typeahead, Enter, Tab and Escape. Modal dialogs contain focus, close with Escape and return focus to their opener. The mobile drawer follows the same focus behavior. A Skip to content link is available to keyboard users.
 

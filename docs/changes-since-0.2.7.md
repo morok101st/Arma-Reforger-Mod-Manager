@@ -1,6 +1,6 @@
-# Unreleased changes after 0.2.7
+# Changes since 0.2.7
 
-These notes cover the changes on `main` after 0.2.7 and sync access on `feature/modset-sync-access`. They are not included in the published `v0.2.7` images. Deployment examples remain pinned to 0.2.7. Use a [source build](development.md) to review this work; no newer release tag is implied.
+These changes shipped in **0.2.8** compared with `v0.2.7`. Deployment examples select `0.2.8`. See the [release notes](releases/0.2.8.md) and [upgrade guide](upgrading.md).
 
 ## Estimated modset size
 
@@ -15,6 +15,7 @@ Workshop extraction now reads structured **Version size**, **File size** or **Si
 - Up/Down on a focused mod row opens the adjacent entry in the currently displayed filtered/sorted list, stopping at the ends. The selected row scrolls into view.
 - The mod browser's **Back to overview** action uses a home icon.
 - The size explanation appears on hover/focus instead of remaining permanently visible.
+- Modset row actions (Edit, Export, Duplicate and Delete) share one additional-actions menu; its button has distinct normal/hover states in active rows.
 - Active and parent badges in modset management use styling consistent with webhook scope badges.
 
 ## Sync access

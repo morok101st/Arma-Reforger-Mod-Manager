@@ -7,9 +7,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 *Current interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
 
-**Current release: 0.2.7.** Includes [parent/child modsets and list-based export ordering](docs/parent-child-modsets.md), binding inherited versions, parent-controlled ordering and Child mods first. Deployment examples select `0.2.7`. See [release notes](docs/releases/0.2.7.md) and the [upgrade guide](docs/upgrading.md).
-
-**Current source (`main`):** also includes estimated modset size, corrected Workshop file-size extraction, and dashboard/browser navigation improvements added after 0.2.7. These changes are not included in the published 0.2.7 images. It also adds [scoped sync access](docs/sync-access.md) on this feature branch. See [unreleased changes](docs/unreleased.md); use a [source build](docs/development.md) to review them.
+**Current release: 0.2.8.** Adds administrator-managed [Sync access](docs/sync-access.md) with a setup wizard and repeatable configuration downloads, estimated modset size, corrected Workshop file-size extraction and navigation/menu improvements. Deployment examples select `0.2.8`. See [release notes](docs/releases/0.2.8.md), [changes since 0.2.7](docs/changes-since-0.2.7.md) and the [upgrade guide](docs/upgrading.md).
 
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 
@@ -27,7 +25,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - Can optionally set orphaned dependency mods to `No installed version` when a parent mod is deleted or deactivated.
 - Stores changelog history per version including `Last modified`.
 - Exports a modset as a JSON list (`modId`, `name`, `version`) for mods with a defined version only.
-- The current source estimates modset size from Workshop metadata for installed mods, counting local, inherited and dependency mods once per ID. Unknown sizes are identified separately; actual disk usage can differ.
+- Estimates modset size from Workshop metadata for installed mods, counting local, inherited and dependency mods once per ID. Unknown sizes are identified separately; actual disk usage can differ.
 - Supports per-modset export order. The editor displays list positions and saves moves; legacy numeric API calls remain compatible.
 - Can send Discord update alerts through admin-managed webhooks without code changes.
 - Discord webhooks can be scoped to selected modsets so alerts only fire for the modsets you choose.
@@ -39,8 +37,8 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 - **Workspace:** the active modset selector, Export JSON and Add mod sit above the overview or selected mod. The desktop mod browser contains search, status filters and sorting; on phones it opens as a drawer.
 - **Overview:** Version health distinguishes Up to date, Update available, No installed version and No latest version. Selecting a category filters the browser. Needs attention lists updates and missing latest versions; mods without an installed version are intentionally neutral. Export order and the paged modset Changelog are collapsible.
 - **Mod details:** copy the Workshop ID, compare installed/latest versions, check updates, choose a known installed version, inspect dependencies/Required by, or copy a single JSON entry when an installed version exists. Running manual checks remain visible after reload and in other tabs.
-- **Modsets:** search by name or owner, filter owned/group-access modsets, and open a modset from its name. Edit combines its name and group permissions. On the feature branch, Edit, Export, Duplicate and Delete are grouped in the additional actions menu. Copies start private without group grants or webhook scope membership. The last remaining modset is protected.
-- **Administration:** administrators have separate Users, Groups, Discord and Audit log sections, plus **Sync access** on the feature branch for creating sync access through a wizard and managing saved configurations as rows. The user editor saves role, account status, memberships and an optional password together. Personal Account settings, theme switching and Sign out are in the account menu; regular users see Settings instead of Administration.
+- **Modsets:** search by name or owner, filter owned/group-access modsets, and open a modset from its name. Edit combines its name and group permissions. Edit, Export, Duplicate and Delete are grouped in the additional actions menu. Copies start private without group grants or webhook scope membership. The last remaining modset is protected.
+- **Administration:** administrators have separate Users, Groups, Discord and Audit log sections, plus **Sync access** for creating sync access through a wizard and managing saved configurations as rows. The user editor saves role, account status, memberships and an optional password together. Personal Account settings, theme switching and Sign out are in the account menu; regular users see Settings instead of Administration.
 - **Navigation and recovery:** copied URLs, reload and browser Back/Forward retain the selected view/modset/mod. Failed reads show an error and Retry rather than misleading empty lists. Successful writes are not repeated when a following list reload fails. Dialogs and selects support keyboard navigation and retain drafts after errors.
 
 See the [user guide](docs/user-guide.md) for permissions, keyboard controls, URL examples and daily workflows.
@@ -225,7 +223,7 @@ The UI manages export order as a list with positions **1, 2, 3…**.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
-- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.7`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
+- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.8`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
 
 ### Optional OIDC login
 

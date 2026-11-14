@@ -59,7 +59,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Arma Reforger Mod Manager API",
-        version="0.2.7",
+        version="0.2.8",
         root_path="/api",
         docs_url=None,
         redoc_url=None,

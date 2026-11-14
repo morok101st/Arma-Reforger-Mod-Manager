@@ -1,6 +1,6 @@
-# Sync access (unreleased)
+# Sync access
 
-Sync access is available on the current feature branch, not in published 0.2.7 images. Administrators manage configured accesses under **Administration → Sync access**. This page lists existing accesses only, including disabled or blocked entries; it does not repeat the modset directory.
+Sync access is included in **0.2.8**; it is not available in 0.2.7 images. Administrators manage configured accesses under **Administration → Sync access**. This page lists existing accesses only, including disabled or blocked entries; it does not repeat the modset directory.
 
 ## Create an access
 

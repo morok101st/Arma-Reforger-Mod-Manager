@@ -1,6 +1,6 @@
 # API and automation
 
-This page describes **0.2.7**, including the new routes/fields added after 0.2.5; see [release scope](changes-since-0.2.5.md). The authenticated OpenAPI schema at `/api/openapi.json` is the exhaustive route and payload reference for the deployed build.
+This page describes **0.2.8**; see [release scope](changes-since-0.2.7.md). The authenticated OpenAPI schema at `/api/openapi.json` is the exhaustive route and payload reference for the deployed build.
 
 ## Authentication and permissions
 
@@ -52,6 +52,6 @@ Export uses `GET /api/modsets/{modset_id}/export`. Entries are `{modId, name, ve
 
 Modset activity and administrator audit reads support `limit`/`offset`. Audit category filters in the UI are client-side. Browser navigation uses `modset`, while the API uses `modset_id`; see [URL examples](user-guide.md#links-keyboard-access-and-recovery).
 
-## Sync access (unreleased)
+## Sync access
 
-The feature branch adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.
+Version 0.2.8 adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.
