@@ -52,6 +52,9 @@ const mods = names.map((name, i) => ({
       let data;
       if (p === '/auth/config') data = { local_login_enabled: true, oidc_enabled: true };
       else if (p === '/auth/me') data = user;
+      else if (p === '/release-status') data = {
+        version: '0.2.9', revision: null, repository_url: 'https://github.com/morok101st/Arma-Reforger-Mod-Manager', update: null,
+      };
       else if (p === '/modsets' || p === '/admin/modsets') data = sets;
       else if (p === '/mods') data = mods;
       else if (p === '/refresh-jobs') data = [];
@@ -84,6 +87,10 @@ const mods = names.map((name, i) => ({
       await page.getByRole('heading', { name: heading, exact: typeof heading === 'string' }).waitFor();
       await page.waitForFunction(() => !document.body.innerText.includes('Loading update check status'));
       await page.evaluate(async theme => { document.documentElement.dataset.theme = theme; await document.fonts.ready; }, theme);
+      if (width >= 900 && query.startsWith('?modset=')) {
+        await page.locator('.sidebar-release').getByText('ARMM v0.2.9', { exact: true }).waitFor();
+        await page.locator('.sidebar-release').getByRole('link', { name: 'GitHub' }).waitFor();
+      }
       if (file === 'sync-wizard-dark.png') {
         await page.getByRole('button', {name:'Create sync access',exact:true}).click();
         await page.getByRole('combobox',{name:'Sync modset',exact:true}).click();
