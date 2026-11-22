@@ -1,6 +1,6 @@
 # Interface gallery
 
-The release captures show the **0.2.8** frontend with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They include estimated size, the consolidated Modsets actions and administrator Sync access. Captures are generated from the release source using the read-only mocked API fixture below. The ARMM logo is the existing application asset.
+All captures use **fictional demonstration data**. The desktop workspace and mod detail screenshots show the version and GitHub link from `main`. Their version number is an example. The older Modsets, Administration, Sync access and closed-drawer mobile captures show **0.2.8**. The capture instructions below use a read-only mocked API fixture.
 
 ## Workspace
 
@@ -59,7 +59,7 @@ The mobile browser opens as a drawer. These viewport captures demonstrate layout
 From `frontend`, install the existing development dependencies and Chromium, start the frontend with the internal API base, then run the capture script in another terminal:
 
 ```bash
-npm install
+npm ci
 npx playwright install --with-deps chromium
 VITE_API_BASE_URL=/api npm run dev
 ```
