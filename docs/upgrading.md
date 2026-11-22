@@ -7,8 +7,8 @@ Tracked image examples select **1.0.0**. Upgrading from 0.2.8 requires no new da
 | 0.2.4 → 0.2.5 | Global Shared access is replaced by explicit groups. Existing groups, identities, ownership and webhook scopes must be preserved. | [Group sharing and recovery](group-sharing-upgrade.md) |
 | 0.2.5 → 0.2.6 | Redesigned interface and navigation; atomic user editing; persistent individual manual checks with an additive job table. | [Changes since 0.2.5](changes-since-0.2.5.md), [manual-check migration](manual-refresh-upgrade.md) |
 | 0.2.6 → 0.2.7 | Parent/child inheritance, parent-controlled ordering and a sequence editor. Additive migrations `003_base_modsets` and `004_base_export_order`; existing modsets keep independent ordering. | [Parent/Child guide](parent-child-modsets.md), [release notes](releases/0.2.7.md) |
-| 0.2.8 → 1.0.0 | ARMM version and release notices, Sync access deletion and runtime/security updates. No new database migration. | [Release notes](releases/1.0.0.md) |
 | 0.2.7 → 0.2.8 | Administrator-managed Sync access with saved configuration/encrypted keys. Additive migrations `005_modset_sync_access` and `006_sync_configuration`; existing modsets, groups, sessions and exports are retained. | [Sync access](sync-access.md), [release notes](releases/0.2.8.md) |
+| 0.2.8 → 1.0.0 | ARMM version and release notices, Sync access deletion and runtime/security updates. No new database migration. | [Release notes](releases/1.0.0.md) |
 
 The redesign, URL navigation, resource recovery and atomic user update add no schema migration. Persistent manual jobs add `002_mod_refresh_jobs`; it runs automatically at startup. No new required environment variables or additional service is needed.
 
