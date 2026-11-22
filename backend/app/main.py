@@ -10,6 +10,7 @@ from app.auth import bootstrap_admin, enforce_origin_for_unsafe_methods
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine
 from app.migrations import migrate_schema
+from app.release_status import BUILD_VERSION, ReleaseChecker
 from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
 from app.routers.modsets import router as modsets_router
@@ -59,13 +60,14 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Arma Reforger Mod Manager API",
-        version="0.2.8",
+        version=BUILD_VERSION,
         root_path="/api",
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
         lifespan=lifespan,
     )
+    app.state.release_checker = ReleaseChecker()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,

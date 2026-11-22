@@ -548,6 +548,54 @@ button:disabled {
   color: #ffd2cc;
 }
 
+.sidebar-release {
+  background: var(--md-sys-color-surface-container-low);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-block-start: auto;
+  padding-block-start: 8px;
+  font-size: 13px;
+}
+
+.account-menu .sidebar-release {
+  background: transparent;
+  margin: 4px 8px 0;
+}
+
+.sidebar-release a {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-release .sidebar-release-update {
+  color: var(--md-sys-color-primary);
+  flex-basis: 100%;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .sidebar .sidebar-release {
+    position: sticky;
+    bottom: 0;
+  }
+
+  .sidebar-release a {
+    min-height: 44px;
+  }
+}
+
 .mod-list {
   align-content: start;
   display: grid;

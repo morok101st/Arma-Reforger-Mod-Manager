@@ -9,6 +9,7 @@ import { ModDetail } from "./components/ModDetail";
 import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect, focusableElements } from "./components/common";
 import { ResourceStatus } from "./components/ResourceStatus";
+import { ReleaseInfo } from "./components/ReleaseInfo";
 import { Sidebar } from "./components/Sidebar";
 import { UserAdmin } from "./components/UserAdmin";
 import { useAppController } from "./hooks/useAppController";
@@ -128,6 +129,8 @@ export function App() {
   }
 
   const authUser = auth.authUser;
+  const showSidebar = !view.showModsetAdmin && !view.showUserAdmin && modsetsReady && activeModset;
+  const releaseInfo = <ReleaseInfo key={`${authUser.id}:${authUser.role}`} api={auth.api} />;
 
   return (
     <main className={`app-shell redesigned-shell ${view.showModsetAdmin || view.showUserAdmin || !modsetsReady || !activeModset ? "management-shell" : ""} ${mobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
@@ -149,10 +152,12 @@ export function App() {
           </button>
           <button type="button" onClick={() => { closeSidebar(); view.showAccountView(); }}><Shield size={16} /> Account settings</button>
           <button type="button" onClick={actions.logout}><LogOut size={16} /> Sign out</button>
+          {!showSidebar && releaseInfo}
         </div></details>
       </header>
       {mobileSidebarOpen && <button className="sidebar-backdrop" aria-label="Close mod list" onClick={closeSidebar} type="button" />}
-      {!view.showModsetAdmin && !view.showUserAdmin && modsetsReady && activeModset && <Sidebar
+      {showSidebar && <Sidebar
+        releaseInfo={releaseInfo}
         loadState={mods.loadStates.mods}
         isMobileDrawerOpen={mobileSidebarOpen}
         loading={actions.loading}
@@ -162,7 +167,7 @@ export function App() {
         searchQuery={mods.searchQuery}
         statusFilter={mods.statusFilter}
         sortMode={mods.sortMode}
-        isChildModset={Boolean(activeModset.parent_modset_id)}
+        isChildModset={Boolean(showSidebar.parent_modset_id)}
         childModsFirst={mods.childModsFirst}
         onChildModsFirstChange={mods.setChildModsFirst}
         mods={mods.sortedMods}

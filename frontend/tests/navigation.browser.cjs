@@ -95,6 +95,13 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       let data;
       if (path === "/auth/config")
         data = { local_login_enabled: true, oidc_enabled: true };
+      else if (path === "/release-status")
+        data = {
+          version: "0.2.8",
+          revision: null,
+          repository_url: "https://github.com/morok101st/Arma-Reforger-Mod-Manager",
+          update: role === "admin" ? { version: "0.2.9", url: "https://github.com/morok101st/Arma-Reforger-Mod-Manager/releases/tag/v0.2.9" } : null,
+        };
       else if (path === "/auth/me") data = signedIn ? user() : null;
       else if (path === "/auth/login") {
         signedIn = true;
@@ -196,6 +203,37 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
     }
   }
   try {
+    await test("release version and GitHub link appear on desktop and mobile; update is admin-only", async (f) => {
+      const p = f.page;
+      const footer = p.getByLabel("ARMM release");
+      await f.start("?modset=1");
+      await footer.getByText("ARMM v0.2.8").waitFor();
+      assert.equal(await footer.getByRole("link", { name: "GitHub" }).getAttribute("href"),
+        "https://github.com/morok101st/Arma-Reforger-Mod-Manager");
+      const update = footer.getByRole("link", { name: "Update to v0.2.9 available" });
+      await update.waitFor();
+      assert.match(await update.getAttribute("href"), /releases\/tag\/v0\.2\.9$/);
+      if (process.env.ARMM_TEST_SCREENSHOTS) {
+        await p.locator(".sidebar").screenshot({ path: process.env.ARMM_TEST_SCREENSHOTS + "/release-desktop.png" });
+      }
+      await p.setViewportSize({ width: 320, height: 720 });
+      await p.getByRole("button", { name: "Open mod list" }).click();
+      await update.waitFor();
+      await p.waitForFunction(() => {
+        const link = document.querySelector(".sidebar-release-update");
+        if (!link) return false;
+        const bounds = link.getBoundingClientRect();
+        return bounds.left >= 0 && bounds.right <= window.innerWidth && bounds.bottom <= window.innerHeight;
+      });
+      if (process.env.ARMM_TEST_SCREENSHOTS) {
+        await p.locator(".sidebar").screenshot({ path: process.env.ARMM_TEST_SCREENSHOTS + "/release-mobile.png" });
+      }
+      f.role("user");
+      await p.setViewportSize({ width: 1440, height: 1000 });
+      await f.start("?modset=1");
+      await footer.getByText("ARMM v0.2.8").waitFor();
+      assert.equal(await update.count(), 0);
+    });
     await test("mod list arrow keys follow visible order and keep focus without wrapping or intercepting search", async (f) => {
       const p = f.page;
       await f.start("?modset=1&mod=ABC");
