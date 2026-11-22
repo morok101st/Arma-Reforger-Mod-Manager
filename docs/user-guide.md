@@ -1,10 +1,10 @@
 # User guide
 
-This guide describes **0.2.8** and labels features from `main`. See [changes since 0.2.7](changes-since-0.2.7.md). Screenshots use fictional data and retain their documented [capture scope](screenshots.md).
+This guide describes **1.0.0**. See the [release notes](releases/1.0.0.md). Screenshots use fictional data and retain their documented [capture scope](screenshots.md).
 
 ## ARMM version and release updates
 
-In builds from `main`, signed-in users can find the running ARMM version and a link to the GitHub repository at the bottom of the mod sidebar. On phones, select **Open mod list**. On pages without the sidebar, open the account menu. Local development builds show **Dev** and the build revision when available.
+Signed-in users can find the running ARMM version and a link to the GitHub repository at the bottom of the mod sidebar. On phones, select **Open mod list**. On pages without the sidebar, open the account menu. Local development builds show **Dev** and the build revision when available.
 
 Administrators on a stable build see **Update to v… available** when GitHub has a newer stable ARMM release. The link opens its release notes. The backend caches a successful release lookup for six hours. If GitHub is unreachable, the version and repository link remain available. Development builds omit the notice. The operator installs updates.
 

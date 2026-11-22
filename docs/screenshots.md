@@ -1,6 +1,6 @@
 # Interface gallery
 
-All captures use **fictional demonstration data**. The desktop workspace and mod detail screenshots show the version and GitHub link from `main`. Their version number is an example. The older Modsets, Administration, Sync access and closed-drawer mobile captures show **0.2.8**. The capture instructions below use a read-only mocked API fixture.
+All captures use **fictional demonstration data**. The desktop workspace and mod detail screenshots show the version and GitHub link available in **1.0.0**. Their version number is an example. The older Modsets, Administration, Sync access and closed-drawer mobile captures show **0.2.8**. The capture instructions below use a read-only mocked API fixture.
 
 ## Workspace
 
@@ -10,7 +10,7 @@ Global navigation, the active-modset toolbar and four Version health categories.
 
 ## ARMM version and release updates
 
-These captures show the interface from `main` with a simulated newer release. The running version and repository link are available to signed-in users. The update link is visible to administrators when a newer stable release is available.
+These captures illustrate the 1.0.0 interface with a simulated newer release. The running version and repository link are available to signed-in users. The update link is visible to administrators when a newer stable release is available.
 
 <img src="images/armm-update-desktop.png" alt="Desktop mod sidebar with ARMM version, GitHub link and administrator update notice" width="310" />
 

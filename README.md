@@ -7,7 +7,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 *Current interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
 
-**Current release: 0.2.8.** Adds administrator-managed [Sync access](docs/sync-access.md) with a setup wizard and repeatable configuration downloads, estimated modset size, corrected Workshop file-size extraction and navigation/menu improvements. Deployment examples select `0.2.8`. See [release notes](docs/releases/0.2.8.md), [changes since 0.2.7](docs/changes-since-0.2.7.md) and the [upgrade guide](docs/upgrading.md).
+**Current release: 1.0.0.** Adds the running ARMM version, administrator release notifications, and permanent deletion of configured [Sync accesses](docs/sync-access.md). It also updates runtime dependencies. Deployment examples select `1.0.0`. See the [release notes](docs/releases/1.0.0.md) and [upgrade guide](docs/upgrading.md).
 
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 
@@ -35,7 +35,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 ## Using the interface
 
 - **Workspace:** the active modset selector, Export JSON and Add mod sit above the overview or selected mod. The desktop mod browser contains search, status filters and sorting; on phones it opens as a drawer.
-- **ARMM release information (on `main`):** the mod sidebar shows the running build and a GitHub link. Administrators see a release notes link when a newer stable version is available. See [ARMM version and release updates](docs/user-guide.md#armm-version-and-release-updates).
+- **ARMM release information:** the mod sidebar shows the running build and a GitHub link. Administrators see a release notes link when a newer stable version is available. See [ARMM version and release updates](docs/user-guide.md#armm-version-and-release-updates).
 - **Overview:** Version health distinguishes Up to date, Update available, No installed version and No latest version. Selecting a category filters the browser. Needs attention lists updates and missing latest versions; mods without an installed version are intentionally neutral. Export order and the paged modset Changelog are collapsible.
 - **Mod details:** copy the Workshop ID, compare installed/latest versions, check updates, choose a known installed version, inspect dependencies/Required by, or copy a single JSON entry when an installed version exists. Running manual checks remain visible after reload and in other tabs.
 - **Modsets:** search by name or owner, filter owned/group-access modsets, and open a modset from its name. Edit combines its name and group permissions. Edit, Export, Duplicate and Delete are grouped in the additional actions menu. Copies start private without group grants or webhook scope membership. The last remaining modset is protected.
@@ -224,7 +224,7 @@ The UI manages export order as a list with positions **1, 2, 3…**.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
-- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `0.2.8`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
+- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `1.0.0`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
 
 ### Optional OIDC login
 
