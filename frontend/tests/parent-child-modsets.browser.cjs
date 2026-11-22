@@ -21,6 +21,7 @@ const base=process.env.ARMM_TEST_URL||'http://127.0.0.1:4178';
   if(path.endsWith('/sync-access'))data={enabled:false,usable:false,created_at:null,last_used_at:null,base_url:'https://armm.example.com'};
   else if(path==='/auth/me')data=user();
   else if(path==='/auth/config')data={local_login_enabled:true,oidc_enabled:false};
+  else if(path==='/release-status')data={version:'dev',revision:null,repository_url:'https://github.com/morok101st/Arma-Reforger-Mod-Manager',update:null};
   else if(path==='/scheduler/status')data={scheduler_timezone:'Europe/Berlin',automatic_run_times:['10:00','19:00']};
   else if(path==='/modsets'&&method==='GET')data=sets;
   else if(path==='/modsets'&&method==='POST'){data={...sets[1],id:sets.length+1,name:body.name,parent_modset_id:body.parent_modset_id,order_mode:body.order_mode};sets.push(data);own[data.id]=[];}

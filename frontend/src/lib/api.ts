@@ -19,6 +19,13 @@ import type {
   GroupPermission,
 } from "../types";
 
+export type ReleaseStatus = {
+  version: string;
+  revision: string | null;
+  repository_url: string;
+  update: { version: string; url: string } | null;
+};
+
 export type SyncSettings = {name: string; baseUrl: string; gameServer?: {host: string; port: number; passwordRequired: boolean}};
 export type SyncAccessStatus = {configuration: SyncSettings | null; downloadable: boolean; key_available: boolean; enabled: boolean; usable: boolean; created_at: string | null; last_used_at: string | null; base_url: string};
 export type SyncAccessOverview = SyncAccessStatus & {modset_id: number; modset_name: string; owner_username: string | null; parent_modset_id: number | null; parent_modset_name: string | null; created_by: string | null};
@@ -69,6 +76,9 @@ export function createApiClient(onUnauthorized?: () => void) {
 
   return {
     request,
+    async getReleaseStatus(signal: AbortSignal) {
+      return readJsonOrThrow<ReleaseStatus>(await request("/release-status", { signal }), "Could not load release status.");
+    },
     async listGroups() {
       return readJsonOrThrow<GroupSummary[]>(await request("/groups"), "Could not load groups.");
     },

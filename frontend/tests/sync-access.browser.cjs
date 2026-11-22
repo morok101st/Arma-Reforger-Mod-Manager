@@ -19,6 +19,7 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
    if(path==="/auth/me")return send({id:1,username:"admin",role,active_modset_id:42,theme_preference:theme,has_local_password:true});
    if(path==="/auth/config")return send({oidc_enabled:false});
    if(path==="/modsets"||path==="/admin/modsets")return send(sets);
+   if(path==="/release-status")return send({version:"dev",revision:null,repository_url:"https://github.com/morok101st/Arma-Reforger-Mod-Manager",update:null});
    if(path==="/scheduler/status")return send({automatic_run_times:["10:00","19:00"],scheduler_timezone:"Europe/Berlin"});
    if(path==="/admin/sync-access"&&method==="GET")return send(entries.length?[row()]:[]);
    if(path==="/admin/sync-access"&&method==="POST"){

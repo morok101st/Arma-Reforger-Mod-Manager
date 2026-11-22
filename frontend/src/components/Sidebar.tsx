@@ -6,6 +6,7 @@ import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, ModStatusFilter, SortMode } from "../types";
 
 export function Sidebar({
+  releaseInfo,
   loadState,
   isMobileDrawerOpen,
   loading,
@@ -28,6 +29,7 @@ export function Sidebar({
   onOpenMod,
   onClose,
 }: {
+  releaseInfo: React.ReactNode;
   loadState: LoadState;
   isChildModset: boolean;
   childModsFirst: boolean;
@@ -158,5 +160,6 @@ export function Sidebar({
         {totalModsCount > 0 && mods.length === 0 && <p className="empty">No mods match the current filters.</p>}
       </div>
     </>}
+    {releaseInfo}
   </section>;
 }

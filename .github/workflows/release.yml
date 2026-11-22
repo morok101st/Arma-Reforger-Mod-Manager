@@ -69,6 +69,9 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./backend
+          build-args: |
+            ARMM_BUILD_VERSION=${{ steps.version.outputs.version }}
+            ARMM_BUILD_REVISION=${{ github.sha }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/armm-backend:${{ steps.version.outputs.version }}
