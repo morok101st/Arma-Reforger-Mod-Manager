@@ -1,12 +1,22 @@
 # Interface gallery
 
-These captures show the **0.2.8** frontend with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They include estimated size, the consolidated Modsets actions and administrator Sync access. Captures are generated from the release source using the read-only mocked API fixture below. The ARMM logo is the existing application asset.
+The release captures show the **0.2.8** frontend with **fictional demonstration data**, not live accounts, Workshop metadata or production secrets. They include estimated size, the consolidated Modsets actions and administrator Sync access. Captures are generated from the release source using the read-only mocked API fixture below. The ARMM logo is the existing application asset.
 
 ## Workspace
 
 ![Dark workspace overview with Version health and mod browser](images/workspace-dark.png)
 
 Global navigation, the active-modset toolbar and four Version health categories. Export order and modset activity remain collapsible below the overview.
+
+## ARMM version and release updates
+
+These captures show the interface from `main` with a simulated newer release. The running version and repository link are available to signed-in users. The update link is visible to administrators when a newer stable release is available.
+
+<img src="images/armm-update-desktop.png" alt="Desktop mod sidebar with ARMM version, GitHub link and administrator update notice" width="310" />
+
+<img src="images/armm-update-mobile.png" alt="Mobile mod-list drawer with the administrator update notice at the bottom" width="272" />
+
+The navigation browser test captures these examples when `ARMM_TEST_SCREENSHOTS` is set. The API responses use fictional data.
 
 ## Mod detail
 
