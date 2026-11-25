@@ -2151,8 +2151,8 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .redesigned-shell .sidebar { min-width: 0; padding: 24px 16px; gap: 16px; }
 .management-shell { grid-template-columns: minmax(0, 1fr); }
 .management-shell .detail { width: 100%; max-width: 1440px; margin-inline: auto; }
-.workspace-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
-.workspace-context { display: flex; align-items: end; gap: 12px; min-width: 0; flex: 1; }
+.workspace-toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+.workspace-context { display: flex; align-items: end; gap: 12px; min-width: 0; flex: 1 1 240px; }
 .workspace-context > label { width: min(100%, 320px); min-width: 0; }
 .workspace-context .workspace-modset-label {
   color: var(--md-sys-color-on-surface);
@@ -2160,7 +2160,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   font-weight: 600;
   line-height: 1.3;
 }
-.workspace-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace-actions { display: flex; flex-wrap: wrap; max-width: 100%; gap: 8px; margin-inline-start: auto; }
 .workspace-actions button { white-space: nowrap; }
 .workspace-context .mobile-drawer-button { display: none; }
 .mod-browser-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -2248,10 +2248,6 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 }
 .mod-row > span { min-width: 0; }
 .mod-row strong { overflow-wrap: anywhere; }
-@media (max-width: 1200px) {
-  .workspace-toolbar { flex-wrap: wrap; }
-  .workspace-actions { width: 100%; }
-}
 @media (max-width: 900px) {
   .redesigned-shell { display: block; height: auto; min-height: 100dvh; }
   .app-navigation { padding: 12px 18px; gap: 16px; flex-wrap: wrap; }
@@ -2260,11 +2256,14 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   .app-navigation nav button svg { width: 16px; flex-shrink: 0; }
   .redesigned-shell .detail { height: auto; padding: 24px 18px; }
   .workspace-context .mobile-drawer-button { display: inline-flex; flex-shrink: 0; }
-  .workspace-context { width: 100%; }
-  .workspace-context > label { width: 100%; }
-  .workspace-actions button { flex: 1 1 auto; min-height: 44px; }
+  .workspace-actions button { min-height: 44px; }
   .workspace-toolbar { gap: 16px; padding-bottom: 20px; }
   .redesigned-shell .sidebar { padding-bottom: 0; }
+}
+@media (max-width: 540px) {
+  .workspace-context > label { width: 100%; }
+  .workspace-actions { flex-basis: 100%; }
+  .workspace-actions button { flex: 1 1 auto; }
 }
 
 .health-summary { color: var(--md-sys-color-on-surface); text-align: left; cursor: pointer; font: inherit; }
@@ -2923,7 +2922,7 @@ summary:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-
   .parent-modset-form .dialog-actions button { width: 100%; min-height: 44px; }
 }
 
-.mod-inheritance-note { max-width: 75ch; }
+.mod-inheritance-note { margin: 0; font-size: 14px; max-width: 75ch; }
 .mod-inheritance-note a { color: var(--md-sys-color-primary); text-underline-offset: 3px; }
 .mod-inheritance-note a:hover { color: var(--md-sys-color-primary-hover); }
 

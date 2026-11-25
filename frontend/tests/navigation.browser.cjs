@@ -271,6 +271,19 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       await check(0);
       assert.equal(await rows.count(), 1);
     });
+    await test("workspace toolbar wraps its actions as a group", async ({ page, start }) => {
+      await page.setViewportSize({ width: 1100, height: 900 });
+      await start("?modset=1");
+      const selector = page.getByRole("combobox", { name: "Active modset" });
+      const exportButton = page.getByRole("button", { name: "Export Modset" });
+      const addButton = page.getByRole("button", { name: "Add mod" });
+      await selector.waitFor();
+      const bottom = box => box.y + box.height;
+      assert.equal(bottom(await selector.boundingBox()), bottom(await exportButton.boundingBox()));
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert(bottom(await selector.boundingBox()) < (await exportButton.boundingBox()).y);
+      assert.equal(bottom(await exportButton.boundingBox()), bottom(await addButton.boundingBox()));
+    });
     await test("selected mod connector follows the list scroll position", async ({ page, start }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await start("?modset=1&mod=ABC");

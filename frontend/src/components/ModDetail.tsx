@@ -369,6 +369,9 @@ export function ModDetail({
           <div><span>Installed version</span><strong className={selected.current_version ? undefined : "version-unavailable"}>{selected.current_version ?? "Not installed"}</strong></div>
           <div><span>Latest version</span><strong className={selected.latest_version ? undefined : "version-unavailable"}>{selected.latest_version ?? "Unavailable"}</strong></div>
         </div>
+        {selected.parent_modset_id && <p className="muted mod-inheritance-note">
+          Installed version inherited from <a href={`?modset=${selected.parent_modset_id}&mod=${encodeURIComponent(selected.id)}`}>{selected.parent_modset_name ?? "parent modset"}</a>.
+        </p>}
         {refreshState !== "idle" && <p className="mod-feedback" role="status" aria-live="polite" aria-busy={refreshing}>
           {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : refreshState === "completed" ? <CheckCircle2 size={16} /> : null}
           {refreshing ? "Checking Workshop and verifying the latest version…"
@@ -377,7 +380,6 @@ export function ModDetail({
             : refreshState === "unavailable" ? "Update check status is unavailable. Reconnecting automatically…"
             : "Update check completed."}
         </p>}
-      {selected.parent_modset_id && <p className="muted mod-inheritance-note">Inherited from <a href={`?modset=${selected.parent_modset_id}&mod=${encodeURIComponent(selected.id)}`}>{selected.parent_modset_name ?? "parent modset"}</a>. The installed version is binding and can only be changed there. {selected.order_mode === "parent" ? "Parent order is binding; arrange local mods between parent mods in the overview." : "Export order remains editable in this modset’s overview."}</p>}
       <div className="version-editor">
         {canEdit && !selected.parent_modset_id && <>
         <label>
