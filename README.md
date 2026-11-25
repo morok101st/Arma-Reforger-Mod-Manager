@@ -5,7 +5,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 ![ARMM workspace in dark mode](docs/images/workspace-dark.png)
 
-*Current interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
+*Current `main` interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
 
 **Current release: 1.0.0.** Adds the running ARMM version, administrator release notifications, and permanent deletion of configured [Sync accesses](docs/sync-access.md). It also updates runtime dependencies. Deployment examples select `1.0.0`. See the [release notes](docs/releases/1.0.0.md) and [upgrade guide](docs/upgrading.md).
 
@@ -34,12 +34,12 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 ## Using the interface
 
-- **Workspace:** the active modset selector, Export JSON and Add mod sit above the overview or selected mod. The desktop mod browser contains search, status filters and sorting; on phones it opens as a drawer.
+- **Workspace:** the active modset selector, Export Modset and Add mod sit above the overview or selected mod. The desktop mod browser contains search, status filters and sorting; on phones it opens as a drawer.
 - **ARMM release information:** the mod sidebar shows the running build and a GitHub link. Administrators see a release notes link when a newer stable version is available. See [ARMM version and release updates](docs/user-guide.md#armm-version-and-release-updates).
 - **Overview:** Version health distinguishes Up to date, Update available, No installed version and No latest version. Selecting a category filters the browser. Needs attention lists updates and missing latest versions; mods without an installed version are intentionally neutral. Export order and the paged modset Changelog are collapsible.
 - **Mod details:** copy the Workshop ID, compare installed/latest versions, check updates, choose a known installed version, inspect dependencies/Required by, or copy a single JSON entry when an installed version exists. Running manual checks remain visible after reload and in other tabs.
-- **Modsets:** search by name or owner, filter owned/group-access modsets, and open a modset from its name. Edit combines its name and group permissions. Edit, Export, Duplicate and Delete are grouped in the additional actions menu. Copies start private without group grants or webhook scope membership. The last remaining modset is protected.
-- **Administration:** administrators have separate Users, Groups, Discord and Audit log sections, plus **Sync access** for creating sync access through a wizard and managing saved configurations as rows. The user editor saves role, account status, memberships and an optional password together. Personal Account settings, theme switching and Sign out are in the account menu; regular users see Settings instead of Administration.
+- **Modsets:** search by name or owner and open a modset from its name. Edit combines its name and group permissions. Edit, Export, Duplicate and Delete are grouped in the additional actions menu. Copies start private without group grants or webhook scope membership. The last remaining modset is protected.
+- **Administration:** administrators have separate Users, Groups, Discord and Audit log sections, plus **Sync access** for creating sync access through a wizard and managing saved configurations as rows. Groups lists directly granted modsets with Read or Write access. Audit log rows expand to show saved details. The user editor saves role, account status, memberships and an optional password together. Personal Account settings, theme switching and Sign out are in the account menu; regular users see Settings instead of Administration.
 - **Navigation and recovery:** copied URLs, reload and browser Back/Forward retain the selected view/modset/mod. Failed reads show an error and Retry rather than misleading empty lists. Successful writes are not repeated when a following list reload fails. Dialogs and selects support keyboard navigation and retain drafts after errors.
 
 See the [user guide](docs/user-guide.md) for permissions, keyboard controls, URL examples and daily workflows.

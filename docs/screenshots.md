@@ -1,6 +1,6 @@
 # Interface gallery
 
-All captures use **fictional demonstration data**. The desktop workspace and mod detail screenshots show the version and GitHub link available in **1.0.0**. Their version number is an example. The older Modsets, Administration, Sync access and closed-drawer mobile captures show **0.2.8**. The capture instructions below use a read-only mocked API fixture.
+All captures show the current `main` interface with **fictional demonstration data**. Build versions, account names and server details are illustrative. The capture script uses a read-only mocked API fixture.
 
 ## Workspace
 
@@ -10,23 +10,23 @@ Global navigation, the active-modset toolbar and four Version health categories.
 
 ## ARMM version and release updates
 
-These captures illustrate the 1.0.0 interface with a simulated newer release. The running version and repository link are available to signed-in users. The update link is visible to administrators when a newer stable release is available.
+These captures show a simulated update from 1.0.0 to 1.1.0. The running version and repository link are available to signed-in users. The update link is visible to administrators when a newer stable release is available.
 
 <img src="images/armm-update-desktop.png" alt="Desktop mod sidebar with ARMM version, GitHub link and administrator update notice" width="310" />
 
 <img src="images/armm-update-mobile.png" alt="Mobile mod-list drawer with the administrator update notice at the bottom" width="272" />
 
-The navigation browser test captures these examples when `ARMM_TEST_SCREENSHOTS` is set. The API responses use fictional data.
+The capture script saves these two examples as sidebar crops.
 
 ## Mod detail
 
 ![Dark mod detail with Workshop ID copy and version comparison](images/mod-detail-dark.png)
 
-The Workshop ID has its own copy action. Installed/latest comparison, checks and dependency relationships stay together.
+The Workshop ID has its own copy action. The selected row connects to the detail view on desktop. The version comparison appears above the description, dependencies and changelog.
 
 ## Modsets
 
-![Modset management with ownership filters and row actions](images/modsets-dark.png)
+![Modset management with name or owner search and row actions](images/modsets-dark.png)
 
 Names open the workspace; Edit combines name and group permissions. Edit, Export, Duplicate and Delete live in additional actions.
 
@@ -34,13 +34,13 @@ Names open the workspace; Edit combines name and group permissions. Edit, Export
 
 ![Administration Users section with focused section navigation](images/administration-dark.png)
 
-Users, Groups, Discord and Audit log are separate sections. Personal Account settings are accessed independently.
+Users, Groups, Discord, Sync access and Audit log are separate sections. The administration tables share a three-dot actions menu. Personal Account settings are accessed independently.
 
 ## Sync access
 
 ![Configured Sync access entries](images/sync-access-dark.png)
 
-Only configured accesses are listed, with Edit, Download and Disable actions.
+Only configured accesses are listed. The actions menu separates Edit, Download, Enable or Disable, Renew key and Delete.
 
 ![Sync access setup wizard review](images/sync-wizard-dark.png)
 
@@ -69,6 +69,6 @@ cd frontend
 ARMM_DOCS_URL=http://localhost:5173 node scripts/capture-docs.cjs
 ```
 
-The default output is `../docs/images` relative to the working directory; override with `ARMM_DOCS_OUTPUT`. The script intercepts all API reads, rejects mutations/unmocked external requests, fixes locale/timezone/viewport and uses deterministic example data. Desktop captures are 1440×1000; mobile is 390×844. Captures use the application's DOM/CSS, not hand-drawn UI mockups.
+The default output is `../docs/images` relative to the working directory; override with `ARMM_DOCS_OUTPUT`. The script intercepts all API reads, rejects mutations/unmocked external requests, fixes locale/timezone/viewport and uses deterministic example data. Desktop captures use a 1440×1000 viewport. The mobile detail uses 390×844 and the cropped mobile drawer uses a 320×720 viewport.
 
 `architecture.svg` and `manual-refresh.svg` are editable vector diagrams of code behavior. They complement the screenshots; they are not generated product illustrations. Keep wiki image copies synchronized when publishing documentation.

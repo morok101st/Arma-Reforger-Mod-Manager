@@ -44,7 +44,7 @@ Administrator `PATCH /api/users/{user_id}` accepts optional changed fields:
 
 Role, status, memberships, password and the success audit entry commit together; failure rolls them back. Omitted fields stay unchanged. An empty `group_ids` array removes memberships; null, duplicate or unknown IDs are rejected. Passwords require 12–256 characters. Password/role/status changes invalidate sessions as applicable; membership-only changes are enforced on subsequent requests without a password reset.
 
-Existing `PUT /api/admin/users/{user_id}/groups` and `PATCH /api/users/{user_id}/password` remain available. Group management is under `/api/admin/groups`; signed-in `/api/groups` exposes names and IDs. Owners/admins manage `/api/modsets/{modset_id}/group-permissions`.
+Existing `PUT /api/admin/users/{user_id}/groups` and `PATCH /api/users/{user_id}/password` remain available. Group management is under `/api/admin/groups`. Its administrator-only GET response includes membership and `modset_grants` with `modset_id`, `modset_name` and `permission` (`read` or `write`). Signed-in `/api/groups` exposes names and IDs. Owners/admins manage `/api/modsets/{modset_id}/group-permissions`.
 
 ## Export and pagination
 
@@ -54,4 +54,4 @@ Modset activity and administrator audit reads support `limit`/`offset`. Audit ca
 
 ## Sync access
 
-Version 0.2.8 adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.
+Version 0.2.8 adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. On current `main`, administrators can enable a valid existing key and renew a key through separate endpoints. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.

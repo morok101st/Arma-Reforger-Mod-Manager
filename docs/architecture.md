@@ -25,4 +25,4 @@ Estimated modset size is calculated in the frontend from returned mod metadata. 
 
 Sync access adds an administrator-only setup/configuration API and a scoped bearer export API in FastAPI; it uses the existing PostgreSQL database and requires no additional service. See [sync access](sync-access.md) for encryption, rights and import fields.
 
-See [deployment examples](../docker-compose.example.yml), [job internals and migration](manual-refresh-upgrade.md), and the [Traefik chapter](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Traefik-and-Reverse-Proxy). The service diagram applies to **0.2.8**; durable jobs were introduced in 0.2.6. Parent/child behavior and the size estimate use these existing services.
+See [deployment examples](../docker-compose.example.yml), [job internals and migration](manual-refresh-upgrade.md), and the [Traefik chapter](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki/Traefik-and-Reverse-Proxy). The service diagram also applies to current `main`. Durable jobs were introduced in 0.2.6. Parent/child behavior and the size estimate use these existing services.

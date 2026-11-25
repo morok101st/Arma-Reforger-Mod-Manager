@@ -12,7 +12,7 @@ Inherited entries identify their source in the browser, detail and export-order 
 
 ## Mod browser
 
-**Child mods first** is enabled by default for child modsets. The browser lists local mods before inherited parent mods; the selected **Sort by** mode (Updates first, Name, Status, Last checked or Export order) applies within each group. Turn off the checkbox to restore global sorting. Search and status filters still apply to both groups. This browser preference does not change the exported sequence.
+**Child mods first** is enabled by default for child modsets. The browser lists local mods before inherited parent mods; the selected **Sort by** mode (**Updates first** or **Name**) applies within each group. Turn off the checkbox to restore global sorting. Search and status filters still apply to both groups. This browser preference does not change the exported sequence.
 
 ## Export order
 
