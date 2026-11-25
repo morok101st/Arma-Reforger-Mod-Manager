@@ -47,6 +47,7 @@ export function auditFilterLabel(filter: AuditFilter) {
 export function filterAuditLogs(logs: AuditLog[], filter: AuditFilter) {
   if (filter === "all") return logs;
   if (filter === "failures") return logs.filter((entry) => auditSeverity(entry) === "failure");
+  if (filter === "integration") return logs.filter(entry => entry.entity_type === "integration" || entry.action.startsWith("sync_access_"));
   return logs.filter((entry) => entry.entity_type === filter);
 }
 
@@ -67,12 +68,24 @@ export function auditEntityLine(entry: AuditLog) {
   return `${actor} · ${entityName}${entry.entity_id ? ` ${entry.entity_id}` : ""}`;
 }
 
-export function auditDetailText(detail: Record<string, unknown>) {
-  const values = Object.entries(detail)
-    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+export function auditDetailRows(detail: Record<string, unknown>) {
+  const changes: { label: string; previous: string; current: string }[] = [];
+  const represented = new Set<string>();
+  if (typeof detail.old_role === "string" && typeof detail.new_role === "string" && detail.old_role !== detail.new_role) {
+    const roleLabel = (role: string) => role === "admin" ? "Admin" : role === "user" ? "User" : role;
+    changes.push({ label: "Role", previous: roleLabel(detail.old_role), current: roleLabel(detail.new_role) });
+    ["old_role", "new_role", "role_changed"].forEach(key => represented.add(key));
+  }
+  if (typeof detail.old_active === "boolean" && typeof detail.new_active === "boolean" && detail.old_active !== detail.new_active) {
+    changes.push({ label: "Account status", previous: detail.old_active ? "Active" : "Disabled", current: detail.new_active ? "Active" : "Disabled" });
+    ["old_active", "new_active", "active_changed"].forEach(key => represented.add(key));
+  }
+  const fields = Object.entries(detail)
+    .filter(([key, value]) => !represented.has(key) && value !== null && value !== undefined && value !== ""
+      && (!key.endsWith("_changed") || value !== false))
     .slice(0, 6)
-    .map(([key, value]) => `${auditDetailLabel(key)}: ${auditDetailValue(value)}`);
-  return values.join(" · ");
+    .map(([key, value]) => ({ label: auditDetailLabel(key), value: auditDetailValue(value) }));
+  return { changes, fields };
 }
 
 export function modsetActivityTitle(entry: ModsetActivity) {
@@ -235,10 +248,13 @@ export function filterMods(mods: Mod[], searchQuery: string, statusFilter: ModSt
   });
 }
 
-function compareByName(left: Mod, right: Mod): number {
-  const leftName = left.name ?? left.id;
-  const rightName = right.name ?? right.id;
-  return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
+export function compareByName(
+  left: { name: string | null; id: string | null },
+  right: { name: string | null; id: string | null },
+): number {
+  const leftName = left.name ?? left.id ?? "";
+  const rightName = right.name ?? right.id ?? "";
+  return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || (left.id ?? "").localeCompare(right.id ?? "");
 }
 
 function timestamp(value: string | null): number {

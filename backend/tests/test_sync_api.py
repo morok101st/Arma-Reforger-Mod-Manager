@@ -129,6 +129,7 @@ class SyncAccessTestCase(ApiTestCase):
             response = client.patch(f"/modsets/{child}", json={"name":"Child", "parent_modset_id":None, "confirm_parent_conflicts":True})
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(client.get(path, headers=self.headers(key)).status_code, 401)
+            self.assertEqual(client.post(f"/admin/sync-access/{child}/enable").status_code, 409)
 
     def test_creator_status_role_ownership_and_reader_writer_boundaries(self):
         owner = self._create_user("owner", "very-secure-owner-pass")
@@ -241,6 +242,39 @@ class SyncAccessTestCase(ApiTestCase):
             self.assertEqual(client.get(f"/sync/modsets/{mid}/export",headers=self.headers(key)).status_code, 401)
             client.cookies.clear()
             self.assertEqual(client.get(path,headers=self.headers(new_key)).status_code, 401)
+
+    def test_enable_keeps_existing_key_and_renew_keeps_disabled_state(self):
+        with TestClient(app_main.app) as client:
+            self.login_admin(client)
+            mid = self.create(client)
+            settings = {"name": "Community access", "baseUrl": "https://armm.example.com"}
+            self.assertEqual(client.post("/admin/sync-access", json={"modset_id": mid, **settings}).status_code, 201)
+            admin = f"/admin/sync-access/{mid}"
+            export = f"/sync/modsets/{mid}/export"
+            first = client.get(f"{admin}/configuration").json()
+            key = first["armm"]["accessKey"]
+            self.assertEqual(client.delete(f"/modsets/{mid}/sync-access").status_code, 200)
+            self.assertEqual(client.get(export, headers=self.headers(key)).status_code, 401)
+            enabled = client.post(f"{admin}/enable")
+            self.assertEqual(enabled.status_code, 200, enabled.text)
+            self.assertTrue(enabled.json()["usable"])
+            self.assertEqual(client.get(f"{admin}/configuration").json(), first)
+            self.assertEqual(client.get(export, headers=self.headers(key)).status_code, 200)
+
+            self.assertEqual(client.delete(f"/modsets/{mid}/sync-access").status_code, 200)
+            renewed = client.post(f"{admin}/renew-key")
+            self.assertEqual(renewed.status_code, 200, renewed.text)
+            self.assertFalse(renewed.json()["enabled"])
+            self.assertEqual(renewed.json()["configuration"], settings)
+            self.assertEqual(client.get(f"{admin}/configuration").status_code, 409)
+            self.assertEqual(client.post(f"{admin}/enable").status_code, 200)
+            replacement = client.get(f"{admin}/configuration").json()["armm"]["accessKey"]
+            self.assertNotEqual(replacement, key)
+            self.assertEqual(client.get(export, headers=self.headers(key)).status_code, 401)
+            self.assertEqual(client.get(export, headers=self.headers(replacement)).status_code, 200)
+            client.cookies.clear()
+            for action in ("enable", "renew-key"):
+                self.assertEqual(client.post(f"{admin}/{action}", headers=self.headers(replacement)).status_code, 401)
 
     def test_legacy_key_can_be_restored_without_rotation_and_bad_cipher_fails_closed(self):
         with TestClient(app_main.app) as client:

@@ -1,8 +1,8 @@
 import React from "react";
-import { CheckSquare2, MinusSquare, Pencil, Plus, Send, Square, Trash2, TriangleAlert, Webhook } from "lucide-react";
+import { CheckSquare2, MinusSquare, Pencil, Plus, Send, Trash2, TriangleAlert, Webhook } from "lucide-react";
 
 import type { DiscordWebhook, Modset } from "../types";
-import { Dialog } from "./common";
+import { Dialog, RowActions } from "./common";
 
 export function DiscordWebhookAdmin({
   error,
@@ -23,6 +23,8 @@ export function DiscordWebhookAdmin({
   deleteDiscordWebhook: (webhookId: number) => Promise<void>;
   testDiscordWebhook: (webhookId: number) => Promise<void>;
 }) {
+  const editNameRef = React.useRef<HTMLInputElement>(null);
+  const createNameRef = React.useRef<HTMLInputElement>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [createName, setCreateName] = React.useState("");
   const [createWebhookUrl, setCreateWebhookUrl] = React.useState("");
@@ -119,7 +121,6 @@ export function DiscordWebhookAdmin({
                   type="checkbox"
                 />
                 <span className="webhook-modset-label">
-                  {checked ? <CheckSquare2 size={16} /> : <Square size={16} />}
                   <strong>{modset.name}</strong>
                   {modset.has_group_access && <span className="webhook-modset-group">Group access</span>}
                 </span>
@@ -154,10 +155,12 @@ export function DiscordWebhookAdmin({
           Choose where scheduled mod updates are sent and which modsets trigger notifications.
         </p>
 
-        <div className="webhook-list">
+        {webhooks.length > 0 && <table className="modsets-table admin-records-table discord-table" aria-label="Discord webhooks">
+          <thead><tr><th scope="col">Webhook</th><th scope="col">Endpoint</th><th scope="col">Actions</th></tr></thead>
+          <tbody>
           {webhooks.map((webhook) => (
-            <article className="webhook-row" key={webhook.id}>
-              <div className="webhook-row-main">
+            <tr key={webhook.id}>
+              <td className="modset-name-cell">
                 <div className="webhook-row-header">
                   <strong>{webhook.name}</strong>
                   <div className="webhook-row-badges">
@@ -171,24 +174,10 @@ export function DiscordWebhookAdmin({
                     </span>
                   </div>
                 </div>
-                <small>{webhook.masked_webhook_url}</small>
-              </div>
-              <div className="row-actions webhook-row-actions">
+              </td>
+              <td><span className="mobile-cell-label">Endpoint</span><span className="muted">{webhook.masked_webhook_url}</span></td>
+              <td><RowActions label={`More actions for webhook ${webhook.name}`}>
                 <button
-                  className="secondary-button compact"
-                  disabled={loading}
-                  onClick={() => {
-                    testDiscordWebhook(webhook.id)
-                      .then(() => setTestSuccessName(webhook.name))
-                      .catch(() => null);
-                  }}
-                  type="button"
-                >
-                  <Send size={16} />
-                  Test
-                </button>
-                <button
-                  className="secondary-button compact"
                   disabled={loading}
                   onClick={() => {
                     setTestSuccessName(null);
@@ -204,7 +193,19 @@ export function DiscordWebhookAdmin({
                   Edit
                 </button>
                 <button
-                  className="secondary-button compact danger-button"
+                  disabled={loading}
+                  onClick={() => {
+                    testDiscordWebhook(webhook.id)
+                      .then(() => setTestSuccessName(webhook.name))
+                      .catch(() => null);
+                  }}
+                  type="button"
+                >
+                  <Send size={16} />
+                  Test
+                </button>
+                <button
+                  className="modset-delete-action"
                   disabled={loading}
                   onClick={() => {
                     setTestSuccessName(null);
@@ -215,11 +216,12 @@ export function DiscordWebhookAdmin({
                   <Trash2 size={16} />
                   Delete
                 </button>
-              </div>
-            </article>
+              </RowActions></td>
+            </tr>
           ))}
-          {webhooks.length === 0 && <p className="muted">No Discord webhooks configured yet.</p>}
-        </div>
+          </tbody>
+        </table>}
+        {webhooks.length === 0 && <p className="muted">No Discord webhooks configured yet.</p>}
 
         {testSuccessName && (
           <div className="status-band save-band">
@@ -231,12 +233,12 @@ export function DiscordWebhookAdmin({
       </section>
 
       {showCreateDialog && (
-        <Dialog title="Add Discord webhook" onClose={() => setShowCreateDialog(false)}>
+        <Dialog title="Add Discord webhook" initialFocusRef={createNameRef} onClose={() => setShowCreateDialog(false)}>
           <form className="dialog-form" onSubmit={event => { handleCreate(event).catch(() => null); }}>
             {error && <p className="error-box" role="alert">{error}</p>}
             <label>
               Name
-              <input autoFocus value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder="Discord alerts" />
+              <input ref={createNameRef} value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder="Discord alerts" />
             </label>
             <label>
               Webhook URL
@@ -264,29 +266,31 @@ export function DiscordWebhookAdmin({
       )}
 
       {editWebhook && (
-        <Dialog title={`Edit webhook ${editWebhook.name}`} onClose={() => setEditWebhookId(null)}>
+        <Dialog title={`Edit webhook ${editWebhook.name}`} initialFocusRef={editNameRef} onClose={() => setEditWebhookId(null)}>
           <form className="dialog-form" onSubmit={event => { handleEdit(event).catch(() => null); }}>
             {error && <p className="error-box" role="alert">{error}</p>}
             <label>
               Name
-              <input autoFocus value={editName} onChange={(event) => setEditName(event.target.value)} />
+              <input ref={editNameRef} value={editName} onChange={(event) => setEditName(event.target.value)} />
             </label>
             <label>
-              Webhook URL
+              <span id="discord-webhook-url-label">Webhook URL</span>
               <input
                 value={editWebhookUrl}
+                aria-labelledby="discord-webhook-url-label"
                 onChange={(event) => setEditWebhookUrl(event.target.value)}
-                placeholder="leave empty to keep current"
+                placeholder="Leave empty to keep current"
+                aria-describedby="discord-current-webhook-url"
               />
+              <small className="muted webhook-current-url" id="discord-current-webhook-url">
+                Current URL: {editWebhook.masked_webhook_url}
+              </small>
             </label>
             <label className="checkbox-row">
               <input checked={editIsActive} onChange={(event) => setEditIsActive(event.target.checked)} type="checkbox" />
               Active
             </label>
             {renderModsetSelection(editModsetIds, setEditModsetIds)}
-            <p className="muted">
-              Current URL: <strong>{editWebhook.masked_webhook_url}</strong>
-            </p>
             <div className="dialog-actions">
               <button className="secondary-button compact" onClick={() => setEditWebhookId(null)} type="button">
                 Cancel
@@ -314,7 +318,7 @@ export function DiscordWebhookAdmin({
               Delete <strong>{deleteWebhook.name}</strong> permanently?
             </p>
             <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setDeleteWebhookId(null)} type="button">
+              <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setDeleteWebhookId(null)} type="button">
                 Cancel
               </button>
               <button

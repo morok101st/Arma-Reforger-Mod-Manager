@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import require_admin_user, require_current_user
 from app.database import get_db
-from app.models import Group, GroupMembership, ModSetGroupPermission, User
+from app.models import Group, GroupMembership, ModSet, ModSetGroupPermission, User
 from app.modset_permissions import require_modset_permission, set_modset_group_permissions
 from app.router_helpers import audit_event
-from app.schemas_groups import GroupPermission, GroupRead, GroupSummary, GroupWrite, ModsetPermissionsUpdate, UserGroupsUpdate
+from app.schemas_groups import GroupModsetGrant, GroupOverview, GroupPermission, GroupRead, GroupSummary, GroupWrite, ModsetPermissionsUpdate, UserGroupsUpdate
 
 router = APIRouter(tags=["groups"])
 
@@ -24,9 +24,23 @@ def list_group_choices(db: Session = Depends(get_db), _: User = Depends(require_
     return [GroupSummary(id=group.id, name=group.name) for group in db.scalars(select(Group).order_by(func.lower(Group.name), Group.id))]
 
 
-@router.get("/admin/groups", response_model=list[GroupRead])
+@router.get("/admin/groups", response_model=list[GroupOverview])
 def list_groups(db: Session = Depends(get_db), _: User = Depends(require_admin_user)):
-    return [group_read(group) for group in db.scalars(select(Group).options(selectinload(Group.memberships)).order_by(func.lower(Group.name), Group.id))]
+    groups = db.scalars(select(Group).options(selectinload(Group.memberships)).order_by(func.lower(Group.name), Group.id)).all()
+    grants_by_group: dict[int, list[GroupModsetGrant]] = {}
+    grants = db.execute(
+        select(ModSetGroupPermission.group_id, ModSet.id, ModSet.name, ModSetGroupPermission.permission)
+        .join(ModSet, ModSet.id == ModSetGroupPermission.modset_id)
+        .order_by(func.lower(ModSet.name), ModSet.id)
+    )
+    for group_id, modset_id, modset_name, permission in grants:
+        grants_by_group.setdefault(group_id, []).append(
+            GroupModsetGrant(modset_id=modset_id, modset_name=modset_name, permission=permission)
+        )
+    return [
+        GroupOverview(**group_read(group).model_dump(), modset_grants=grants_by_group.get(group.id, []))
+        for group in groups
+    ]
 
 
 def save_group(db: Session, group: Group, payload: GroupWrite) -> GroupRead:

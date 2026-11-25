@@ -95,6 +95,11 @@ class GroupsApiTestCase(ApiTestCase):
             self.assertEqual(client.post("/admin/groups", json={"name": "server tools"}).status_code, 409)
             self.assertEqual(client.put(f"/admin/groups/{group_id}", json={"name": "Server Tools", "user_ids": [999999]}).status_code, 400)
             self.assertEqual(client.put(f"/modsets/{self.modset_id}/group-permissions", json={"entries": [{"group_id": group_id, "permission": "read"}]}).status_code, 200)
+            modset = next(entry for entry in client.get("/modsets").json() if entry["id"] == self.modset_id)
+            listed = next(group for group in client.get("/admin/groups").json() if group["id"] == group_id)
+            self.assertEqual(listed["modset_grants"], [
+                {"modset_id": self.modset_id, "modset_name": modset["name"], "permission": "read"}
+            ])
             self.assertEqual(client.put(f"/modsets/{self.modset_id}/group-permissions", json={"entries": [{"group_id": group_id, "permission": "admin"}]}).status_code, 422)
             self.assertEqual(client.delete(f"/admin/groups/{group_id}").status_code, 204)
             self.assertEqual(client.get(f"/modsets/{self.modset_id}/group-permissions").json(), [])

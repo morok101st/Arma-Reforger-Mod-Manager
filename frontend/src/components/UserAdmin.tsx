@@ -2,11 +2,11 @@ import type { UserAccountUpdate } from "../types";
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
-import { Pencil, Plus, RefreshCw, Save, Users, UsersRound, Webhook, ScrollText, KeyRound } from "lucide-react";
+import { ChevronDown, Pencil, Plus, RefreshCw, Save, Trash2, Users, UsersRound, Webhook, ScrollText, KeyRound } from "lucide-react";
 
-import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
+import { auditActionLabel, auditDetailRows, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
-import { CustomSelect, Dialog, Info } from "./common";
+import { CustomSelect, Dialog, Info, RowActions } from "./common";
 import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
 import type { UserGroup } from "../types";
 
@@ -74,6 +74,7 @@ export function UserAdmin({
   nextAuditLogPage: () => void;
 }) {
   const effectiveSection = currentUser.role === "admin" ? section : "account";
+  const createNameRef = React.useRef<HTMLInputElement>(null);
   const [userSearch, setUserSearch] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = React.useState("");
@@ -88,6 +89,11 @@ export function UserAdmin({
   const [editGroupIds, setEditGroupIds] = React.useState<number[]>([]);
   const [resetPassword, setResetPassword] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const deleteButtonRef = React.useRef<HTMLButtonElement>(null);
+  const cancelDeleteRef = React.useRef<HTMLButtonElement>(null);
+  React.useLayoutEffect(() => {
+    if (confirmDelete) cancelDeleteRef.current?.focus();
+  }, [confirmDelete]);
   const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
 
   const editUser = users.find((user) => user.id === editUserId) ?? null;
@@ -112,14 +118,14 @@ export function UserAdmin({
     setShowCreateUserDialog(false);
   }
 
-  function openEditUser(user: UserAccount) {
+  function openEditUser(user: UserAccount, deleting = false) {
     setFormError(null);
     setEditUserId(user.id);
     setEditRole(user.role);
     setEditIsActive(user.is_active);
     setEditGroupIds(groups.filter(group => group.user_ids.includes(user.id)).map(group => group.id));
     setResetPassword("");
-    setConfirmDelete(false);
+    setConfirmDelete(deleting);
   }
 
   async function handleEditUser(event: React.FormEvent) {
@@ -160,6 +166,7 @@ export function UserAdmin({
 
         {currentUser.has_local_password ? (
           <form className="user-form session-form" onSubmit={event => { handleOwnPasswordChange(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not change password.")); }}>
+            <h3>Password</h3>
             <label>
               Current password
               <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" />
@@ -203,24 +210,33 @@ export function UserAdmin({
             {groupsLoad.error && <ResourceStatus state={groupsLoad} label="group memberships" />}
             {loadStates.users.loaded && !loadStates.users.error && <>
             <label className="admin-search">Search users<input type="search" value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="Username" /></label>
-            <div className="user-list">
-              {users.filter(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())).map((user) => (
-                <article className="user-row" key={user.id}>
-                  <div>
-                    <strong>{user.username}</strong>
-                    <small>
-                      {user.role} · {user.is_active ? "active" : "disabled"} · {authProviderLabel(user.auth_provider)} · Last login{" "}
-                      {formatDate(user.last_login_at) ?? "never"}
-                      {groups.some(group => group.user_ids.includes(user.id)) && ` · Groups: ${groups.filter(group => group.user_ids.includes(user.id)).map(group => group.name).join(", ")}`}
-                    </small>
-                  </div>
-                  <button className="secondary-button compact" disabled={loading || !groupsLoad.loaded || Boolean(groupsLoad.error)} onClick={() => openEditUser(user)} type="button">
-                    <Pencil size={16} />
-                    Edit
-                  </button>
-                </article>
-              ))}
-            </div>
+            <table className="modsets-table admin-records-table users-table" aria-label="Users">
+              <thead><tr><th scope="col">User</th><th scope="col">Authentication</th><th scope="col">Last login</th><th scope="col">Actions</th></tr></thead>
+              <tbody>{users.filter(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())).map((user) => {
+                const memberships = groups.filter(group => group.user_ids.includes(user.id));
+                return <tr key={user.id}>
+                  <td className="modset-name-cell">
+                    <div className="user-row-header">
+                      <strong>{user.username}</strong>
+                      <span className={`resource-status-badge${user.is_active ? " active" : ""}`}>{user.is_active ? "Active" : "Disabled"}</span>
+                    </div>
+                    <small>{user.role}{memberships.length > 0 && ` · Groups: ${memberships.map(group => group.name).join(", ")}`}</small>
+                  </td>
+                  <td><span className="mobile-cell-label">Authentication</span>{authProviderLabel(user.auth_provider)}</td>
+                  <td><span className="mobile-cell-label">Last login</span>{formatDate(user.last_login_at) ?? "Never"}</td>
+                  <td>
+                    <RowActions label={`More actions for user ${user.username}`}>
+                      <button disabled={loading || !groupsLoad.loaded || Boolean(groupsLoad.error)} onClick={() => openEditUser(user)} type="button">
+                        <Pencil size={16} /> Edit
+                      </button>
+                      <button className="modset-delete-action" disabled={loading || user.id === currentUser.id} onClick={() => openEditUser(user, true)} type="button">
+                        <Trash2 size={16} /> Delete
+                      </button>
+                    </RowActions>
+                  </td>
+                </tr>;
+              })}</tbody>
+            </table>
             {!users.some(user => user.username.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase())) && <p className="muted">No users match this search.</p>}
             </>}
           </section>}
@@ -243,12 +259,12 @@ export function UserAdmin({
           />}</>}
 
           {showCreateUserDialog && (
-            <Dialog title="Create user" onClose={() => setShowCreateUserDialog(false)}>
+            <Dialog title="Create user" initialFocusRef={createNameRef} onClose={() => setShowCreateUserDialog(false)}>
               <form className="dialog-form" onSubmit={event => { handleCreateUser(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not create user.")); }}>
                 {formError && <p className="error-box" role="alert">{formError}</p>}
                 <label>
                   Username
-                  <input autoFocus value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
+                  <input ref={createNameRef} value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="admin.user" />
                 </label>
                 <label>
                   Initial password
@@ -283,16 +299,6 @@ export function UserAdmin({
               <form className="dialog-form" onSubmit={event => { handleEditUser(event).catch(error => setFormError(error instanceof Error ? error.message : "Could not save user.")); }}>
                 {formError && <p className="error-box" role="alert">{formError}</p>}
                 {actionError && !formError && <p className="error-box" role="alert">{actionError}</p>}
-                <ResourceStatus state={groupsLoad} label="group memberships" />
-                {groupError && !groupsLoad.error && <p role="alert">{groupError}</p>}
-                <fieldset className="group-options"><legend>Groups</legend>
-                  {groups.length === 0 && <p className="muted">No groups available. Create groups in the Groups section.</p>}
-                  {groups.map(group => <label className="checkbox-row" key={group.id}>
-                    <input type="checkbox" checked={editGroupIds.includes(group.id)} disabled={loading}
-                      onChange={event => setEditGroupIds(event.target.checked ? [...editGroupIds, group.id] : editGroupIds.filter(id => id !== group.id))} />
-                    {group.name}
-                  </label>)}
-                </fieldset>
                 <label>
                   Role
                   <CustomSelect<UserRole>
@@ -303,6 +309,7 @@ export function UserAdmin({
                     ]}
                     onChange={setEditRole}
                     disabled={loading}
+                    initialDialogFocus
                     ariaLabel={`Role for ${editUser.username}`}
                   />
                 </label>
@@ -322,7 +329,6 @@ export function UserAdmin({
                 <label>
                   Reset password
                   <input
-                    autoFocus
                     value={resetPassword}
                     onChange={(event) => setResetPassword(event.target.value)}
                     type="password"
@@ -332,17 +338,27 @@ export function UserAdmin({
                 {editUser.auth_provider === "oidc" && (
                   <p className="muted">Setting a password enables additional local login for this OIDC account.</p>
                 )}
-                <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setEditUserId(null)} type="button">
-                    Cancel
-                  </button>
+                <ResourceStatus state={groupsLoad} label="group memberships" />
+                {groupError && !groupsLoad.error && <p role="alert">{groupError}</p>}
+                <fieldset className="group-options"><legend>Groups</legend>
+                  {groups.length === 0 && <p className="muted">No groups available. Create groups in the Groups section.</p>}
+                  {groups.map(group => <label className="checkbox-row" key={group.id}>
+                    <input type="checkbox" checked={editGroupIds.includes(group.id)} disabled={loading}
+                      onChange={event => setEditGroupIds(event.target.checked ? [...editGroupIds, group.id] : editGroupIds.filter(id => id !== group.id))} />
+                    {group.name}
+                  </label>)}
+                </fieldset>
+                <div className="dialog-actions dialog-actions-with-delete">
                   <button
                     className="secondary-button compact danger-button"
                     disabled={loading || editUser.id === currentUser.id}
-                    onClick={() => setConfirmDelete(true)}
+                    ref={deleteButtonRef} onClick={() => setConfirmDelete(true)}
                     type="button"
                   >
                     Delete
+                  </button>
+                  <button className="secondary-button compact" onClick={() => setEditUserId(null)} type="button">
+                    Cancel
                   </button>
                   <button
                     className="primary-button compact"
@@ -358,7 +374,7 @@ export function UserAdmin({
                       Delete <strong>{editUser.username}</strong> permanently?
                     </p>
                     <div className="dialog-actions">
-                      <button className="secondary-button compact" onClick={() => setConfirmDelete(false)} type="button">
+                      <button className="secondary-button compact" ref={cancelDeleteRef} onClick={() => { setConfirmDelete(false); deleteButtonRef.current?.focus(); }} type="button">
                         Cancel
                       </button>
                       <button
@@ -398,19 +414,32 @@ export function UserAdmin({
               ))}
             </div>
             <div className="audit-list">
-              {filteredAuditLogs.map((entry) => (
-                <article className="audit-row" key={entry.id}>
-                  <div className="audit-row-header">
-                    <strong>{auditActionLabel(entry.action)}</strong>
-                    <span className={`audit-badge ${auditSeverity(entry)}`}>{auditSeverity(entry)}</span>
+              {filteredAuditLogs.map((entry) => {
+                const { changes, fields } = auditDetailRows(entry.detail);
+                return <details className="audit-row" key={entry.id}>
+                  <summary className="audit-row-summary">
+                    <span className="audit-row-header">
+                      <strong>{auditActionLabel(entry.action)}</strong>
+                      {auditSeverity(entry) === "failure" && <span className="resource-info-badge audit-badge failure">Failure</span>}
+                    </span>
+                    <span className="audit-row-entity">{auditEntityLine(entry)}</span>
+                    <time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time>
+                    <ChevronDown className="audit-row-chevron" size={16} aria-hidden="true" />
+                  </summary>
+                  <div className="audit-row-details">
+                    {changes.length || fields.length || entry.ip_address ? <dl className="audit-detail-list">
+                      {changes.map(change => <React.Fragment key={change.label}>
+                        <dt>{change.label}</dt>
+                        <dd className="audit-detail-change">{change.previous} → <strong>{change.current}</strong></dd>
+                      </React.Fragment>)}
+                      {fields.map(field => <React.Fragment key={field.label}>
+                        <dt>{field.label}</dt><dd>{field.value}</dd>
+                      </React.Fragment>)}
+                      {entry.ip_address && <><dt>IP address</dt><dd>{entry.ip_address}</dd></>}
+                    </dl> : <p>No additional event details.</p>}
                   </div>
-                  <span>{auditEntityLine(entry)}</span>
-                  <small>
-                    {formatDate(entry.created_at)} · {entry.ip_address ?? "no ip"}
-                  </small>
-                  {auditDetailText(entry.detail) && <p>{auditDetailText(entry.detail)}</p>}
-                </article>
-              ))}
+                </details>;
+              })}
               {auditLogs.length === 0 && <p className="muted">No audit entries stored.</p>}
               {auditLogs.length > 0 && filteredAuditLogs.length === 0 && <p className="muted">No audit entries match this filter.</p>}
             </div>
