@@ -278,6 +278,7 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       await page.waitForFunction(() => document.querySelector(".mod-selection-connector path")?.hasAttribute("d"));
       const toolbar = page.locator(".workspace-toolbar");
       const toolbarTop = (await toolbar.boundingBox()).y;
+      assert.equal(toolbarTop, (await page.locator(".detail").boundingBox()).y);
       await page.addStyleTag({ content: ".mod-detail { min-height: 1400px; }" });
       await page.locator(".detail").evaluate(detail => { detail.scrollTop = 120; });
       assert.equal(await page.locator(".detail").evaluate(detail => detail.scrollTop), 120);

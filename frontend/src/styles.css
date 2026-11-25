@@ -2147,7 +2147,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   position: absolute; right: 0; top: calc(100% + 8px); width: 210px; padding: 8px;
 }
 .account-menu button { width: 100%; text-align: left; min-height: 44px; }
-.redesigned-shell .detail { --detail-block-padding: 28px; min-width: 0; height: 100%; padding: var(--detail-block-padding) 32px; }
+.redesigned-shell .detail { min-width: 0; height: 100%; padding: 28px 32px; }
 .redesigned-shell .sidebar { min-width: 0; padding: 24px 16px; gap: 16px; }
 .management-shell { grid-template-columns: minmax(0, 1fr); }
 .management-shell .detail { width: 100%; max-width: 1440px; margin-inline: auto; }
@@ -2303,11 +2303,14 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 }
 .redesigned-shell .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .redesigned-shell .metrics { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
-.workspace-toolbar { position: sticky; top: var(--detail-block-padding); z-index: 10; background: var(--md-sys-color-surface); padding-top: 12px; }
+@media (min-width: 901px) {
+  .redesigned-shell .detail:has(> .workspace-toolbar) { padding-block-start: 0; }
+}
+.workspace-toolbar { position: sticky; top: 0; z-index: 10; background: var(--md-sys-color-surface); padding-top: 16px; }
 .workspace-toolbar::before {
   content: "";
   position: absolute;
-  inset-block: calc(-1 * var(--detail-block-padding)) 0;
+  inset-block: 0;
   inset-inline: -16px 0;
   z-index: -1;
   background: inherit;
