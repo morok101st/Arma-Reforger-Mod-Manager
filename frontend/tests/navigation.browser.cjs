@@ -276,6 +276,13 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       await start("?modset=1&mod=ABC");
       const path = page.locator(".mod-selection-connector path");
       await page.waitForFunction(() => document.querySelector(".mod-selection-connector path")?.hasAttribute("d"));
+      const toolbar = page.locator(".workspace-toolbar");
+      const toolbarTop = (await toolbar.boundingBox()).y;
+      await page.addStyleTag({ content: ".mod-detail { min-height: 1400px; }" });
+      await page.locator(".detail").evaluate(detail => { detail.scrollTop = 120; });
+      assert.equal(await page.locator(".detail").evaluate(detail => detail.scrollTop), 120);
+      assert.equal((await toolbar.boundingBox()).y, toolbarTop);
+      await page.locator(".detail").evaluate(detail => { detail.scrollTop = 0; });
       const initial = await path.getAttribute("d");
       assert.match(initial, /^M [\d.]+ [\d.]+ H [\d.]+$/);
       await page.locator(".mod-list").evaluate(list => {
