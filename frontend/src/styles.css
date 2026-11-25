@@ -2304,7 +2304,30 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 }
 
 /* Phase three: versions first, relationships second, destructive actions last. */
-.mod-detail { display: grid; gap: 32px; min-width: 0; }
+.mod-detail {
+  position: relative;
+  display: grid;
+  gap: 32px;
+  min-width: 0;
+}
+.mod-detail::before {
+  content: "";
+  position: absolute;
+  inset-block: -8px;
+  inset-inline-start: -14px;
+  inline-size: clamp(24px, 5vw, 64px);
+  border-block: 1px solid var(--md-sys-color-outline);
+  border-inline-start: 1px solid var(--md-sys-color-outline);
+  border-start-start-radius: var(--shape-corner-sm);
+  border-end-start-radius: var(--shape-corner-sm);
+  pointer-events: none;
+}
+@media (max-width: 900px) {
+  .mod-detail::before {
+    inset-inline-start: -8px;
+    inline-size: 20px;
+  }
+}
 .mod-detail-header { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
 .mod-detail-header > div:first-child { min-width: 0; }
 .mod-detail-header .actions { flex-wrap: wrap; justify-content: end; flex-shrink: 0; }
