@@ -210,7 +210,7 @@ export function App() {
         {!view.showModsetAdmin && !view.showUserAdmin && <header className="workspace-toolbar">
           <div className="workspace-context">
             <button className="icon-button mobile-drawer-button" onClick={openSidebar} disabled={!modsetsReady || !activeModset} type="button" aria-label="Open mod list"><Menu size={18} /></button>
-            <label>Active modset<CustomSelect<number> value={modsets.activeModsetId ?? 0}
+            <label><span className="workspace-modset-label">Active modset</span><CustomSelect<number> value={modsets.activeModsetId ?? 0}
               options={!modsetsReady ? [{ value: 0, label: modsets.loadState.error ? "Modsets unavailable" : "Loading modsets…" }] : modsets.modsets.length ? [...(!activeModset ? [{ value: 0, label: "Select a modset" }] : []), ...modsets.modsets.map(set => ({ value: set.id, label: set.name }))] : [{ value: 0, label: "No accessible modset" }]}
               onChange={id => { if (id) { handleActivateModset(id); } }} disabled={actions.loading || !modsetsReady || !modsets.modsets.length} ariaLabel="Active modset" /></label>
           </div>
