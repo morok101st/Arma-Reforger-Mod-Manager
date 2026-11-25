@@ -277,6 +277,7 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       const path = page.locator(".mod-selection-connector path");
       await page.waitForFunction(() => document.querySelector(".mod-selection-connector path")?.hasAttribute("d"));
       const initial = await path.getAttribute("d");
+      assert.match(initial, /^M [\d.]+ [\d.]+ H [\d.]+$/);
       await page.locator(".mod-list").evaluate(list => {
         list.style.maxHeight = "75px";
         list.scrollTop = 8;
@@ -285,6 +286,10 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         const current = document.querySelector(".mod-selection-connector path")?.getAttribute("d");
         return current && current !== previous;
       }, initial);
+      const bracket = page.locator(".mod-detail-bracket");
+      assert.equal(await bracket.evaluate(node => getComputedStyle(node).animationName), "mod-bracket-open");
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      assert.equal(await bracket.evaluate(node => getComputedStyle(node).animationName), "none");
       await page.getByPlaceholder("Name or Workshop ID").fill("DEF");
       await page.waitForFunction(() => !document.querySelector(".mod-selection-connector path")?.hasAttribute("d"));
     });

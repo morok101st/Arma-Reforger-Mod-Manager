@@ -160,6 +160,7 @@ export function ModDetail({
 
   return (
     <article className="mod-detail">
+      <span className="mod-detail-bracket" key={selected.id} aria-hidden="true" />
       <header className="mod-detail-header">
         <div>
           <h2>{selected.name ?? "Unnamed mod"}</h2>

@@ -319,7 +319,7 @@ export function App() {
             allTrackedMods={mods.mods}
             openMod={handleOpenMod}
           />
-          <ModSelectionConnector selectedId={mods.selected.id} visibleMods={mods.sortedMods} />
+          <ModSelectionConnector key={mods.selected.id} visibleMods={mods.sortedMods} />
           </>
         ) : (
           <div className="placeholder">

@@ -1,7 +1,7 @@
 import React from "react";
 import type { Mod } from "../types";
 
-export function ModSelectionConnector({ selectedId, visibleMods }: { selectedId: string; visibleMods: Mod[] }) {
+export function ModSelectionConnector({ visibleMods }: { visibleMods: Mod[] }) {
   const pathRef = React.useRef<SVGPathElement>(null);
 
   React.useLayoutEffect(() => {
@@ -9,40 +9,40 @@ export function ModSelectionConnector({ selectedId, visibleMods }: { selectedId:
     const shell = path?.closest("main");
     const row = shell?.querySelector<HTMLElement>(".mod-row.active");
     const list = row?.parentElement;
-    const detail = shell?.querySelector<HTMLElement>(".mod-detail");
-    const viewport = detail?.closest<HTMLElement>(".detail");
-    if (!path || !row || !list || !detail || !viewport) return;
+    const bracket = shell?.querySelector<HTMLElement>(".mod-detail-bracket");
+    const viewport = bracket?.closest<HTMLElement>(".detail");
+    if (!path || !row || !list || !bracket || !viewport) return;
 
     const desktop = window.matchMedia("(width > 900px)");
     let frame = 0;
-    function draw() {
+    const draw = () => {
       frame = 0;
-      if (!path || !row || !list || !detail || !viewport) return;
       const from = row.getBoundingClientRect();
       const listBounds = list.getBoundingClientRect();
-      const target = detail.getBoundingClientRect();
+      const target = bracket.getBoundingClientRect();
       const viewportBounds = viewport.getBoundingClientRect();
       const x = from.right;
       const y = from.top + from.height / 2;
-      const bracketX = target.left + parseFloat(getComputedStyle(detail, "::before").insetInlineStart);
+      const bracketX = target.left + 0.5;
       const top = Math.max(target.top + 8, viewportBounds.top + 8);
       const bottom = Math.min(target.bottom - 8, viewportBounds.bottom - 8);
       if (!desktop.matches || y < listBounds.top || y > listBounds.bottom || bracketX <= x
-        || top > bottom || y < top - 24 || y > bottom + 24) {
+        || top > bottom || y < top || y > bottom) {
         path.removeAttribute("d");
         return;
       }
-      const endY = Math.min(bottom, Math.max(top, y + 8));
-      const bendX = x + (bracketX - x) * 0.55;
-      path.setAttribute("d", `M ${x} ${y} C ${bendX} ${y}, ${bendX} ${endY}, ${bracketX} ${endY}`);
-    }
+      if (!bracket.style.getPropertyValue("--bracket-opening")) {
+        bracket.style.setProperty("--bracket-opening", `${100 * (y - target.top) / target.height}%`);
+      }
+      path.setAttribute("d", `M ${x} ${y} H ${bracketX}`);
+    };
 
     function schedule() {
       if (!frame) frame = requestAnimationFrame(draw);
     }
 
     const observer = new ResizeObserver(schedule);
-    [row, list, detail, viewport].forEach(element => observer.observe(element));
+    [row, list, bracket, viewport].forEach(element => observer.observe(element));
     window.addEventListener("scroll", schedule, { capture: true, passive: true });
     window.addEventListener("resize", schedule);
     draw();
@@ -53,7 +53,7 @@ export function ModSelectionConnector({ selectedId, visibleMods }: { selectedId:
       cancelAnimationFrame(frame);
       path.removeAttribute("d");
     };
-  }, [selectedId, visibleMods]);
+  }, [visibleMods]);
 
-  return <svg className="mod-selection-connector" aria-hidden="true"><path ref={pathRef} /></svg>;
+  return <svg className="mod-selection-connector" aria-hidden="true"><path ref={pathRef} pathLength={1} /></svg>;
 }
