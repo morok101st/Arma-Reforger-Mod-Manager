@@ -128,7 +128,7 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         created_at: "2026-11-14T12:00:00Z",
       }];
       else if (path === "/admin/groups") data = [
-        { id: 1, name: "Server operators", description: "Manage server configuration", user_ids: [] },
+        { id: 1, name: "Server operators", description: "Manage server configuration", user_ids: [], modset_grants: [{ modset_id: 1, modset_name: "Core access", permission: "read" }, { modset_id: 2, modset_name: "Event access", permission: "write" }] },
       ];
       else if (path === "/discord-webhooks") data = [
         { id: 1, name: "Workshop alerts", masked_webhook_url: "discord.com/api/webhooks/…", is_active: true, modset_ids: [1] },
@@ -451,6 +451,10 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         assert(menuBox.x >= nameBox.x + nameBox.width, section);
         assert(menuBox.y < nameBox.y + nameBox.height, section);
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), section);
+        if (section === "groups") {
+          await row.getByRole("listitem").filter({ hasText: "Core access" }).getByText("Read", { exact: true }).waitFor();
+          await row.getByRole("listitem").filter({ hasText: "Event access" }).getByText("Write", { exact: true }).waitFor();
+        }
       }
       await start("?view=admin&section=users");
       await page.locator(".users-table summary").first().click();

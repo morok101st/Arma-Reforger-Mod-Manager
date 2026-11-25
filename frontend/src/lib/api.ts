@@ -13,6 +13,7 @@ import type {
   ThemePreference,
   UserAccount,
   UserRole,
+  GroupOverview,
   GroupSummary,
   UserGroup,
   GroupWrite,
@@ -83,7 +84,7 @@ export function createApiClient(onUnauthorized?: () => void) {
       return readJsonOrThrow<GroupSummary[]>(await request("/groups"), "Could not load groups.");
     },
     async listAdminGroups() {
-      return readJsonOrThrow<UserGroup[]>(await request("/admin/groups"), "Could not load group memberships.");
+      return readJsonOrThrow<GroupOverview[]>(await request("/admin/groups"), "Could not load groups and modset permissions.");
     },
     async saveGroup(id: number | null, payload: GroupWrite) {
       return readJsonOrThrow<UserGroup>(await request(id === null ? "/admin/groups" : `/admin/groups/${id}`, {

@@ -9,6 +9,9 @@ import { Dialog, RowActions } from "./common";
 
 export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; data: ReturnType<typeof useGroups>; users: UserAccount[] }) {
   const createNameRef = React.useRef<HTMLInputElement>(null);
+  const { reload } = data;
+  React.useEffect(() => { reload().catch(() => null); }, [reload]);
+
   const [memberSearch, setMemberSearch] = React.useState("");
   const [editing, setEditing] = React.useState<UserGroup | "new" | null>(null);
   const [name, setName] = React.useState("");
@@ -43,7 +46,7 @@ export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; d
     {data.loadState.loaded && !data.loadState.error && <>
 
     {data.groups.length > 0 && <table className="modsets-table admin-records-table groups-table" aria-label="Groups">
-      <thead><tr><th scope="col">Group</th><th scope="col">Description</th><th scope="col">Actions</th></tr></thead>
+      <thead><tr><th scope="col">Group</th><th scope="col">Modsets</th><th scope="col">Actions</th></tr></thead>
       <tbody>{data.groups.map(group => {
         const memberCount = group.user_ids.length;
         return <tr key={group.id}>
@@ -53,7 +56,15 @@ export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; d
               <span className="resource-info-badge">{memberCount} {memberCount === 1 ? "member" : "members"}</span>
             </div>
           </td>
-          <td>{group.description.trim() ? <><span className="mobile-cell-label">Description</span>{group.description}</> : <span className="desktop-empty-description muted" aria-label="No description">—</span>}</td>
+          <td>
+            <span className="mobile-cell-label">Modsets</span>
+            {group.modset_grants.length > 0 ? <ul className="group-modset-grants">
+              {group.modset_grants.map(grant => <li key={grant.modset_id}>
+                <span>{grant.modset_name}</span>
+                <span className="resource-info-badge">{grant.permission === "read" ? "Read" : "Write"}</span>
+              </li>)}
+            </ul> : <span className="muted">No modset access</span>}
+          </td>
           <td>
             <RowActions label={`More actions for group ${group.name}`}>
               <button disabled={data.loading || !usersLoad.loaded || Boolean(usersLoad.error)} onClick={() => open(group)} type="button"><Pencil size={16} /> Edit</button>
