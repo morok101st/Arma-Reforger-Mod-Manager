@@ -122,10 +122,14 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         jobs.set(key, data);
       }
       else if (path === "/groups") data = [];
+      else if (path === "/audit") data = [{
+        id: 1, actor_username: "admin", action: "login_failed", entity_type: "user",
+        entity_id: "5", detail: {}, ip_address: "192.0.2.25", user_agent: null,
+        created_at: "2026-11-14T12:00:00Z",
+      }];
       else if (
         path === "/admin/groups" ||
         path === "/discord-webhooks" ||
-        path === "/audit" ||
         path.endsWith("/activity")
       )
         data = [];
@@ -380,6 +384,16 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         .getByRole("heading", { name: "Audit log", exact: true })
         .waitFor();
       assert.equal(new URL(p.url()).searchParams.get("section"), "audit");
+      const auditRow = p.locator("details.audit-row");
+      const summary = auditRow.locator("summary");
+      await summary.getByText("Failure", { exact: true }).waitFor();
+      const ipAddress = auditRow.getByText("IP address: 192.0.2.25");
+      assert.equal(await ipAddress.isVisible(), false);
+      await summary.focus();
+      await p.keyboard.press("Enter");
+      await ipAddress.waitFor({ state: "visible" });
+      await summary.click();
+      await ipAddress.waitFor({ state: "hidden" });
       await p.goBack();
       await p
         .getByRole("heading", { name: "Discord webhooks", exact: true })
@@ -399,6 +413,22 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         .getByRole("heading", { name: "Account settings", exact: true })
         .waitFor();
       assert.equal(new URL(p.url()).searchParams.get("view"), "account");
+    });
+    await test("creation dialogs focus the first text field", async ({ page, start }) => {
+      for (const [route, action, field] of [
+        ["?view=modsets", "Create modset", "Name"],
+        ["?view=admin&section=users", "Create user", "Username"],
+        ["?view=admin&section=groups", "Create group", "Name"],
+        ["?view=admin&section=discord", "Add webhook", "Name"],
+      ]) {
+        await start(route);
+        await page.getByRole("button", { name: action, exact: true }).click();
+        const input = page.getByRole("dialog").getByLabel(field, { exact: true });
+        await input.waitFor();
+        assert(await input.evaluate(node => node === document.activeElement), action);
+        await page.keyboard.press("Escape");
+        await page.getByRole("dialog").waitFor({ state: "hidden" });
+      }
     });
     await test("legacy Discord links and delayed mod loading retain intended selection", async (f) => {
       f.hold("mods:2");
@@ -596,7 +626,10 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       await p.getByRole("heading", { name: "Overview", exact: true }).waitFor();
       await p.getByRole("button", { name: "Add mod", exact: true }).click();
       let dialog = p.getByRole("dialog");
-      await dialog.getByLabel("Workshop ID", { exact: true }).fill("NEW");
+      const workshopId = dialog.getByLabel("Workshop ID", { exact: true });
+      await workshopId.waitFor();
+      assert(await workshopId.evaluate(input => input === document.activeElement));
+      await workshopId.fill("NEW");
       await dialog
         .getByRole("combobox", { name: "Target modset", exact: true })
         .click();

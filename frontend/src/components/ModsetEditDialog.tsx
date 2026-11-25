@@ -7,6 +7,8 @@ import type { GroupPermission, GroupSummary, Modset } from "../types";
 import { CustomSelect, Dialog } from "./common";
 import { useAsyncAction } from "../hooks/useAsyncAction";
 
+const parentSteps = ["Parent and order", "Review changes", "Confirm and save"];
+
 function permissionKey(entries: GroupPermission[]) {
   return JSON.stringify([...entries].sort((a, b) => a.group_id - b.group_id));
 }
@@ -18,6 +20,9 @@ export function ModsetEditDialog({ modset, modsets, groups, groupsLoad, modsetsL
   updateModset: (id: number, name: string, permissions?: GroupPermission[], parentModsetId?: number | null, confirmParentConflicts?: boolean, orderMode?: "parent" | "independent", confirmOrderChange?: boolean) => Promise<void>;
   onClose: () => void; onSaved: () => Promise<unknown>;
 }) {
+  const [step, setStep] = React.useState(0);
+  const stepHeading = React.useRef<HTMLHeadingElement>(null);
+  React.useEffect(() => { stepHeading.current?.focus(); }, [step]);
   const [groupSearch, setGroupSearch] = React.useState("");
   const [loadAttempt, setLoadAttempt] = React.useState(0);
   const [name, setName] = React.useState(modset.name);
@@ -38,6 +43,7 @@ export function ModsetEditDialog({ modset, modsets, groups, groupsLoad, modsetsL
     return () => { cancelled = true; };
   }, [api, modset.id, parentId, orderMode, orderChanged, previewAttempt]);
   const orderReady = !orderChanged || (orderPreview.ready && orderConfirmed);
+  const [parentPreviewAttempt, setParentPreviewAttempt] = React.useState(0);
   const [confirmed, setConfirmed] = React.useState(false);
   const [parentPreview, setParentPreview] = React.useState<{conflicts: string[]; error: string | null; loaded: boolean}>({conflicts: [], error: null, loaded: true});
   const parentChanged = parentId !== String(modset.parent_modset_id ?? "");
@@ -48,9 +54,9 @@ export function ModsetEditDialog({ modset, modsets, groups, groupsLoad, modsetsL
     setParentPreview({conflicts: [], error: null, loaded: false});
     Promise.all([api.listMods(modset.id), api.listMods(Number(parentId))]).then(([local, parent]) => {
       if (!cancelled) setParentPreview({conflicts: local.filter(mod => parent.some(source => source.id === mod.id)).map(mod => mod.name ?? mod.id), error: null, loaded: true});
-    }).catch(() => { if (!cancelled) setParentPreview({conflicts: [], error: "Could not check overlapping mods. Reselect the parent to try again.", loaded: false}); });
+    }).catch(() => { if (!cancelled) setParentPreview({conflicts: [], error: "Could not check overlapping mods.", loaded: false}); });
     return () => { cancelled = true; };
-  }, [api, modset.id, parentId, parentChanged]);
+  }, [api, modset.id, parentId, parentChanged, parentPreviewAttempt]);
   const [entries, setEntries] = React.useState<GroupPermission[]>([]);
   const [originalEntries, setOriginalEntries] = React.useState<GroupPermission[]>([]);
   const [loaded, setLoaded] = React.useState(!modset.can_manage_access);
@@ -70,6 +76,10 @@ export function ModsetEditDialog({ modset, modsets, groups, groupsLoad, modsetsL
   const changed = name.trim() !== modset.name || permissionsChanged || parentChanged || orderChanged;
   const needsConfirmation = parentChanged && (!parentId || parentPreview.conflicts.length > 0);
   const parentReady = parentPreview.loaded && (!needsConfirmation || confirmed);
+  const reviewingParent = parentChanged || orderChanged;
+  const previewReady = parentPreview.loaded && (!orderChanged || orderPreview.ready);
+  const canSubmit = modsetsLoad.loaded && !modsetsLoad.error && loaded
+    && (!modset.can_manage_access || groupsReady) && !action.loading && Boolean(name.trim()) && changed;
   function setPermission(groupId: number, value: "none" | "read" | "write") {
     setEntries(previous => [...previous.filter(entry => entry.group_id !== groupId),
       ...(value === "none" ? [] : [{ group_id: groupId, permission: value }])]);
@@ -78,57 +88,88 @@ export function ModsetEditDialog({ modset, modsets, groups, groupsLoad, modsetsL
   return <Dialog title={`Edit modset ${modset.name}`} onClose={onClose}>
     <form className="dialog-form parent-modset-form" onSubmit={event => {
       event.preventDefault();
-      if (!modsetsLoad.loaded || modsetsLoad.error || !loaded || (modset.can_manage_access && !groupsReady) || !changed || !name.trim() || !parentReady || !orderReady) return;
+      if (!canSubmit) return;
+      if (reviewingParent && step < 2) {
+        if (step === 0 || previewReady) setStep(step + 1);
+        return;
+      }
+      if (!parentReady || !orderReady) return;
       action.run(async () => {
         await updateModset(modset.id, name.trim(), permissionsChanged ? entries : undefined, parentChanged ? (parentId ? Number(parentId) : null) : undefined, confirmed, orderChanged ? orderMode : undefined, orderConfirmed);
         await onSaved().catch(() => null); onClose();
       }).catch(() => null);
     }}>
       <ResourceStatus state={modsetsLoad} label="modsets" />
-      <label>Name<input autoFocus value={name} maxLength={120} onChange={event => setName(event.target.value)} disabled={action.loading} /></label>
-      {modset.can_manage_access && <fieldset className="modset-permission-editor" disabled={action.loading}>
-        <legend>Parent modset</legend>
-        {modset.parent_modset_id ? <p>Linked to <strong>{modset.parent_modset_name ?? "parent modset"}</strong>. Installed versions come from this parent.</p> : <p className="muted">Inherit mods and binding versions from one parent, including future additions. New parent mods also replace local entries of the same ID. Choose whether to follow the parent order or manage it independently.</p>}
-        <label>Parent modset<CustomSelect value={parentId} onChange={setParentId} ariaLabel="Parent modset" disabled={Boolean(modset.child_modsets_count)} options={[{value:"", label:modset.parent_modset_id ? "Detach — keep current mods and versions" : "None — independent modset"}, ...modsets.filter(set => set.id !== modset.id && !set.parent_modset_id && (!modset.parent_modset_id || set.id === modset.parent_modset_id)).map(set => ({value:String(set.id),label:set.name}))]} /></label>
-        {parentId && <>
-          <label>Export order<CustomSelect<"parent" | "independent"> value={orderMode} onChange={setOrderMode} disabled={action.loading} ariaLabel="Export order mode" options={[{value:"parent",label:"Follow parent order and insert local mods"},{value:"independent",label:"Independent order"}]} /></label>
-          <p className="muted">{orderMode === "parent" ? "Parent mods keep their relative order. Move local mods between them; later parent changes are merged automatically." : "All export positions stay local. Later parent order changes do not move your mods."}</p>
-          {orderChanged && <div className="order-mode-preview" aria-label="Export order preview">
+      {reviewingParent && <ol className="sync-wizard-steps" aria-label="Parent change progress">
+        {parentSteps.map((label, index) => <li key={label} aria-current={step === index ? "step" : undefined}>{label}</li>)}
+      </ol>}
+      {reviewingParent && <h3 ref={stepHeading} tabIndex={-1}>{parentSteps[step]}</h3>}
+      <div hidden={step !== 0}>
+        <div className="dialog-form">
+          <label>Name<input autoFocus value={name} maxLength={120} onChange={event => setName(event.target.value)} disabled={action.loading} /></label>
+          {modset.can_manage_access && <fieldset className="modset-permission-editor" disabled={action.loading}>
+            <legend>Parent modset</legend>
+            {modset.parent_modset_id ? <p>Linked to <strong>{modset.parent_modset_name ?? "parent modset"}</strong>. Installed versions come from this parent.</p> : <p className="muted">Inherit mods and binding versions from one parent, including future additions. New parent mods also replace local entries of the same ID. Choose whether to follow the parent order or manage it independently.</p>}
+            <label>Parent modset<CustomSelect value={parentId} onChange={setParentId} ariaLabel="Parent modset" disabled={Boolean(modset.child_modsets_count)} options={[{value:"", label:modset.parent_modset_id ? "Detach — keep current mods and versions" : "None — independent modset"}, ...modsets.filter(set => set.id !== modset.id && !set.parent_modset_id && (!modset.parent_modset_id || set.id === modset.parent_modset_id)).map(set => ({value:String(set.id),label:set.name}))]} /></label>
+            {parentId && <>
+              <label>Export order<CustomSelect<"parent" | "independent"> value={orderMode} onChange={setOrderMode} disabled={action.loading} ariaLabel="Export order mode" options={[{value:"parent",label:"Follow parent order and insert local mods"},{value:"independent",label:"Independent order"}]} /></label>
+              <p className="muted">{orderMode === "parent" ? "Parent mods keep their relative order. Move local mods between them; later parent changes are merged automatically." : "All export positions stay local. Later parent order changes do not move your mods."}</p>
+            </>}
+            {Boolean(modset.child_modsets_count) && <p className="muted">This modset is a parent of {modset.child_modsets_count} child modset(s) and cannot itself inherit.</p>}
+            <p className="muted">Users of a child modset also need read access to its parent. Revoking that access blocks the child workspace until access is restored or an administrator detaches it.</p>
+          </fieldset>}
+          {modset.can_manage_access && <fieldset className="modset-permission-editor" disabled={action.loading}>
+            <legend>Group access</legend>
+            <p className="muted">Read: view, copy and export. Write: also edit mods and export order.</p>
+            <p className="muted">Owners and administrators always retain full access.</p>
+            <ResourceStatus state={groupsLoad} label="groups" />
+            {!loaded && !action.error && <p role="status">Loading permissions…</p>}
+            {loaded && groupsReady && groups.length > 6 && <label>Find a group<input type="search" value={groupSearch} onChange={event => setGroupSearch(event.target.value)} placeholder="Group name" /></label>}
+            {loaded && groupsReady && groups.length > 0 && <div className="permission-list">
+              {groups.filter(group => group.name.toLocaleLowerCase().includes(groupSearch.trim().toLocaleLowerCase())).map(group => <label className="permission-row" key={group.id}>
+                <span>{group.name}</span>
+                <CustomSelect<"none" | "read" | "write"> value={entries.find(entry => entry.group_id === group.id)?.permission ?? "none"}
+                  onChange={value => setPermission(group.id, value)} disabled={action.loading} ariaLabel={`Access for ${group.name}`}
+                  options={[{value:"none",label:"No access"},{value:"read",label:"Read"},{value:"write",label:"Write"}]} />
+              </label>)}
+              {!groups.some(group => group.name.toLocaleLowerCase().includes(groupSearch.trim().toLocaleLowerCase())) && <p className="muted">No matching groups. Try a different name.</p>}
+            </div>}
+            {loaded && groupsReady && !groups.length && <p className="muted">No groups available. Ask an administrator to create a group.</p>}
+          </fieldset>}
+        </div>
+      </div>
+      {step === 1 && <>
+        {parentChanged && <p>{parentId
+          ? <>Link to <strong>{modsets.find(set => String(set.id) === parentId)?.name}</strong> and inherit its installed versions.</>
+          : "Detach from the parent and keep the current mods and versions."}</p>}
+        {parentId && <p className="muted">Export order: {orderMode === "parent" ? "Follow parent order" : "Independent order"}</p>}
+        {!parentPreview.loaded && !parentPreview.error && <p role="status">Checking overlapping mods…</p>}
+        {parentPreview.error && <>
+          <p className="error-box" role="alert">{parentPreview.error}</p>
+          <button className="secondary-button compact" type="button" onClick={() => setParentPreviewAttempt(value => value + 1)}>Retry overlap check</button>
+        </>}
+        {parentPreview.conflicts.length > 0 && <p className="error-box">These local mods will use the parent versions: {parentPreview.conflicts.join(", ")}. Their export positions are retained.</p>}
+        {orderChanged && <div className="order-mode-preview" aria-label="Export order preview">
             <strong>Export order preview</strong>
             {!orderPreview.ready && !orderPreview.error && <p role="status">Loading preview…</p>}
             {orderPreview.error && <><p className="error-box" role="alert">{orderPreview.error}</p><button className="secondary-button compact" type="button" onClick={() => setPreviewAttempt(value => value + 1)}>Retry preview</button></>}
-            {orderPreview.ready && <>{orderPreview.names.length ? <ol>{orderPreview.names.map((name, index) => <li key={index}>{name}</li>)}</ol> : <p className="muted">No mods with an installed version.</p>}
-            <label className="checkbox-row"><input type="checkbox" checked={orderConfirmed} onChange={event => setOrderConfirmed(event.target.checked)} />Use the previewed export order.</label></>}
+            {orderPreview.ready && (orderPreview.names.length ? <ol>{orderPreview.names.map((name, index) => <li key={index}>{name}</li>)}</ol> : <p className="muted">No mods with an installed version.</p>)}
           </div>}
-        </>}
-        {Boolean(modset.child_modsets_count) && <p className="muted">This modset is a parent of {modset.child_modsets_count} child modset(s) and cannot itself inherit.</p>}
-        <p className="muted">Users of a child modset also need read access to its parent. Revoking that access blocks the child workspace until access is restored or an administrator detaches it.</p>
-        {!parentPreview.loaded && !parentPreview.error && <p role="status">Checking overlapping mods…</p>}
-        {parentPreview.error && <p className="error-box" role="alert">{parentPreview.error}</p>}
-        {parentPreview.conflicts.length > 0 && <p className="error-box">These local mods will use the parent versions: {parentPreview.conflicts.join(", ")}. Their export positions are retained.</p>}
+      </>}
+      {step === 2 && <>
+        <p className="muted">Save the reviewed changes to {modset.name}.</p>
         {needsConfirmation && <label className="checkbox-row"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />{parentId ? "Replace these local entries with binding parent versions." : "Keep the current mods and versions as independent local entries. Future parent changes will no longer apply."}</label>}
-      </fieldset>}
-      {modset.can_manage_access && <fieldset className="modset-permission-editor" disabled={action.loading}>
-        <legend>Group access</legend>
-        <p className="muted">Read: view, copy and export. Write: also edit mods and export order.</p>
-        <p className="muted">Owners and administrators always retain full access.</p>
-        <ResourceStatus state={groupsLoad} label="groups" />
-        {!loaded && !action.error && <p role="status">Loading permissions…</p>}
-        {loaded && groupsReady && groups.length > 6 && <label>Find a group<input type="search" value={groupSearch} onChange={event => setGroupSearch(event.target.value)} placeholder="Group name" /></label>}
-        {loaded && groupsReady && groups.length > 0 && <div className="permission-list">
-          {groups.filter(group => group.name.toLocaleLowerCase().includes(groupSearch.trim().toLocaleLowerCase())).map(group => <label className="permission-row" key={group.id}>
-            <span>{group.name}</span>
-            <CustomSelect<"none" | "read" | "write"> value={entries.find(entry => entry.group_id === group.id)?.permission ?? "none"}
-              onChange={value => setPermission(group.id, value)} disabled={action.loading} ariaLabel={`Access for ${group.name}`}
-              options={[{value:"none",label:"No access"},{value:"read",label:"Read"},{value:"write",label:"Write"}]} />
-          </label>)}
-          {!groups.some(group => group.name.toLocaleLowerCase().includes(groupSearch.trim().toLocaleLowerCase())) && <p className="muted">No matching groups. Try a different name.</p>}
-        </div>}
-        {loaded && groupsReady && !groups.length && <p className="muted">No groups available. Ask an administrator to create a group.</p>}
-      </fieldset>}
+        {orderChanged && <label className="checkbox-row"><input type="checkbox" checked={orderConfirmed} onChange={event => setOrderConfirmed(event.target.checked)} />Use the previewed export order.</label>}
+      </>}
       {action.error && <div className="error-box" role="alert">{action.error}{!loaded && <button className="secondary-button compact" type="button" onClick={() => setLoadAttempt(value => value + 1)} disabled={action.loading}>Retry loading permissions</button>}</div>}
-      <div className="dialog-actions"><button className="secondary-button compact" onClick={onClose} type="button">Cancel</button>
-        <button className="primary-button compact" disabled={!modsetsLoad.loaded || Boolean(modsetsLoad.error) || !loaded || (modset.can_manage_access && !groupsReady) || action.loading || !name.trim() || !changed || !parentReady || !orderReady}>Save</button>
+      <div className="dialog-actions">
+        {step === 0
+          ? <button className="secondary-button compact" onClick={onClose} type="button">Cancel</button>
+          : <button className="secondary-button compact" disabled={action.loading} onClick={() => setStep(step - 1)} type="button">Back</button>}
+        <button className="primary-button compact" disabled={!canSubmit
+          || (step === 1 && !previewReady) || (step === 2 && (!parentReady || !orderReady))}>
+          {reviewingParent && step === 0 ? "Review changes" : step === 1 ? "Continue" : "Save"}
+        </button>
       </div>
     </form>
   </Dialog>;

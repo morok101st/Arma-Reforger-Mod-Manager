@@ -20,6 +20,19 @@ export function App() {
   const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
   const adminSection = view.adminSection;
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  React.useEffect(() => {
+    function dismissMenus(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      document.querySelectorAll<HTMLDetailsElement>("details.account-menu[open], details.modset-more[open]").forEach((menu) => {
+        if (!menu.contains(target)) menu.open = false;
+      });
+    }
+
+    document.addEventListener("click", dismissMenus, true);
+    return () => document.removeEventListener("click", dismissMenus, true);
+  }, []);
   const activeModset = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId);
   const activeModsetName = activeModset?.name ?? "No modset selected";
   const modsetsReady = modsets.loadState.loaded && !modsets.loadState.error;

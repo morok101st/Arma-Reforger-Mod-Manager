@@ -1,7 +1,7 @@
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
-import { Activity, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, TriangleAlert } from "lucide-react";
+import { Activity, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 
 import { formatDate, formatScheduleTime, getDashboardStats, modsetActivitySummary, modsetActivityTitle, UNKNOWN_VALUE } from "../lib/utils";
 import type { Mod, ModsetActivity, ModStatusFilter, SchedulerStatus } from "../types";
@@ -92,10 +92,14 @@ export function Dashboard({
       </div>
 
       <ResourceStatus state={schedulerLoad} label="update schedule" />
-      <section className="dashboard-card version-health-card">
-        <div className="section-title-row">
+      <div className="dashboard-grid">
+        <section className="dashboard-card version-health-card">
           <h3>Version health</h3>
-          <BarChart3 size={20} />
+        <div className="health-distribution" aria-hidden="true">
+          <span className="health-fill ok" style={{ flexGrow: stats.upToDate }} />
+          <span className="health-fill warn" style={{ flexGrow: stats.updateAvailable }} />
+          <span className="health-fill neutral" style={{ flexGrow: stats.notInstalled }} />
+          <span className="health-fill unknown" style={{ flexGrow: stats.unknown }} />
         </div>
         <div className="health-summary-grid">
           <HealthSummary onClick={() => onFilterStatus("UP_TO_DATE")} label="Up to date" value={stats.upToDate} total={stats.total} tone="ok" />
@@ -103,14 +107,10 @@ export function Dashboard({
           <HealthSummary onClick={() => onFilterStatus("NOT_INSTALLED")} label="No installed version" value={stats.notInstalled} total={stats.total} tone="neutral" />
           <HealthSummary onClick={() => onFilterStatus("UNKNOWN")} label="No latest version" value={stats.unknown} total={stats.total} tone="unknown" />
         </div>
-      </section>
+        </section>
 
-      <div className="dashboard-grid">
-        <section className={`dashboard-card priority-card ${stats.attentionMods.length === 0 ? "ok" : "warn"}`}>
-          <div className="section-title-row">
-            <h3>Needs attention</h3>
-            {stats.attentionMods.length === 0 ? <CheckCircle2 className="status-icon ok" size={20} /> : <TriangleAlert className="status-icon warn" size={20} />}
-          </div>
+        <section className="dashboard-card priority-card">
+          <h3>Needs attention</h3>
           {stats.attentionMods.length > 0 ? (
             <div className="compact-list">
               {stats.attentionMods.map((mod) => (
@@ -120,6 +120,7 @@ export function Dashboard({
                     <strong>{mod.name ?? mod.id}</strong>
                     <small>{mod.current_version ?? "No installed version"} / {mod.latest_version ?? UNKNOWN_VALUE}</small>
                   </span>
+                  <ArrowRight size={16} className="dashboard-row-arrow" aria-hidden="true" />
                 </button>
               ))}
             </div>
@@ -129,19 +130,17 @@ export function Dashboard({
         </section>
 
         <section className="dashboard-card">
-          <div className="section-title-row">
-            <h3>Recently checked</h3>
-            <Clock size={20} />
-          </div>
+          <h3>Recently checked</h3>
           {stats.recentlyChecked.length > 0 ? (
             <div className="compact-list">
               {stats.recentlyChecked.map((mod) => (
                 <button key={mod.id} onClick={() => openMod(mod.id)} type="button">
-                  <Activity size={20} />
+                  <Activity size={20} aria-hidden="true" />
                   <span>
                     <strong>{mod.name ?? mod.id}</strong>
                     <small>{formatDate(mod.last_checked)}</small>
                   </span>
+                  <ArrowRight size={16} className="dashboard-row-arrow" aria-hidden="true" />
                 </button>
               ))}
             </div>
@@ -228,14 +227,10 @@ function HealthSummary({ onClick, label, value, total, tone }: { onClick: () => 
 
   return (
     <button type="button" onClick={onClick} className={`health-summary ${tone}`} aria-label={`Show ${label.toLowerCase()} mods: ${value}`}>
-      <div className="health-summary-header">
-        <span>{label}</span>
-        <strong>{value}</strong>
-      </div>
-      <div className="health-track">
-        <span className={`health-fill ${tone}`} style={{ width: `${percent}%` }} />
-      </div>
-      <small>{percent}% of tracked mods</small>
+      <span className={`health-fill health-key ${tone}`} aria-hidden="true" />
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{percent}%</small>
     </button>
   );
 }

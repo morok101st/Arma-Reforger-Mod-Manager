@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, X, Info as InfoIcon, RefreshCw, TriangleAlert } from "lucide-react";
+import { CheckCircle2, MoreHorizontal, X, Info as InfoIcon, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { UNKNOWN_VALUE, statusLabel } from "../lib/utils";
 import type { ModStatus } from "../types";
@@ -9,19 +9,48 @@ export function focusableElements(container: HTMLElement): HTMLElement[] {
     .filter(node => !node.matches(":disabled") && node.tabIndex >= 0 && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== "hidden");
 }
 
-export function Dialog({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+export function RowActions({ label, children }: { label: string; children: React.ReactNode }) {
+  function close(menu: HTMLDetailsElement) {
+    menu.querySelector("summary")?.focus();
+    menu.open = false;
+  }
+
+  return <div className="modset-actions row-action-menu">
+    <details className="modset-more"
+      onClick={event => {
+        if (event.target instanceof Element && event.target.closest("button:not(:disabled)")) close(event.currentTarget);
+      }}
+      onKeyDown={event => {
+        if (event.key === "Escape" && event.currentTarget.open) {
+          event.preventDefault();
+          close(event.currentTarget);
+        }
+      }}>
+      <summary aria-label={label} title="More actions"><MoreHorizontal size={18} aria-hidden="true" /></summary>
+      <div>{children}</div>
+    </details>
+  </div>;
+}
+
+export function Dialog({ title, children, onClose, initialFocusRef }: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
+}) {
   const dialogRef = React.useRef<HTMLDialogElement>(null);
   const titleId = React.useId();
   React.useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     dialog.showModal();
+    initialFocusRef?.current?.focus({ preventScroll: true });
     document.documentElement.classList.add("dialog-open");
     return () => {
       dialog.close();
       if (!document.querySelector("dialog[open]")) document.documentElement.classList.remove("dialog-open");
     };
-  }, []);
+  }, [initialFocusRef]);
 
   return (
     <dialog ref={dialogRef} className="dialog-backdrop" aria-labelledby={titleId}

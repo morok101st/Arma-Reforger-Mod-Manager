@@ -63,8 +63,9 @@ def _creator(db: Session, access: ModsetSyncAccess) -> User | None:
 
 
 def _status(db: Session, access: ModsetSyncAccess | None) -> dict:
-    usable = bool(access and access.is_active and _creator(db, access))
-    return {"enabled": bool(access and access.is_active), "usable": usable,
+    can_enable = bool(access and _creator(db, access))
+    usable = bool(access and access.is_active and can_enable)
+    return {"enabled": bool(access and access.is_active), "usable": usable, "can_enable": can_enable,
             "created_at": access.created_at.isoformat() if access else None,
             "last_used_at": access.last_used_at.isoformat() if access and access.last_used_at else None,
             "base_url": (get_settings().armm_public_url or "").rstrip("/"),
@@ -234,6 +235,43 @@ def delete_configured_sync(modset_id: int, request: Request, db: Session = Depen
     return Response(status_code=204, headers=NO_CACHE)
 
 
+def _rotate_key(access: ModsetSyncAccess, modset: ModSet, user: User) -> None:
+    key = "armm_sync_" + secrets.token_urlsafe(32)
+    access.key_hash = _digest(key)
+    access.encrypted_key = encrypt_sync_key(key)
+    access.creator_user_id = user.id
+    access.parent_id_at_creation = modset.base_modset_id
+    access.created_at = datetime.now(timezone.utc)
+    access.last_used_at = None
+
+
+@router.post("/admin/sync-access/{modset_id}/enable")
+def enable_configured_sync(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    lock_inheritance_graph(db)
+    require_modset_permission(db, user, modset_id, "manage")
+    access = db.get(ModsetSyncAccess, modset_id)
+    if access is None:
+        raise HTTPException(404, "Sync access not found.")
+    if not _creator(db, access):
+        raise HTTPException(409, "Renew the sync key before enabling this access.")
+    if not access.is_active:
+        access.is_active = True
+        audit_event(db, action="sync_access_enabled", entity_type="modset", entity_id=str(modset_id), actor=user, request=request)
+    return JSONResponse(_status(db, access), headers=NO_CACHE)
+
+
+@router.post("/admin/sync-access/{modset_id}/renew-key")
+def renew_configured_sync_key(modset_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
+    lock_inheritance_graph(db)
+    modset = require_modset_permission(db, user, modset_id, "manage")
+    access = db.get(ModsetSyncAccess, modset_id)
+    if access is None:
+        raise HTTPException(404, "Sync access not found.")
+    _rotate_key(access, modset, user)
+    audit_event(db, action="sync_access_key_renewed", entity_type="modset", entity_id=str(modset_id), actor=user, request=request)
+    return JSONResponse(_status(db, access), headers=NO_CACHE)
+
+
 @router.put("/admin/sync-access/{modset_id}")
 def update_configured_sync(modset_id: int, payload: SyncUpdate, request: Request, db: Session = Depends(get_db), user: User = Depends(require_admin_user)):
     lock_inheritance_graph(db)
@@ -242,13 +280,7 @@ def update_configured_sync(modset_id: int, payload: SyncUpdate, request: Request
     if access is None:
         raise HTTPException(404, "Sync access not found.")
     if payload.replaceKey:
-        key = "armm_sync_" + secrets.token_urlsafe(32)
-        access.key_hash = _digest(key)
-        access.encrypted_key = encrypt_sync_key(key)
-        access.creator_user_id = user.id
-        access.parent_id_at_creation = modset.base_modset_id
-        access.created_at = datetime.now(timezone.utc)
-        access.last_used_at = None
+        _rotate_key(access, modset, user)
         access.is_active = True
     else:
         key = decrypt_sync_key(access.encrypted_key)
@@ -272,7 +304,7 @@ def download_configured_sync(modset_id: int, db: Session = Depends(get_db), user
         raise HTTPException(409, "Complete setup and enable sync access before downloading.", headers=NO_CACHE)
     key = decrypt_sync_key(access.encrypted_key)
     if not key or not hmac.compare_digest(access.key_hash, _digest(key)):
-        raise HTTPException(409, "The stored key cannot be recovered. Edit this access to restore or replace it.", headers=NO_CACHE)
+        raise HTTPException(409, "The stored key cannot be recovered. Restore the key in Edit or renew it from the actions menu.", headers=NO_CACHE)
     return _import_file(modset_id, access.configuration, key)
 
 

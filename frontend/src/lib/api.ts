@@ -27,7 +27,7 @@ export type ReleaseStatus = {
 };
 
 export type SyncSettings = {name: string; baseUrl: string; gameServer?: {host: string; port: number; passwordRequired: boolean}};
-export type SyncAccessStatus = {configuration: SyncSettings | null; downloadable: boolean; key_available: boolean; enabled: boolean; usable: boolean; created_at: string | null; last_used_at: string | null; base_url: string};
+export type SyncAccessStatus = {configuration: SyncSettings | null; downloadable: boolean; key_available: boolean; enabled: boolean; usable: boolean; can_enable: boolean; created_at: string | null; last_used_at: string | null; base_url: string};
 export type SyncAccessOverview = SyncAccessStatus & {modset_id: number; modset_name: string; owner_username: string | null; parent_modset_id: number | null; parent_modset_name: string | null; created_by: string | null};
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -191,8 +191,14 @@ export function createApiClient(onUnauthorized?: () => void) {
     async createConfiguredSync(payload: SyncSettings & {modset_id: number}) {
       return readJsonOrThrow<SyncAccessStatus>(await request("/admin/sync-access", {method:"POST",json:payload}), "Could not create sync access.");
     },
-    async updateConfiguredSync(id: number, payload: SyncSettings & {accessKey?: string; replaceKey?: boolean}) {
+    async updateConfiguredSync(id: number, payload: SyncSettings & {accessKey?: string}) {
       return readJsonOrThrow<SyncAccessStatus>(await request(`/admin/sync-access/${id}`, {method:"PUT",json:payload}), "Could not update sync access.");
+    },
+    async enableSyncAccess(id: number) {
+      return readJsonOrThrow<SyncAccessStatus>(await request(`/admin/sync-access/${id}/enable`, {method:"POST"}), "Could not enable sync access.");
+    },
+    async renewSyncKey(id: number) {
+      return readJsonOrThrow<SyncAccessStatus>(await request(`/admin/sync-access/${id}/renew-key`, {method:"POST"}), "Could not renew the sync key.");
     },
     async deleteSyncAccess(id: number) {
       const response = await request(`/admin/sync-access/${id}`, {method:"DELETE"});

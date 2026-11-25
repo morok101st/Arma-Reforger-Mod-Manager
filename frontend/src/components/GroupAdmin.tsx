@@ -1,25 +1,25 @@
 import React from "react";
 import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import type { useGroups } from "../hooks/useGroups";
 import type { UserAccount, UserGroup } from "../types";
-import { Dialog } from "./common";
+import { Dialog, RowActions } from "./common";
 
 export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; data: ReturnType<typeof useGroups>; users: UserAccount[] }) {
-  const [search, setSearch] = React.useState("");
+  const createNameRef = React.useRef<HTMLInputElement>(null);
   const [memberSearch, setMemberSearch] = React.useState("");
   const [editing, setEditing] = React.useState<UserGroup | "new" | null>(null);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [userIds, setUserIds] = React.useState<number[]>([]);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
-  function open(group: UserGroup | "new") {
+  function open(group: UserGroup | "new", deleting = false) {
     setMemberSearch("");
     setEditing(group); setName(group === "new" ? "" : group.name);
     setDescription(group === "new" ? "" : group.description);
-    setUserIds(group === "new" ? [] : group.user_ids); setConfirmDelete(false);
+    setUserIds(group === "new" ? [] : group.user_ids); setConfirmDelete(deleting);
   }
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -37,29 +37,44 @@ export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; d
     {data.error && !data.loadState.error && <p role="alert">{data.error}</p>}
     {data.loadState.loaded && !data.loadState.error && <>
 
-    <label className="admin-search">Search groups<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or description" /></label>
-    <div className="user-list">{data.groups.filter(group => `${group.name} ${group.description}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(group => <article className="user-row" key={group.id}>
-      <div><strong>{group.name}</strong><small>{group.user_ids.length} members{group.description ? ` · ${group.description}` : ""}</small></div>
-      <button className="secondary-button compact" disabled={data.loading || !usersLoad.loaded || Boolean(usersLoad.error)} onClick={() => open(group)} type="button"><Pencil size={16} /> Edit</button>
-    </article>)}</div>
+    {data.groups.length > 0 && <table className="modsets-table admin-records-table groups-table" aria-label="Groups">
+      <thead><tr><th scope="col">Group</th><th scope="col">Description</th><th scope="col">Actions</th></tr></thead>
+      <tbody>{data.groups.map(group => {
+        const memberCount = group.user_ids.length;
+        return <tr key={group.id}>
+          <td className="modset-name-cell">
+            <div className="user-row-header">
+              <strong>{group.name}</strong>
+              <span className="resource-info-badge">{memberCount} {memberCount === 1 ? "member" : "members"}</span>
+            </div>
+          </td>
+          <td>{group.description.trim() ? <><span className="mobile-cell-label">Description</span>{group.description}</> : <span className="desktop-empty-description muted" aria-label="No description">—</span>}</td>
+          <td>
+            <RowActions label={`More actions for group ${group.name}`}>
+              <button disabled={data.loading || !usersLoad.loaded || Boolean(usersLoad.error)} onClick={() => open(group)} type="button"><Pencil size={16} /> Edit</button>
+              <button className="modset-delete-action" disabled={data.loading} onClick={() => open(group, true)} type="button"><Trash2 size={16} /> Delete</button>
+            </RowActions>
+          </td>
+        </tr>;
+      })}</tbody>
+    </table>}
     {!data.groups.length && <p className="muted">No groups yet. Create a group, add members, then grant access in Edit modset.</p>}
-    {data.groups.length > 0 && !data.groups.some(group => `${group.name} ${group.description}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) && <p className="muted">No groups match this search.</p>}
     </>}
-    {editing && <Dialog title={editing === "new" ? "Create group" : `Edit group ${editing.name}`} onClose={() => setEditing(null)}>
-      <form className="dialog-form" onSubmit={event => { submit(event).catch(() => null); }}>
+    {editing && <Dialog title={editing === "new" ? "Create group" : `Edit group ${editing.name}`} initialFocusRef={createNameRef} onClose={() => setEditing(null)}>
+      <form className="dialog-form group-edit-form" onSubmit={event => { submit(event).catch(() => null); }}>
         <ResourceStatus state={usersLoad} label="group members" />
         {data.loadState.error && <ResourceStatus state={data.loadState} label="groups" />}
         {data.error && <p role="alert">{data.error}</p>}
-        <label>Name<input autoFocus maxLength={120} value={name} onChange={event => setName(event.target.value)} required /></label>
+        <label>Name<input ref={createNameRef} maxLength={120} value={name} onChange={event => setName(event.target.value)} required /></label>
         <label>Description<textarea maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} /></label>
         {users.length > 8 && <label>Find members<input type="search" value={memberSearch} onChange={event => setMemberSearch(event.target.value)} placeholder="Username" /></label>}
-        <fieldset className="group-options"><legend>Members ({userIds.length})</legend>{users.filter(user => user.username.toLocaleLowerCase().includes(memberSearch.trim().toLocaleLowerCase())).map(user => <label className="checkbox-row" key={user.id}>
+        <fieldset className="group-options"><legend>Members ({userIds.length})</legend><div className="group-member-list">{users.filter(user => user.username.toLocaleLowerCase().includes(memberSearch.trim().toLocaleLowerCase())).map(user => <label className="checkbox-row" key={user.id}>
           <input type="checkbox" checked={userIds.includes(user.id)} disabled={data.loading} onChange={event => setUserIds(event.target.checked ? [...userIds, user.id] : userIds.filter(id => id !== user.id))} />
           {user.username}{!user.is_active ? " (disabled)" : ""}
-        </label>)}</fieldset>
-        <div className="dialog-actions">
-          <button className="secondary-button compact" type="button" onClick={() => setEditing(null)}>Cancel</button>
+        </label>)}</div></fieldset>
+        <div className="dialog-actions dialog-actions-with-delete">
           {editing !== "new" && <button className="secondary-button compact danger-button" type="button" disabled={data.loading} onClick={() => setConfirmDelete(true)}>Delete</button>}
+          <button className="secondary-button compact" type="button" onClick={() => setEditing(null)}>Cancel</button>
           <button className="primary-button compact" disabled={data.loading || !usersLoad.loaded || Boolean(usersLoad.error) || !data.loadState.loaded || Boolean(data.loadState.error) || !name.trim()}>Save</button>
         </div>
         {confirmDelete && editing !== "new" && <div className="inline-danger-confirmation">

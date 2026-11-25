@@ -47,6 +47,7 @@ export function auditFilterLabel(filter: AuditFilter) {
 export function filterAuditLogs(logs: AuditLog[], filter: AuditFilter) {
   if (filter === "all") return logs;
   if (filter === "failures") return logs.filter((entry) => auditSeverity(entry) === "failure");
+  if (filter === "integration") return logs.filter(entry => entry.entity_type === "integration" || entry.action.startsWith("sync_access_"));
   return logs.filter((entry) => entry.entity_type === filter);
 }
 
@@ -235,10 +236,13 @@ export function filterMods(mods: Mod[], searchQuery: string, statusFilter: ModSt
   });
 }
 
-function compareByName(left: Mod, right: Mod): number {
-  const leftName = left.name ?? left.id;
-  const rightName = right.name ?? right.id;
-  return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
+export function compareByName(
+  left: { name: string | null; id: string | null },
+  right: { name: string | null; id: string | null },
+): number {
+  const leftName = left.name ?? left.id ?? "";
+  const rightName = right.name ?? right.id ?? "";
+  return leftName.localeCompare(rightName, undefined, { numeric: true, sensitivity: "base" }) || (left.id ?? "").localeCompare(right.id ?? "");
 }
 
 function timestamp(value: string | null): number {

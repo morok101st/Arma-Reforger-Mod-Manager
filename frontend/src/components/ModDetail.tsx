@@ -1,7 +1,7 @@
 import React from "react";
 import { ChevronDown, ChevronRight, Copy, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
-import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
+import { compareByName, dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
 import { CustomSelect, Dialog, StatusIcon, statusLabel } from "./common";
 
@@ -433,7 +433,7 @@ export function ModDetail({
         <h3>Dependencies <span className="section-count">{selected.dependencies.length}</span></h3>
         {selected.dependencies.length > 0 ? (
           <div className="chips">
-            {selected.dependencies.map((dependency) => {
+            {[...selected.dependencies].sort(compareByName).map((dependency) => {
               const trackedDependency = trackedDependencyMatches.get(dependencyKey(dependency));
               return trackedDependency ? (
                 <button key={dependencyKey(dependency)} onClick={() => openMod(trackedDependency.id)} type="button">
@@ -453,7 +453,7 @@ export function ModDetail({
         <h3>Required by <span className="section-count">{selected.dependents.length}</span></h3>
         {selected.dependents.length > 0 ? (
           <div className="chips">
-            {selected.dependents.map((dependent) => (
+            {[...selected.dependents].sort(compareByName).map((dependent) => (
               <button key={dependent.id} onClick={() => openMod(dependent.id)} type="button">
                 {dependent.name ?? dependent.id}
               </button>

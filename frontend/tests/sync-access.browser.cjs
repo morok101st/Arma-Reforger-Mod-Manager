@@ -11,7 +11,7 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   const entries=[],errors=[],writes=[];
   const sets=[{id:1,name:"Parent",parent_modset_id:null},{id:42,name:"Community Child",parent_modset_id:1,parent_modset_name:"Parent"}].map(s=>({...s,owner_username:"admin",is_owner:true,can_edit:true,can_delete:true,can_manage_access:true,tracked_mods_count:0,order_mode:"parent"}));
   page.on("pageerror",e=>errors.push(e.message));
-  const row=()=>({modset_id:42,modset_name:"Community Child",parent_modset_id:1,parent_modset_name:"Parent",created_by:"admin",owner_username:"admin",base_url:"https://armm.example.com",enabled,usable:enabled,configuration,downloadable:enabled&&Boolean(configuration),key_available:true,created_at:"2026-11-14T12:00:00Z",last_used_at:null});
+  const row=()=>({modset_id:42,modset_name:"Community Child",parent_modset_id:1,parent_modset_name:"Parent",created_by:"admin",owner_username:"admin",base_url:"https://armm.example.com",enabled,usable:enabled,can_enable:true,configuration,downloadable:enabled&&Boolean(configuration),key_available:true,created_at:"2026-11-14T12:00:00Z",last_used_at:null});
   await context.route("**/*",route=>["fetch","xhr"].includes(route.request().resourceType())||new URL(route.request().url()).origin!==new URL(base).origin?route.abort():route.continue());
   await context.route("**/api/**",async route=>{
    const req=route.request(),path=new URL(req.url()).pathname.replace(/^\/api/,""),method=req.method();
@@ -31,8 +31,10 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
     entries.splice(0);configuration=null;return route.fulfill({status:204});
    }
    if(path==="/admin/sync-access/42"&&method==="PUT"){
-    const {replaceKey,accessKey,...settings}=req.postDataJSON();configuration=settings;if(replaceKey){key="armm_sync_browser_replaced";enabled=true;}return send(row());
+    const {accessKey,...settings}=req.postDataJSON();configuration=settings;return send(row());
    }
+   if(path==="/admin/sync-access/42/enable"&&method==="POST"){enabled=true;return send(row());}
+   if(path==="/admin/sync-access/42/renew-key"&&method==="POST"){key="armm_sync_browser_replaced";return send(row());}
    if(path==="/admin/sync-access/42/configuration")return send({format:"armm-sync",formatVersion:1,name:configuration.name,armm:{baseUrl:configuration.baseUrl,modsetId:42,exportPath:"/api/sync/modsets/42/export",accessKey:key},...(configuration.gameServer?{gameServer:configuration.gameServer}:{})});
    if(path==="/modsets/42/sync-access"&&method==="DELETE"){enabled=false;return send(row());}
    if(["/mods","/refresh-jobs","/users","/groups","/admin/groups","/discord-webhooks","/audit","/modsets/42/activity"].includes(path))return send([]);
@@ -72,11 +74,24 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   await page.reload();await table.getByText("Community Server",{exact:true}).waitFor();assert.deepEqual(await download(),first);
   await openActions();await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();
   assert.equal(await page.getByLabel("Access name",{exact:true}).inputValue(),"Community Server");
-  await page.getByRole("button",{name:"Next",exact:true}).click();assert.equal(await page.getByLabel("Game server host").inputValue(),"gameserver.example.com");
+  const panel = page.locator(".dialog-panel");
+  const primary = panel.locator(".dialog-actions .primary-button");
+  const panelBounds = await panel.boundingBox();
+  const primaryBounds = await primary.boundingBox();
+  async function assertStableDialog() {
+    assert.deepEqual(await panel.boundingBox(), panelBounds);
+    const bounds = await primary.boundingBox();
+    assert.equal(bounds.x + bounds.width, primaryBounds.x + primaryBounds.width);
+    assert.equal(bounds.y + bounds.height, primaryBounds.y + primaryBounds.height);
+  }
+  await page.getByRole("button",{name:"Next",exact:true}).click();await assertStableDialog();assert.equal(await page.getByLabel("Game server host").inputValue(),"gameserver.example.com");
+  if (width === 1440) {
+    assert(await panel.locator(".sync-wizard-content").evaluate(node => node.scrollHeight <= node.clientHeight), "Connection details should fit without scrolling");
+  }
   await page.getByLabel("Game server port").fill("2002");await page.getByRole("button",{name:"Next",exact:true}).click();
+  await assertStableDialog();
   await page.getByRole("button",{name:"Save sync access",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});
   assert.equal((await download()).armm.accessKey,first.armm.accessKey);assert.equal((await download()).gameServer.port,2002);
-  await page.getByLabel("Search sync access").fill("not found");await page.getByText("No sync access matches this search and status filter.").waitFor();await page.getByLabel("Search sync access").fill("");
   if(process.env.ARMM_TEST_SCREENSHOTS)await page.screenshot({path:`${process.env.ARMM_TEST_SCREENSHOTS}/accesses-${theme}-${width}.png`});
   await openActions();
   if(process.env.ARMM_TEST_SCREENSHOTS)await page.screenshot({path:`${process.env.ARMM_TEST_SCREENSHOTS}/menu-${theme}-${width}.png`});
@@ -84,10 +99,15 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await openActions();await page.getByRole("button",{name:"Disable",exact:true}).click();await page.getByRole("button",{name:"Confirm disable",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});
   await table.getByText("Disabled",{exact:true}).waitFor();await openActions();assert.equal(await page.getByRole("button",{name:"Download configuration Community Server",exact:true}).isDisabled(),true);
-  await choose("Filter sync access","Active");await page.getByText("No sync access matches this search and status filter.").waitFor();await choose("Filter sync access","All accesses");
-  await openActions();await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();await page.getByRole("button",{name:"Next",exact:true}).click();
-  await page.getByLabel("Replace the key and enable access. Existing configurations will stop working.").check();await page.getByLabel("Invalidate the previous key and enable this access.").check();
-  await page.getByRole("button",{name:"Save sync access",exact:true}).click();await page.getByRole("dialog").waitFor({state:"detached"});await table.getByText("Active",{exact:true}).waitFor();assert.notEqual((await download()).armm.accessKey,first.armm.accessKey);
+  await page.getByRole("button",{name:"Enable",exact:true}).click();
+  await page.getByRole("button",{name:"Confirm enable",exact:true}).click();
+  await page.getByRole("dialog").waitFor({state:"detached"});
+  await table.getByText("Active",{exact:true}).waitFor();
+  assert.equal((await download()).armm.accessKey,first.armm.accessKey);
+  await openActions();await page.getByRole("button",{name:"Renew key",exact:true}).click();
+  await page.getByRole("button",{name:"Confirm renewal",exact:true}).click();
+  await page.getByRole("dialog").waitFor({state:"detached"});
+  assert.notEqual((await download()).armm.accessKey,first.armm.accessKey);
   await openActions();await page.getByRole("button",{name:"Delete sync access Community Server",exact:true}).click();
   await page.getByRole("dialog").getByRole("button",{name:"Cancel",exact:true}).click();
   assert.equal(entries.length,1);
