@@ -2444,9 +2444,9 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .mod-detail-header { flex-wrap: wrap; }
 .mod-detail-header > div:first-child { flex: 1 1 340px; }
 .mod-header-metadata { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 16px 0 0; }
-.mod-header-metadata > div { display: grid; gap: 2px; min-width: 0; }
-.mod-header-metadata dt { color: var(--md-sys-color-on-surface-variant); font-size: 12px; }
-.mod-header-metadata dd { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mod-header-metadata > div { display: grid; align-content: start; gap: 4px; min-width: 0; }
+.mod-header-metadata dt { color: var(--md-sys-color-on-surface-variant); font-size: 14px; }
+.mod-header-metadata dd { margin: 0; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .mod-detail-header .mod-remove-action { margin-left: 12px; }
 @media (max-width: 1200px) { .mod-detail-header > div:first-child { flex-basis: auto; } }
 @media (max-width: 600px) {
