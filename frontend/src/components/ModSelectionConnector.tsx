@@ -11,7 +11,8 @@ export function ModSelectionConnector({ visibleMods }: { visibleMods: Mod[] }) {
     const list = row?.parentElement;
     const bracket = shell?.querySelector<HTMLElement>(".mod-detail-bracket");
     const viewport = bracket?.closest<HTMLElement>(".detail");
-    if (!path || !row || !list || !bracket || !viewport) return;
+    const toolbar = viewport?.querySelector(".workspace-toolbar");
+    if (!path || !row || !list || !bracket || !viewport || !toolbar) return;
 
     const desktop = window.matchMedia("(width > 900px)");
     let frame = 0;
@@ -24,7 +25,7 @@ export function ModSelectionConnector({ visibleMods }: { visibleMods: Mod[] }) {
       const x = from.right;
       const y = from.top + from.height / 2;
       const bracketX = target.left + 0.5;
-      const top = Math.max(target.top + 8, viewportBounds.top + 8);
+      const top = Math.max(target.top + 8, viewportBounds.top + 8, toolbar.getBoundingClientRect().bottom);
       const bottom = Math.min(target.bottom - 8, viewportBounds.bottom - 8);
       if (!desktop.matches || y < listBounds.top || y > listBounds.bottom || bracketX <= x
         || top > bottom || y < top || y > bottom) {
@@ -42,7 +43,7 @@ export function ModSelectionConnector({ visibleMods }: { visibleMods: Mod[] }) {
     }
 
     const observer = new ResizeObserver(schedule);
-    [row, list, bracket, viewport].forEach(element => observer.observe(element));
+    [row, list, bracket, viewport, toolbar].forEach(element => observer.observe(element));
     window.addEventListener("scroll", schedule, { capture: true, passive: true });
     window.addEventListener("resize", schedule);
     draw();

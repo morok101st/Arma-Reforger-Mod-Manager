@@ -2304,9 +2304,19 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .redesigned-shell .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .redesigned-shell .metrics { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
 .workspace-toolbar { position: sticky; top: -28px; z-index: 10; background: var(--md-sys-color-surface); padding-top: 12px; }
+.workspace-toolbar::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 100%;
+  inline-size: 16px;
+  background: inherit;
+  pointer-events: none;
+}
 @media (max-width: 900px) {
   .redesigned-shell .dashboard-grid { grid-template-columns: 1fr; }
   .workspace-toolbar { position: static; }
+  .workspace-toolbar::before { content: none; }
 }
 
 /* Phase three: versions first, relationships second, destructive actions last. */
