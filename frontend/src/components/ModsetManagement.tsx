@@ -44,7 +44,6 @@ export function ModsetManagement({
 }) {
   const createNameRef = React.useRef<HTMLInputElement>(null);
   const [search, setSearch] = React.useState("");
-  const [scope, setScope] = React.useState("all");
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [newName, setNewName] = React.useState("");
   const [parentId, setParentId] = React.useState("");
@@ -88,8 +87,7 @@ export function ModsetManagement({
 
   function matches(modset: Modset) {
     const query = search.trim().toLocaleLowerCase();
-    return (!query || `${modset.name} ${modset.owner_username ?? ""}`.toLocaleLowerCase().includes(query))
-      && (scope !== "mine" || modset.is_owner) && (scope !== "groups" || modset.has_group_access);
+    return !query || `${modset.name} ${modset.owner_username ?? ""}`.toLocaleLowerCase().includes(query);
   }
 
   const visibleModsets = modsets.filter(matches);
@@ -105,7 +103,6 @@ export function ModsetManagement({
       {loadState.loaded && !loadState.error && <>
       <div className="modsets-filters modsets-directory-filters">
         <label>Search modsets<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or owner" /></label>
-        <label>Show<CustomSelect value={scope} onChange={setScope} ariaLabel="Filter modsets" options={[{value:"all",label:"All modsets"},{value:"mine",label:"Owned by me"},{value:"groups",label:"With group access"}]} /></label>
         <span className="muted" role="status">{visibleModsets.length} of {modsets.length} modsets</span>
       </div>
       {modsets.length === 0 ? <div className="modsets-empty"><Layers3 size={28} /><h3>No accessible modsets</h3><p className="muted">Create a modset or ask its owner for group access.</p></div> : <table className="modsets-table modsets-directory" aria-label="Modsets">
@@ -136,7 +133,7 @@ export function ModsetManagement({
             </RowActions></td>
         </tr>)}</tbody>
       </table>}
-      {modsets.length > 0 && visibleModsets.length === 0 && <div className="modsets-empty"><h3>No matching modsets</h3><p className="muted">Try a different name, owner or filter.</p><button className="secondary-button compact" type="button" onClick={() => { setSearch(""); setScope("all"); }}>Clear filters</button></div>}
+      {modsets.length > 0 && visibleModsets.length === 0 && <div className="modsets-empty"><h3>No matching modsets</h3><p className="muted">Try a different name or owner.</p><button className="secondary-button compact" type="button" onClick={() => setSearch("")}>Clear search</button></div>}
 
       </>}
       {showCreateDialog && (
