@@ -5,6 +5,14 @@ import { Home, GitFork, Lock, Pin, SlidersHorizontal, X } from "lucide-react";
 import { CustomSelect, StatusIcon, UNKNOWN_VALUE } from "./common";
 import type { Mod, ModStatusFilter, SortMode } from "../types";
 
+const statusOptions: { value: ModStatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "UP_TO_DATE", label: "Up to date" },
+  { value: "UPDATE_AVAILABLE", label: "Update available" },
+  { value: "NOT_INSTALLED", label: "No installed version" },
+  { value: "UNKNOWN", label: "No latest version" },
+];
+
 export function Sidebar({
   releaseInfo,
   loadState,
@@ -40,6 +48,8 @@ export function Sidebar({
   onSortChange: (value: SortMode) => void; onOpenMod: (id: string) => void; onClose: () => void;
 }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const filterToggle = React.useRef<HTMLButtonElement>(null);
+  const activeFilterLabel = statusOptions.find(({ value }) => value === statusFilter)?.label;
   const modRowRefs = React.useRef(new Map<string, HTMLButtonElement>());
   const deleteBlockedTitle = React.useCallback((mod: Mod) => {
     const names = mod.blocking_dependents.map((dependent) => dependent.name ?? dependent.id).filter(Boolean);
@@ -64,49 +74,48 @@ export function Sidebar({
     <div className="mod-browser-heading"><h2>Mods {loadState.loaded && !loadState.error && <span>{totalModsCount}</span>}</h2>
       <div className="mod-browser-actions">
         <button className="icon-button" type="button" onClick={onShowDashboard} disabled={showDashboard} aria-label="Back to overview" title="Back to overview"><Home size={18} /></button>
-        <button className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>
+        <button ref={filterToggle} className="icon-button" type="button" aria-label="Show filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={18} /></button>
       </div>
     </div>
     <label className="mod-search">Search mods<input value={searchQuery} onChange={event => onSearchChange(event.target.value)} placeholder="Name or Workshop ID" /></label>
     {isChildModset && <label className="checkbox-row child-mods-first" title="Show this child modset’s own mods before inherited parent mods. Sort by applies within each group."><input type="checkbox" checked={childModsFirst} onChange={event => onChildModsFirstChange(event.target.checked)} />Child mods first</label>}
-    <div className={`browser-filters ${filtersOpen || statusFilter !== "all" ? "expanded" : ""}`}>
+    <div className={`browser-filters ${filtersOpen ? "expanded" : ""}`}>
       <div className="filter-row">
         <label>
-          Status
+          Filter
           <CustomSelect<ModStatusFilter>
             value={statusFilter}
-            options={[
-              { value: "all", label: "All" },
-              { value: "UP_TO_DATE", label: "Up to date" },
-              { value: "UPDATE_AVAILABLE", label: "Update available" },
-              { value: "NOT_INSTALLED", label: "No installed version" },
-              { value: "UNKNOWN", label: "No latest version" },
-            ]}
+            options={statusOptions}
             onChange={onStatusFilterChange}
             ariaLabel="Filter by status"
           />
         </label>
-        <label>
-          Sort by
-          <CustomSelect<SortMode>
-            value={sortMode}
-            options={[
+        <fieldset className="browser-sort">
+          <legend>Sort by</legend>
+          <div className="browser-sort-options">
+            {([
               { value: "updates", label: "Updates first" },
               { value: "name", label: "Name" },
-              { value: "status", label: "Status" },
-              { value: "last_checked", label: "Last checked" },
-              { value: "load_order", label: "Export order" },
-            ]}
-            onChange={onSortChange}
-            ariaLabel="Sort by"
-          />
-        </label>
+            ] as const).map(({ value, label }) => (
+              <button key={value} type="button" aria-pressed={sortMode === value} onClick={() => onSortChange(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
       </div>
 
     </div>
     <ResourceStatus state={loadState} label="mods" announce={false} />
     {loadState.loaded && !loadState.error && <>
-    <p className="browser-result-count" aria-live="polite">{mods.length} of {totalModsCount} mods</p>
+    <div className="browser-results">
+      <p className="browser-result-count" aria-live="polite">{mods.length} of {totalModsCount} mods</p>
+      {statusFilter !== "all" && (
+        <button className="browser-active-filter" type="button" aria-label={`Clear filter: ${activeFilterLabel}`} onClick={() => { onStatusFilterChange("all"); filterToggle.current?.focus(); }}>
+          {activeFilterLabel}<X size={14} aria-hidden="true" />
+        </button>
+      )}
+    </div>
 
       <div className="mod-list">
         {mods.map((mod, index) => (

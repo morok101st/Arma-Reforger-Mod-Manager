@@ -161,6 +161,9 @@ export type Modset = {
 
 export type GroupSummary = { id: number; name: string };
 export type UserGroup = GroupSummary & { description: string; user_ids: number[] };
+export type GroupOverview = UserGroup & {
+  modset_grants: { modset_id: number; modset_name: string; permission: "read" | "write" }[];
+};
 export type GroupWrite = { name: string; description: string; user_ids: number[] };
 export type GroupPermission = { group_id: number; permission: "read" | "write" };
 

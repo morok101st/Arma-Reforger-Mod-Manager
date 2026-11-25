@@ -2,12 +2,12 @@ import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
 import type { GroupPermission } from "../types";
 import React from "react";
-import { Copy, Download, Layers3, MoreHorizontal, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { Copy, Download, Layers3, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import type { GroupSummary, Modset } from "../types";
 import type { createApiClient } from "../lib/api";
 import { ModsetEditDialog } from "./ModsetEditDialog";
-import { CustomSelect, Dialog } from "./common";
+import { CustomSelect, Dialog, RowActions } from "./common";
 
 export function ModsetManagement({
   loadState,
@@ -42,8 +42,8 @@ export function ModsetManagement({
   activateModset: (modsetId: number) => Promise<void>;
   exportModset: (modsetId: number, modsetName: string) => Promise<void>;
 }) {
+  const createNameRef = React.useRef<HTMLInputElement>(null);
   const [search, setSearch] = React.useState("");
-  const [scope, setScope] = React.useState("all");
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [newName, setNewName] = React.useState("");
   const [parentId, setParentId] = React.useState("");
@@ -87,9 +87,10 @@ export function ModsetManagement({
 
   function matches(modset: Modset) {
     const query = search.trim().toLocaleLowerCase();
-    return (!query || `${modset.name} ${modset.owner_username ?? ""}`.toLocaleLowerCase().includes(query))
-      && (scope !== "mine" || modset.is_owner) && (scope !== "groups" || modset.has_group_access);
+    return !query || `${modset.name} ${modset.owner_username ?? ""}`.toLocaleLowerCase().includes(query);
   }
+
+  const visibleModsets = modsets.filter(matches);
 
   return (
     <>
@@ -100,47 +101,48 @@ export function ModsetManagement({
       {error && <p className="error-box" role="alert">{error}</p>}
       <ResourceStatus state={loadState} label="modsets" />
       {loadState.loaded && !loadState.error && <>
-      <div className="modsets-filters">
+      <div className="modsets-filters modsets-directory-filters">
         <label>Search modsets<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or owner" /></label>
-        <label>Show<CustomSelect value={scope} onChange={setScope} ariaLabel="Filter modsets" options={[{value:"all",label:"All modsets"},{value:"mine",label:"Owned by me"},{value:"groups",label:"With group access"}]} /></label>
-        <span className="muted" role="status">{modsets.filter(matches).length} of {modsets.length} modsets</span>
+        <span className="muted" role="status">{visibleModsets.length} of {modsets.length} modsets</span>
       </div>
-      {modsets.length === 0 ? <div className="modsets-empty"><Layers3 size={28} /><h3>No accessible modsets</h3><p className="muted">Create a modset or ask its owner for group access.</p></div> : <table className="modsets-table" aria-label="Modsets">
+      {modsets.length === 0 ? <div className="modsets-empty"><Layers3 size={28} /><h3>No accessible modsets</h3><p className="muted">Create a modset or ask its owner for group access.</p></div> : <table className="modsets-table modsets-directory" aria-label="Modsets">
         <thead><tr><th scope="col">Modset</th><th scope="col">Owner</th><th scope="col">Access</th><th scope="col">Mods</th><th scope="col">Actions</th></tr></thead>
-        <tbody>{modsets.filter(matches).map(modset => <tr key={modset.id} className={modset.id === activeModsetId ? "current" : undefined}>
-          <td className="modset-name-cell"><button className="modset-open" type="button" disabled={loading} onClick={() => activateModset(modset.id).catch(() => null)} aria-label={`Open modset ${modset.name}`}>{modset.name}</button>
+        <tbody>{visibleModsets.map(modset => <tr key={modset.id} className={modset.id === activeModsetId ? "current" : undefined}>
+          <td className="modset-name-cell"><div className="modset-row-header"><button className="modset-open" type="button" disabled={loading} onClick={() => activateModset(modset.id).catch(() => null)} aria-label={`Open modset ${modset.name}`}>{modset.name}</button>
             <div className="modset-badges">
               {modset.id === activeModsetId && <span className="resource-status-badge active">Active</span>}
               {modset.parent_modset_id && <span className="resource-info-badge">Parent: {modset.parent_modset_name ?? "Access required"}</span>}
-              {Boolean(modset.child_modsets_count) && <span className="resource-info-badge">Parent of {modset.child_modsets_count} child modset(s)</span>}
+              {Boolean(modset.child_modsets_count) && <span className="resource-info-badge">Parent of {modset.child_modsets_count} {modset.child_modsets_count === 1 ? "child modset" : "child modsets"}</span>}
+            </div>
+          </div></td>
+          <td><span className="mobile-cell-label">Owner</span>{modset.is_owner ? "You" : modset.owner_username ?? "Unknown"}</td>
+          <td>
+            <span className="mobile-cell-label">Access</span>
+            <div className="modset-badges">
+            {modset.has_group_access && <span>Shared with groups</span>}
+            {!modset.can_edit && <span className="resource-info-badge">Read only</span>}
+            {modset.can_edit && !modset.has_group_access && <span className="muted" role="img" aria-label="Private modset, editable" title="Private modset, editable">—</span>}
             </div>
           </td>
-          <td><span className="mobile-cell-label">Owner</span>{modset.is_owner ? "You" : modset.owner_username ?? "Unknown"}</td>
-          <td><span className="mobile-cell-label">Access</span><span>{modset.has_group_access ? "Group access" : "Private"}</span><small>{modset.can_edit ? "Can edit" : "Read only"}</small></td>
           <td className="modset-count"><span className="mobile-cell-label">Mods</span>{modset.tracked_mods_count}</td>
-          <td><div className="modset-actions">
-            <details className="modset-more" onClick={event => { if ((event.target as HTMLElement).closest("button")) { event.currentTarget.querySelector("summary")?.focus(); event.currentTarget.open = false; } }} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
-              <summary aria-label={`More actions for ${modset.name}`} title="More actions"><MoreHorizontal size={18} /><span className="modset-more-label">More actions</span></summary>
-              <div>
-                <button type="button" disabled={loading || !modset.can_edit} onClick={() => openEditDialog(modset)}><Pencil size={16} /> Edit</button>
+          <td><RowActions label={`More actions for ${modset.name}`}>
+              <button type="button" disabled={loading || !modset.can_edit} onClick={() => openEditDialog(modset)}><Pencil size={16} /> Edit</button>
                 <button type="button" disabled={loading} onClick={() => exportModset(modset.id, modset.name).catch(() => null)}><Download size={16} /> Export</button>
                 <button type="button" disabled={loading} onClick={() => duplicateModset(modset.id).catch(() => null)}><Copy size={16} /> Duplicate</button>
                 <button className="modset-delete-action" type="button" disabled={loading || !modset.can_delete || Boolean(modset.child_modsets_count) || modsets.length <= 1} title={modset.child_modsets_count ? "Detach child modsets before deleting their parent." : modsets.length <= 1 ? "The last modset cannot be deleted." : undefined} onClick={() => setDeleteModsetId(modset.id)}><Trash2 size={16} /> Delete</button>
-              </div>
-            </details>
-          </div></td>
+            </RowActions></td>
         </tr>)}</tbody>
       </table>}
-      {modsets.length > 0 && modsets.filter(matches).length === 0 && <div className="modsets-empty"><h3>No matching modsets</h3><p className="muted">Try a different name, owner or filter.</p><button className="secondary-button compact" type="button" onClick={() => { setSearch(""); setScope("all"); }}>Clear filters</button></div>}
+      {modsets.length > 0 && visibleModsets.length === 0 && <div className="modsets-empty"><h3>No matching modsets</h3><p className="muted">Try a different name or owner.</p><button className="secondary-button compact" type="button" onClick={() => setSearch("")}>Clear search</button></div>}
 
       </>}
       {showCreateDialog && (
-        <Dialog title="Create modset" onClose={closeCreateDialog}>
+        <Dialog title="Create modset" initialFocusRef={createNameRef} onClose={closeCreateDialog}>
           <form className="dialog-form parent-modset-form" onSubmit={handleCreate}>
             <ResourceStatus state={loadState} label="modsets" />
             <label>
               Name
-              <input autoFocus maxLength={120} disabled={loading} value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
+              <input ref={createNameRef} maxLength={120} disabled={loading} value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Server A" />
             </label>
             <label>Parent modset<CustomSelect value={parentId} onChange={setParentId} disabled={loading} ariaLabel="Parent modset" options={[{value:"", label:"None — independent modset"}, ...modsets.filter(set => !set.parent_modset_id).map(set => ({value:String(set.id), label:set.name}))]} /></label>
             {parentId && <label>Export order<CustomSelect<"parent" | "independent"> value={orderMode} onChange={setOrderMode} disabled={loading} ariaLabel="Export order mode" options={[{value:"parent",label:"Follow parent order and insert local mods"},{value:"independent",label:"Independent order"}]} /></label>}
@@ -181,7 +183,7 @@ export function ModsetManagement({
             <p className="muted">Delete <strong>{deleteModsetTarget.name}</strong> permanently? This cannot be undone.</p>
             {error && <p className="error-box" role="alert">{error}</p>}
             <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setDeleteModsetId(null)} type="button">
+              <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setDeleteModsetId(null)} type="button">
                 Cancel
               </button>
               <button

@@ -96,7 +96,7 @@ export function ExportOrderSection({
 
       {isExpanded && (
         <div className="export-order-content" id={contentId}>
-          {followsParent && <p className="muted">Parent order is binding and follows future changes. Move your local mods between parent mods. If a parent mod is removed, local mods stay before the next remaining parent mod.</p>}
+          {followsParent && <p className="muted">Inherited mods follow the parent modset’s export order. Move your local mods between the inherited entries. If a parent mod is removed, local mods stay before the next remaining parent mod.</p>}
           {error && (
             <div className="status-band update_available">
               <TriangleAlert className="status-icon warn" size={20} />

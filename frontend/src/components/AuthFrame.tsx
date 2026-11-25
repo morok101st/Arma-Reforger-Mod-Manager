@@ -4,10 +4,11 @@ export function AuthFrame({ title, subtitle, children }: { title: string; subtit
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <img className="app-logo app-logo-auth" src="/icon.png" alt="ARMM" />
-        <p>Secure access</p>
-        <h1>{title}</h1>
-        <span>{subtitle}</span>
+        <header className="auth-heading">
+          <img className="app-logo app-logo-auth" src="/icon.png" alt="ARMM" />
+          <h1>{title}</h1>
+          <p>{subtitle}</p>
+        </header>
         {children}
       </section>
     </main>

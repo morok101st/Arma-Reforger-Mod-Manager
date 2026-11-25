@@ -6,6 +6,7 @@ import { AuthFrame } from "./components/AuthFrame";
 import { Dashboard } from "./components/Dashboard";
 import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
+import { ModSelectionConnector } from "./components/ModSelectionConnector";
 import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect, focusableElements } from "./components/common";
 import { ResourceStatus } from "./components/ResourceStatus";
@@ -20,6 +21,19 @@ export function App() {
   const { detailRef, view, auth, modsets, mods, admin, groups, refreshAccess, actions, openMod } = useAppController();
   const adminSection = view.adminSection;
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  React.useEffect(() => {
+    function dismissMenus(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      document.querySelectorAll<HTMLDetailsElement>("details.account-menu[open], details.modset-more[open]").forEach((menu) => {
+        if (!menu.contains(target)) menu.open = false;
+      });
+    }
+
+    document.addEventListener("click", dismissMenus, true);
+    return () => document.removeEventListener("click", dismissMenus, true);
+  }, []);
   const activeModset = modsets.modsets.find((modset) => modset.id === modsets.activeModsetId);
   const activeModsetName = activeModset?.name ?? "No modset selected";
   const modsetsReady = modsets.loadState.loaded && !modsets.loadState.error;
@@ -196,12 +210,12 @@ export function App() {
         {!view.showModsetAdmin && !view.showUserAdmin && <header className="workspace-toolbar">
           <div className="workspace-context">
             <button className="icon-button mobile-drawer-button" onClick={openSidebar} disabled={!modsetsReady || !activeModset} type="button" aria-label="Open mod list"><Menu size={18} /></button>
-            <label>Active modset<CustomSelect<number> value={modsets.activeModsetId ?? 0}
+            <label><span className="workspace-modset-label">Active modset</span><CustomSelect<number> value={modsets.activeModsetId ?? 0}
               options={!modsetsReady ? [{ value: 0, label: modsets.loadState.error ? "Modsets unavailable" : "Loading modsets…" }] : modsets.modsets.length ? [...(!activeModset ? [{ value: 0, label: "Select a modset" }] : []), ...modsets.modsets.map(set => ({ value: set.id, label: set.name }))] : [{ value: 0, label: "No accessible modset" }]}
               onChange={id => { if (id) { handleActivateModset(id); } }} disabled={actions.loading || !modsetsReady || !modsets.modsets.length} ariaLabel="Active modset" /></label>
           </div>
           <div className="workspace-actions">
-            <button className="secondary-button compact" type="button" disabled={!modsetsReady || !modsReady || !activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export JSON</button>
+            <button className="secondary-button compact" type="button" disabled={!modsetsReady || !modsReady || !activeModset || actions.loading} onClick={() => activeModset && actions.exportModset(activeModset.id, activeModset.name).catch(() => null)}><Download size={16} /> Export Modset</button>
             <button className="primary-button compact" type="button" disabled={!canEdit || actions.loading} onClick={handleShowAddMod}><Plus size={16} /> Add mod</button>
           </div>
         </header>}
@@ -286,6 +300,7 @@ export function App() {
           />
           </>
         ) : mods.selected ? (
+          <>
           <ModDetail
             canEdit={canEdit}
             selected={mods.selected}
@@ -304,6 +319,8 @@ export function App() {
             allTrackedMods={mods.mods}
             openMod={handleOpenMod}
           />
+          <ModSelectionConnector key={mods.selected.id} visibleMods={mods.sortedMods} />
+          </>
         ) : (
           <div className="placeholder">
             <h2>{!activeModset ? "No accessible modset" : canEdit ? "Add a mod" : "No mods tracked"}</h2>

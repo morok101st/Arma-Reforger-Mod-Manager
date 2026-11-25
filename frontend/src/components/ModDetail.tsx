@@ -1,7 +1,7 @@
 import React from "react";
 import { ChevronDown, ChevronRight, Copy, ExternalLink, RefreshCw, Save, Trash2, CheckCircle2, TriangleAlert } from "lucide-react";
 
-import { dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
+import { compareByName, dependencyKey, dependencyTargetsMod, formatDate, UNKNOWN_VALUE } from "../lib/utils";
 import type { ChangelogEntry, Dependency, Mod } from "../types";
 import { CustomSelect, Dialog, StatusIcon, statusLabel } from "./common";
 
@@ -160,6 +160,7 @@ export function ModDetail({
 
   return (
     <article className="mod-detail">
+      <span className="mod-detail-bracket" key={selected.id} aria-hidden="true" />
       <header className="mod-detail-header">
         <div>
           <h2>{selected.name ?? "Unnamed mod"}</h2>
@@ -217,7 +218,7 @@ export function ModDetail({
                   </div>
                 </div>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeleteDialog(false)} type="button">
                     Close
                   </button>
                 </div>
@@ -241,7 +242,7 @@ export function ModDetail({
                   </div>
                 )}
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeleteDialog(false)} type="button">
                     Cancel
                   </button>
                   {orphanedDependencyCandidates.length > 0 && (
@@ -307,7 +308,7 @@ export function ModDetail({
                   </div>
                 </div>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeactivateDialog(false)} type="button">
                     Cancel
                   </button>
                   <button
@@ -340,7 +341,7 @@ export function ModDetail({
                   Set <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>?
                 </p>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeactivateDialog(false)} type="button">
                     Cancel
                   </button>
                   <button
@@ -365,9 +366,12 @@ export function ModDetail({
         {Boolean(selected.child_modsets_count) && <p className="muted">This is a parent modset. Installed version changes also apply to {selected.child_modsets_count} child modset(s).</p>}
         {selected.status !== "NOT_INSTALLED" && <div className={`mod-version-status ${selected.status.toLowerCase()}`}><StatusIcon status={selected.status} /><strong>{statusLabel(selected.status)}</strong></div>}
         <div className="mod-version-comparison">
-          <div><span>Installed version</span><strong>{selected.current_version ?? "No installed version"}</strong></div>
-          <div><span>Latest version</span><strong>{selected.latest_version ?? UNKNOWN_VALUE}</strong></div>
+          <div><span>Installed version</span><strong className={selected.current_version ? undefined : "version-unavailable"}>{selected.current_version ?? "Not installed"}</strong></div>
+          <div><span>Latest version</span><strong className={selected.latest_version ? undefined : "version-unavailable"}>{selected.latest_version ?? "Unavailable"}</strong></div>
         </div>
+        {selected.parent_modset_id && <p className="muted mod-inheritance-note">
+          Installed version inherited from <a href={`?modset=${selected.parent_modset_id}&mod=${encodeURIComponent(selected.id)}`}>{selected.parent_modset_name ?? "parent modset"}</a>.
+        </p>}
         {refreshState !== "idle" && <p className="mod-feedback" role="status" aria-live="polite" aria-busy={refreshing}>
           {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : refreshState === "completed" ? <CheckCircle2 size={16} /> : null}
           {refreshing ? "Checking Workshop and verifying the latest version…"
@@ -376,7 +380,6 @@ export function ModDetail({
             : refreshState === "unavailable" ? "Update check status is unavailable. Reconnecting automatically…"
             : "Update check completed."}
         </p>}
-      {selected.parent_modset_id && <p className="muted mod-inheritance-note">Inherited from <a href={`?modset=${selected.parent_modset_id}&mod=${encodeURIComponent(selected.id)}`}>{selected.parent_modset_name ?? "parent modset"}</a>. The installed version is binding and can only be changed there. {selected.order_mode === "parent" ? "Parent order is binding; arrange local mods between parent mods in the overview." : "Export order remains editable in this modset’s overview."}</p>}
       <div className="version-editor">
         {canEdit && !selected.parent_modset_id && <>
         <label>
@@ -433,7 +436,7 @@ export function ModDetail({
         <h3>Dependencies <span className="section-count">{selected.dependencies.length}</span></h3>
         {selected.dependencies.length > 0 ? (
           <div className="chips">
-            {selected.dependencies.map((dependency) => {
+            {[...selected.dependencies].sort(compareByName).map((dependency) => {
               const trackedDependency = trackedDependencyMatches.get(dependencyKey(dependency));
               return trackedDependency ? (
                 <button key={dependencyKey(dependency)} onClick={() => openMod(trackedDependency.id)} type="button">
@@ -453,7 +456,7 @@ export function ModDetail({
         <h3>Required by <span className="section-count">{selected.dependents.length}</span></h3>
         {selected.dependents.length > 0 ? (
           <div className="chips">
-            {selected.dependents.map((dependent) => (
+            {[...selected.dependents].sort(compareByName).map((dependent) => (
               <button key={dependent.id} onClick={() => openMod(dependent.id)} type="button">
                 {dependent.name ?? dependent.id}
               </button>

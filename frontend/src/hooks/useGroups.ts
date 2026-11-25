@@ -2,13 +2,13 @@ import React from "react";
 import { useLoadState } from "./useLoadState";
 
 import type { createApiClient } from "../lib/api";
-import type { AuthUser, GroupSummary, GroupWrite, UserGroup } from "../types";
+import type { AuthUser, GroupOverview, GroupSummary, GroupWrite } from "../types";
 import { useAsyncAction } from "./useAsyncAction";
 
 export function useGroups(api: ReturnType<typeof createApiClient>, user: AuthUser | null, onChanged: () => Promise<void>) {
   const loadState = useLoadState(user ? `${user.id}:${user.role}` : null);
   const [directory, setDirectory] = React.useState<GroupSummary[]>([]);
-  const [groups, setGroups] = React.useState<UserGroup[]>([]);
+  const [groups, setGroups] = React.useState<GroupOverview[]>([]);
   const action = useAsyncAction();
   const load = React.useCallback(async () => {
     if (!user) { setDirectory([]); setGroups([]); return; }

@@ -26,6 +26,16 @@ class GroupRead(GroupSummary):
     user_ids: list[int]
 
 
+class GroupModsetGrant(BaseModel):
+    modset_id: int
+    modset_name: str
+    permission: Literal["read", "write"]
+
+
+class GroupOverview(GroupRead):
+    modset_grants: list[GroupModsetGrant]
+
+
 class GroupPermission(BaseModel):
     group_id: int
     permission: Literal["read", "write"]

@@ -44,13 +44,15 @@ export function AddModDialog({
     }
   }
 
+  const workshopIdRef = React.useRef<HTMLInputElement>(null);
+
   return (
-    <Dialog title="Add mod" onClose={onClose}>
+    <Dialog title="Add mod" onClose={onClose} initialFocusRef={workshopIdRef}>
       <form className="dialog-form" onSubmit={handleSubmit}>
         <ResourceStatus state={modsetsLoad} label="target modsets" />
         <label>
           Workshop ID
-          <input autoFocus disabled={loading} value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
+          <input ref={workshopIdRef} disabled={loading} value={modId} onChange={(event) => setModId(event.target.value)} placeholder="672B195EAD3036D4" />
         </label>
         <label>
           Installed version
