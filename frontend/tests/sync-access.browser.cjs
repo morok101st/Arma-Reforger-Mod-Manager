@@ -67,6 +67,12 @@ const base=process.env.ARMM_TEST_URL||"http://127.0.0.1:4189";
   await page.getByRole("dialog").waitFor({state:"detached"});
   const table=page.getByRole("table",{name:"Sync access overview"});await table.getByText("Community Server",{exact:true}).waitFor();
   assert.equal(await table.locator("tbody tr").count(),1);
+  if (width < 600) {
+    const menuBox = await table.locator("summary").boundingBox();
+    const nameBox = await table.locator(".modset-name-cell").boundingBox();
+    assert(menuBox.x >= nameBox.x + nameBox.width);
+    assert(menuBox.y < nameBox.y + nameBox.height);
+  }
   assert.equal(await page.getByRole("button",{name:"Edit sync access Community Server",exact:true}).count(),0);
   async function openActions(){const menu=page.locator(".sync-access-table .modset-more").first();if(!await menu.evaluate(node=>node.open))await menu.locator("summary").click();}
   async function download(){await openActions();const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Download configuration Community Server",exact:true}).click();const d=await pending;assert.equal(d.suggestedFilename(),"armm-sync.json");return JSON.parse(await fs.readFile(await d.path(),"utf8"));}

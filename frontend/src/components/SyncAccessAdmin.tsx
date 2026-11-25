@@ -108,7 +108,7 @@ export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}
         <p className="muted">The key and saved connection settings will be removed. Existing app configurations will stop working. The modset <strong>{deleteTarget.modset_name}</strong> and its mods will be kept.</p>
         {action.error && <p className="error-box" role="alert">{action.error}</p>}
         <div className="dialog-actions">
-          <button className="secondary-button compact" type="button" disabled={action.loading} onClick={()=>setDeleteTarget(null)}>Cancel</button>
+          <button className="secondary-button compact" type="button" disabled={action.loading} data-dialog-initial-focus onClick={()=>setDeleteTarget(null)}>Cancel</button>
           <button className="secondary-button compact danger-button" type="button" disabled={action.loading} onClick={()=>action.run(async()=>{
             await api.deleteSyncAccess(deleteTarget.modset_id);
             setRows(previous=>previous.filter(row=>row.modset_id!==deleteTarget.modset_id));
@@ -127,7 +127,7 @@ export function SyncAccessAdmin({api}: {api: ReturnType<typeof createApiClient>}
             : `The current key will stop working. Import a new configuration after renewal.${accessTarget.row.enabled ? "" : " This access will stay disabled until you enable it."}`}</p>
         {action.error && <p className="error-box" role="alert">{action.error}</p>}
         <div className="dialog-actions">
-          <button className="secondary-button compact" type="button" disabled={action.loading} onClick={() => setAccessTarget(null)}>Cancel</button>
+          <button className="secondary-button compact" type="button" disabled={action.loading} data-dialog-initial-focus onClick={() => setAccessTarget(null)}>Cancel</button>
           <button className="primary-button compact" type="button" disabled={action.loading} onClick={confirmAccessAction}>
             {accessTarget.kind === "renew" ? "Confirm renewal" : `Confirm ${accessTarget.kind}`}
           </button>

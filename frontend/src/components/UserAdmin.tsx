@@ -4,7 +4,7 @@ import type { LoadState } from "../hooks/useLoadState";
 import { ResourceStatus } from "./ResourceStatus";
 import { ChevronDown, Pencil, Plus, RefreshCw, Save, Trash2, Users, UsersRound, Webhook, ScrollText, KeyRound } from "lucide-react";
 
-import { auditActionLabel, auditDetailText, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
+import { auditActionLabel, auditDetailRows, auditEntityLine, auditFilterLabel, auditSeverity, filterAuditLogs, formatDate } from "../lib/utils";
 import type { AuditFilter, AuditLog, AuthUser, DiscordWebhook, Modset, UserAccount, UserRole } from "../types";
 import { CustomSelect, Dialog, Info, RowActions } from "./common";
 import { DiscordWebhookAdmin } from "./DiscordWebhookAdmin";
@@ -89,6 +89,11 @@ export function UserAdmin({
   const [editGroupIds, setEditGroupIds] = React.useState<number[]>([]);
   const [resetPassword, setResetPassword] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const deleteButtonRef = React.useRef<HTMLButtonElement>(null);
+  const cancelDeleteRef = React.useRef<HTMLButtonElement>(null);
+  React.useLayoutEffect(() => {
+    if (confirmDelete) cancelDeleteRef.current?.focus();
+  }, [confirmDelete]);
   const [auditFilter, setAuditFilter] = React.useState<AuditFilter>("all");
 
   const editUser = users.find((user) => user.id === editUserId) ?? null;
@@ -304,6 +309,7 @@ export function UserAdmin({
                     ]}
                     onChange={setEditRole}
                     disabled={loading}
+                    initialDialogFocus
                     ariaLabel={`Role for ${editUser.username}`}
                   />
                 </label>
@@ -323,7 +329,6 @@ export function UserAdmin({
                 <label>
                   Reset password
                   <input
-                    autoFocus
                     value={resetPassword}
                     onChange={(event) => setResetPassword(event.target.value)}
                     type="password"
@@ -347,7 +352,7 @@ export function UserAdmin({
                   <button
                     className="secondary-button compact danger-button"
                     disabled={loading || editUser.id === currentUser.id}
-                    onClick={() => setConfirmDelete(true)}
+                    ref={deleteButtonRef} onClick={() => setConfirmDelete(true)}
                     type="button"
                   >
                     Delete
@@ -369,7 +374,7 @@ export function UserAdmin({
                       Delete <strong>{editUser.username}</strong> permanently?
                     </p>
                     <div className="dialog-actions">
-                      <button className="secondary-button compact" onClick={() => setConfirmDelete(false)} type="button">
+                      <button className="secondary-button compact" ref={cancelDeleteRef} onClick={() => { setConfirmDelete(false); deleteButtonRef.current?.focus(); }} type="button">
                         Cancel
                       </button>
                       <button
@@ -409,8 +414,9 @@ export function UserAdmin({
               ))}
             </div>
             <div className="audit-list">
-              {filteredAuditLogs.map((entry) => (
-                <details className="audit-row" key={entry.id}>
+              {filteredAuditLogs.map((entry) => {
+                const { changes, fields } = auditDetailRows(entry.detail);
+                return <details className="audit-row" key={entry.id}>
                   <summary className="audit-row-summary">
                     <span className="audit-row-header">
                       <strong>{auditActionLabel(entry.action)}</strong>
@@ -421,11 +427,19 @@ export function UserAdmin({
                     <ChevronDown className="audit-row-chevron" size={16} aria-hidden="true" />
                   </summary>
                   <div className="audit-row-details">
-                    <p>{auditDetailText(entry.detail) || "No additional event details."}</p>
-                    {entry.ip_address && <p>IP address: {entry.ip_address}</p>}
+                    {changes.length || fields.length || entry.ip_address ? <dl className="audit-detail-list">
+                      {changes.map(change => <React.Fragment key={change.label}>
+                        <dt>{change.label}</dt>
+                        <dd className="audit-detail-change">{change.previous} → <strong>{change.current}</strong></dd>
+                      </React.Fragment>)}
+                      {fields.map(field => <React.Fragment key={field.label}>
+                        <dt>{field.label}</dt><dd>{field.value}</dd>
+                      </React.Fragment>)}
+                      {entry.ip_address && <><dt>IP address</dt><dd>{entry.ip_address}</dd></>}
+                    </dl> : <p>No additional event details.</p>}
                   </div>
-                </details>
-              ))}
+                </details>;
+              })}
               {auditLogs.length === 0 && <p className="muted">No audit entries stored.</p>}
               {auditLogs.length > 0 && filteredAuditLogs.length === 0 && <p className="muted">No audit entries match this filter.</p>}
             </div>

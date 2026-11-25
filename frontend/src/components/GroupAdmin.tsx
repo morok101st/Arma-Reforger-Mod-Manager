@@ -15,6 +15,11 @@ export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; d
   const [description, setDescription] = React.useState("");
   const [userIds, setUserIds] = React.useState<number[]>([]);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const deleteButtonRef = React.useRef<HTMLButtonElement>(null);
+  const cancelDeleteRef = React.useRef<HTMLButtonElement>(null);
+  React.useLayoutEffect(() => {
+    if (confirmDelete) cancelDeleteRef.current?.focus();
+  }, [confirmDelete]);
   function open(group: UserGroup | "new", deleting = false) {
     setMemberSearch("");
     setEditing(group); setName(group === "new" ? "" : group.name);
@@ -73,13 +78,13 @@ export function GroupAdmin({ data, users, usersLoad }: { usersLoad: LoadState; d
           {user.username}{!user.is_active ? " (disabled)" : ""}
         </label>)}</div></fieldset>
         <div className="dialog-actions dialog-actions-with-delete">
-          {editing !== "new" && <button className="secondary-button compact danger-button" type="button" disabled={data.loading} onClick={() => setConfirmDelete(true)}>Delete</button>}
+          {editing !== "new" && <button className="secondary-button compact danger-button" type="button" disabled={data.loading} ref={deleteButtonRef} onClick={() => setConfirmDelete(true)}>Delete</button>}
           <button className="secondary-button compact" type="button" onClick={() => setEditing(null)}>Cancel</button>
           <button className="primary-button compact" disabled={data.loading || !usersLoad.loaded || Boolean(usersLoad.error) || !data.loadState.loaded || Boolean(data.loadState.error) || !name.trim()}>Save</button>
         </div>
         {confirmDelete && editing !== "new" && <div className="inline-danger-confirmation">
           <p>Delete <strong>{editing.name}</strong>? All memberships and modset permissions for this group will be removed.</p>
-          <div className="dialog-actions"><button className="secondary-button compact" type="button" onClick={() => setConfirmDelete(false)}>Cancel</button>
+          <div className="dialog-actions"><button className="secondary-button compact" type="button" ref={cancelDeleteRef} onClick={() => { setConfirmDelete(false); deleteButtonRef.current?.focus(); }}>Cancel</button>
             <button className="secondary-button compact danger-button" type="button" disabled={data.loading} onClick={() => { data.remove(editing.id).then(() => setEditing(null)).catch(() => null); }}>Confirm delete</button>
           </div>
         </div>}

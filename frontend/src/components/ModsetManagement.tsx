@@ -186,7 +186,7 @@ export function ModsetManagement({
             <p className="muted">Delete <strong>{deleteModsetTarget.name}</strong> permanently? This cannot be undone.</p>
             {error && <p className="error-box" role="alert">{error}</p>}
             <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setDeleteModsetId(null)} type="button">
+              <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setDeleteModsetId(null)} type="button">
                 Cancel
               </button>
               <button

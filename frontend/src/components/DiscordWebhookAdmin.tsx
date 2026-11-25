@@ -23,6 +23,7 @@ export function DiscordWebhookAdmin({
   deleteDiscordWebhook: (webhookId: number) => Promise<void>;
   testDiscordWebhook: (webhookId: number) => Promise<void>;
 }) {
+  const editNameRef = React.useRef<HTMLInputElement>(null);
   const createNameRef = React.useRef<HTMLInputElement>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [createName, setCreateName] = React.useState("");
@@ -265,12 +266,12 @@ export function DiscordWebhookAdmin({
       )}
 
       {editWebhook && (
-        <Dialog title={`Edit webhook ${editWebhook.name}`} onClose={() => setEditWebhookId(null)}>
+        <Dialog title={`Edit webhook ${editWebhook.name}`} initialFocusRef={editNameRef} onClose={() => setEditWebhookId(null)}>
           <form className="dialog-form" onSubmit={event => { handleEdit(event).catch(() => null); }}>
             {error && <p className="error-box" role="alert">{error}</p>}
             <label>
               Name
-              <input autoFocus value={editName} onChange={(event) => setEditName(event.target.value)} />
+              <input ref={editNameRef} value={editName} onChange={(event) => setEditName(event.target.value)} />
             </label>
             <label>
               <span id="discord-webhook-url-label">Webhook URL</span>
@@ -317,7 +318,7 @@ export function DiscordWebhookAdmin({
               Delete <strong>{deleteWebhook.name}</strong> permanently?
             </p>
             <div className="dialog-actions">
-              <button className="secondary-button compact" onClick={() => setDeleteWebhookId(null)} type="button">
+              <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setDeleteWebhookId(null)} type="button">
                 Cancel
               </button>
               <button

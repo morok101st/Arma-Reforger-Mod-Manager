@@ -43,11 +43,17 @@ export function Dialog({ title, children, onClose, initialFocusRef }: {
   React.useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+    const opener = document.activeElement;
     dialog.showModal();
-    initialFocusRef?.current?.focus({ preventScroll: true });
+    const initialFocus = initialFocusRef?.current
+      ?? dialog.querySelector<HTMLElement>("[data-dialog-initial-focus]");
+    initialFocus?.focus({ preventScroll: true });
     document.documentElement.classList.add("dialog-open");
     return () => {
       dialog.close();
+      if (document.activeElement === document.body && opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus({ preventScroll: true });
+      }
       if (!document.querySelector("dialog[open]")) document.documentElement.classList.remove("dialog-open");
     };
   }, [initialFocusRef]);

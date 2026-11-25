@@ -217,7 +217,7 @@ export function ModDetail({
                   </div>
                 </div>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeleteDialog(false)} type="button">
                     Close
                   </button>
                 </div>
@@ -241,7 +241,7 @@ export function ModDetail({
                   </div>
                 )}
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeleteDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeleteDialog(false)} type="button">
                     Cancel
                   </button>
                   {orphanedDependencyCandidates.length > 0 && (
@@ -307,7 +307,7 @@ export function ModDetail({
                   </div>
                 </div>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeactivateDialog(false)} type="button">
                     Cancel
                   </button>
                   <button
@@ -340,7 +340,7 @@ export function ModDetail({
                   Set <strong>{selected.name ?? selected.id}</strong> to <strong>No installed version</strong>?
                 </p>
                 <div className="dialog-actions">
-                  <button className="secondary-button compact" onClick={() => setShowDeactivateDialog(false)} type="button">
+                  <button className="secondary-button compact" data-dialog-initial-focus onClick={() => setShowDeactivateDialog(false)} type="button">
                     Cancel
                   </button>
                   <button
@@ -365,8 +365,8 @@ export function ModDetail({
         {Boolean(selected.child_modsets_count) && <p className="muted">This is a parent modset. Installed version changes also apply to {selected.child_modsets_count} child modset(s).</p>}
         {selected.status !== "NOT_INSTALLED" && <div className={`mod-version-status ${selected.status.toLowerCase()}`}><StatusIcon status={selected.status} /><strong>{statusLabel(selected.status)}</strong></div>}
         <div className="mod-version-comparison">
-          <div><span>Installed version</span><strong>{selected.current_version ?? "No installed version"}</strong></div>
-          <div><span>Latest version</span><strong>{selected.latest_version ?? UNKNOWN_VALUE}</strong></div>
+          <div><span>Installed version</span><strong className={selected.current_version ? undefined : "version-unavailable"}>{selected.current_version ?? "Not installed"}</strong></div>
+          <div><span>Latest version</span><strong className={selected.latest_version ? undefined : "version-unavailable"}>{selected.latest_version ?? "Unavailable"}</strong></div>
         </div>
         {refreshState !== "idle" && <p className="mod-feedback" role="status" aria-live="polite" aria-busy={refreshing}>
           {refreshing ? <RefreshCw className="refresh-spin" size={16} /> : refreshState === "completed" ? <CheckCircle2 size={16} /> : null}

@@ -124,15 +124,16 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       else if (path === "/groups") data = [];
       else if (path === "/audit") data = [{
         id: 1, actor_username: "admin", action: "login_failed", entity_type: "user",
-        entity_id: "5", detail: {}, ip_address: "192.0.2.25", user_agent: null,
+        entity_id: "5", detail: { old_role: "user", new_role: "admin" }, ip_address: "192.0.2.25", user_agent: null,
         created_at: "2026-11-14T12:00:00Z",
       }];
-      else if (
-        path === "/admin/groups" ||
-        path === "/discord-webhooks" ||
-        path.endsWith("/activity")
-      )
-        data = [];
+      else if (path === "/admin/groups") data = [
+        { id: 1, name: "Server operators", description: "Manage server configuration", user_ids: [] },
+      ];
+      else if (path === "/discord-webhooks") data = [
+        { id: 1, name: "Workshop alerts", masked_webhook_url: "discord.com/api/webhooks/…", is_active: true, modset_ids: [1] },
+      ];
+      else if (path.endsWith("/activity")) data = [];
       else if (path.match(/^\/modsets\/\d+\/activate$/)) {
         active = Number(path.split("/")[2]);
         data = user();
@@ -387,11 +388,12 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       const auditRow = p.locator("details.audit-row");
       const summary = auditRow.locator("summary");
       await summary.getByText("Failure", { exact: true }).waitFor();
-      const ipAddress = auditRow.getByText("IP address: 192.0.2.25");
+      const ipAddress = auditRow.getByText("192.0.2.25", { exact: true });
       assert.equal(await ipAddress.isVisible(), false);
       await summary.focus();
       await p.keyboard.press("Enter");
       await ipAddress.waitFor({ state: "visible" });
+      await auditRow.getByText("User → Admin", { exact: true }).waitFor();
       await summary.click();
       await ipAddress.waitFor({ state: "hidden" });
       await p.goBack();
@@ -414,6 +416,27 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         .waitFor();
       assert.equal(new URL(p.url()).searchParams.get("view"), "account");
     });
+    await test("mobile administration rows keep actions beside the name", async ({ page, start }) => {
+      await page.setViewportSize({ width: 320, height: 720 });
+      for (const section of ["users", "groups", "discord"]) {
+        await start(`?view=admin&section=${section}`);
+        const row = page.locator(".admin-records-table tbody tr").first();
+        const summary = row.locator("summary");
+        const identity = row.locator(".modset-name-cell");
+        await summary.waitFor();
+        const menuBox = await summary.boundingBox();
+        const nameBox = await identity.boundingBox();
+        assert(menuBox.x >= nameBox.x + nameBox.width, section);
+        assert(menuBox.y < nameBox.y + nameBox.height, section);
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), section);
+      }
+      await start("?view=admin&section=users");
+      await page.locator(".users-table summary").first().click();
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      const role = page.getByRole("dialog").getByRole("combobox", { name: /^Role for / });
+      await role.waitFor();
+      assert(await role.evaluate(node => node === document.activeElement));
+    });
     await test("creation dialogs focus the first text field", async ({ page, start }) => {
       for (const [route, action, field] of [
         ["?view=modsets", "Create modset", "Name"],
@@ -422,12 +445,14 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
         ["?view=admin&section=discord", "Add webhook", "Name"],
       ]) {
         await start(route);
-        await page.getByRole("button", { name: action, exact: true }).click();
+        const opener = page.getByRole("button", { name: action, exact: true });
+        await opener.click();
         const input = page.getByRole("dialog").getByLabel(field, { exact: true });
         await input.waitFor();
         assert(await input.evaluate(node => node === document.activeElement), action);
         await page.keyboard.press("Escape");
         await page.getByRole("dialog").waitFor({ state: "hidden" });
+        assert(await opener.evaluate(node => node === document.activeElement), action);
       }
     });
     await test("legacy Discord links and delayed mod loading retain intended selection", async (f) => {

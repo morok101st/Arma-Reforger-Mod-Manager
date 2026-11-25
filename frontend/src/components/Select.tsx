@@ -2,12 +2,13 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 
-export function CustomSelect<T extends string | number>({ value, options, onChange, disabled = false, ariaLabel }: {
+export function CustomSelect<T extends string | number>({ value, options, onChange, disabled = false, ariaLabel, initialDialogFocus }: {
   value: T;
   options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
   disabled?: boolean;
   ariaLabel: string;
+  initialDialogFocus?: boolean;
 }) {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const popupRef = React.useRef<HTMLDivElement>(null);
@@ -79,7 +80,7 @@ export function CustomSelect<T extends string | number>({ value, options, onChan
   }, [open, active, container]);
 
   return <>
-    <button ref={triggerRef} type="button" role="combobox" className="custom-select-trigger" aria-label={ariaLabel}
+    <button ref={triggerRef} data-dialog-initial-focus={initialDialogFocus || undefined} type="button" role="combobox" className="custom-select-trigger" aria-label={ariaLabel}
       aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined}
       aria-activedescendant={open && options[active] ? `${listId}-${active}` : undefined}
       disabled={disabled || !options.length} onClick={() => open ? setOpen(false) : show()}
