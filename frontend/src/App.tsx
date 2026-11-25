@@ -6,6 +6,7 @@ import { AuthFrame } from "./components/AuthFrame";
 import { Dashboard } from "./components/Dashboard";
 import { LoginForm } from "./components/LoginForm";
 import { ModDetail } from "./components/ModDetail";
+import { ModSelectionConnector } from "./components/ModSelectionConnector";
 import { ModsetManagement } from "./components/ModsetManagement";
 import { CustomSelect, focusableElements } from "./components/common";
 import { ResourceStatus } from "./components/ResourceStatus";
@@ -299,6 +300,7 @@ export function App() {
           />
           </>
         ) : mods.selected ? (
+          <>
           <ModDetail
             canEdit={canEdit}
             selected={mods.selected}
@@ -317,6 +319,8 @@ export function App() {
             allTrackedMods={mods.mods}
             openMod={handleOpenMod}
           />
+          <ModSelectionConnector selectedId={mods.selected.id} visibleMods={mods.sortedMods} />
+          </>
         ) : (
           <div className="placeholder">
             <h2>{!activeModset ? "No accessible modset" : canEdit ? "Add a mod" : "No mods tracked"}</h2>

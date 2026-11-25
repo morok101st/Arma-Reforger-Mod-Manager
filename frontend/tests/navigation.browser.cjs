@@ -271,6 +271,23 @@ const baseUrl = (process.env.ARMM_TEST_URL || "http://127.0.0.1:4178").replace(
       await check(0);
       assert.equal(await rows.count(), 1);
     });
+    await test("selected mod connector follows the list scroll position", async ({ page, start }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await start("?modset=1&mod=ABC");
+      const path = page.locator(".mod-selection-connector path");
+      await page.waitForFunction(() => document.querySelector(".mod-selection-connector path")?.hasAttribute("d"));
+      const initial = await path.getAttribute("d");
+      await page.locator(".mod-list").evaluate(list => {
+        list.style.maxHeight = "75px";
+        list.scrollTop = 8;
+      });
+      await page.waitForFunction(previous => {
+        const current = document.querySelector(".mod-selection-connector path")?.getAttribute("d");
+        return current && current !== previous;
+      }, initial);
+      await page.getByPlaceholder("Name or Workshop ID").fill("DEF");
+      await page.waitForFunction(() => !document.querySelector(".mod-selection-connector path")?.hasAttribute("d"));
+    });
     await test("refresh survives reload and second tab, completes and retries after interruption", async (f) => {
       const p = f.page;
       await f.start("?modset=1&mod=ABC");
