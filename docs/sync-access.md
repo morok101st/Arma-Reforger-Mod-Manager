@@ -1,6 +1,6 @@
 # Sync access
 
-Sync access was introduced in **0.2.8**. This guide describes current `main`. Administrators manage configured accesses under **Administration → Sync access**. This page lists existing accesses only, including disabled or blocked entries; it does not repeat the modset directory.
+Sync access was introduced in **0.2.8**. This guide describes **1.1.0**. Administrators manage configured accesses under **Administration → Sync access**. This page lists existing accesses only, including disabled or blocked entries; it does not repeat the modset directory.
 
 ## Create an access
 

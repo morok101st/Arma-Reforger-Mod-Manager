@@ -1,6 +1,6 @@
 # Interface gallery
 
-All captures show the current `main` interface with **fictional demonstration data**. Build versions, account names and server details are illustrative. The capture script uses a read-only mocked API fixture.
+All captures show the **1.1.0** interface with **fictional demonstration data**. Build versions, account names and server details are illustrative. The capture script uses a read-only mocked API fixture.
 
 ## Workspace
 

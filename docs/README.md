@@ -1,6 +1,6 @@
 # ARMM documentation
 
-These pages describe **1.0.0**. Deployment examples select `1.0.0`. See the [release notes](releases/1.0.0.md) and [upgrade guide](upgrading.md).
+These pages describe **1.1.0**. Deployment examples select `1.1.0`. See the [release notes](releases/1.1.0.md) and [upgrade guide](upgrading.md).
 
 | Task | Reference |
 | --- | --- |
@@ -15,7 +15,7 @@ These pages describe **1.0.0**. Deployment examples select `1.0.0`. See the [rel
 | Operate persistent manual checks | [Manual refresh and 0.2.5 upgrades](manual-refresh-upgrade.md) |
 | Build source / verify changes | [Development and asset tooling](development.md) |
 | Review changes since 0.2.7 | [Changes in 0.2.8](changes-since-0.2.7.md) |
-| Review release behavior | [1.0.0 release notes](releases/1.0.0.md), [0.2.8 release notes](releases/0.2.8.md), [0.2.7 release notes](releases/0.2.7.md), [0.2.6 notes](releases/0.2.6.md), [historical 0.2.5 notes](releases/0.2.5.md) |
+| Review release behavior | [1.1.0 release notes](releases/1.1.0.md), [1.0.0 release notes](releases/1.0.0.md), [0.2.8 release notes](releases/0.2.8.md), [0.2.7 release notes](releases/0.2.7.md), [0.2.6 notes](releases/0.2.6.md), [historical 0.2.5 notes](releases/0.2.5.md) |
 
 The repository guides are the detailed references; the wiki provides task-oriented entry points and deployment chapters. Historical release notes describe that release and are not rewritten to describe unreleased features.
 

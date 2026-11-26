@@ -7,7 +7,7 @@ It stores mod data per user-owned modset, regularly refreshes Workshop metadata,
 
 *Current `main` interface with fictional demonstration data. [More screenshots](docs/screenshots.md).*
 
-**Current release: 1.0.0.** Adds the running ARMM version, administrator release notifications, and permanent deletion of configured [Sync accesses](docs/sync-access.md). It also updates runtime dependencies. Deployment examples select `1.0.0`. See the [release notes](docs/releases/1.0.0.md) and [upgrade guide](docs/upgrading.md).
+**Current release: 1.1.0.** Redesigns the workspace and administration, and adds explicit controls for enabling, disabling and renewing [Sync access](docs/sync-access.md). Deployment examples select `1.1.0`. See the [release notes](docs/releases/1.1.0.md) and [upgrade guide](docs/upgrading.md).
 
 [User guide](docs/user-guide.md) · [Documentation index](docs/README.md) · [Upgrade guide](docs/upgrading.md) · [Wiki](https://github.com/morok101st/Arma-Reforger-Mod-Manager/wiki)
 
@@ -224,7 +224,7 @@ The UI manages export order as a list with positions **1, 2, 3…**.
 - Adding a mod or changing a mod's installed version returns quickly in the UI. The request only waits for the initial Workshop scrape when a new mod is added; reliable version checks through Reforger and follow-up dependency metadata refreshes run through a small deduplicated backend queue with two workers.
 - Automatic scheduled checks use scraping only. Use the manual refresh button on a mod when you explicitly want a reliable latest-version check through the Reforger CLI metadata service.
 - Local production files intentionally remain unversioned: `.env`, `docker-compose.yml`.
-- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `1.0.0`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
+- The example compose file uses GHCR images pinned by `ARMM_IMAGE_TAG` (currently `1.1.0`) and does not build locally. Use a source build only when reviewing changes beyond a published release.
 
 ### Optional OIDC login
 
