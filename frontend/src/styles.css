@@ -2411,7 +2411,13 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .mod-feedback svg { flex-shrink: 0; }
 .mod-description { display: grid; gap: 12px; }
 .mod-description p { margin: 0; max-width: 72ch; white-space: pre-line; overflow-wrap: anywhere; }
-.mod-relationships { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 24px 32px; }
+.mod-relationships {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 24px 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
 .mod-relationships .content-section { align-content: start; min-width: 0; gap: 12px; }
 .mod-relationships p { margin: 0; font-size: 14px; }
 .section-count { color: var(--md-sys-color-on-surface-variant); font-size: 13px; font-weight: 400; margin-left: 6px; }
