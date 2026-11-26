@@ -1,6 +1,6 @@
 # Upgrading ARMM
 
-Tracked image examples select **1.0.0**. Upgrading from 0.2.8 requires no new database migration or required environment variable. Keep your existing PostgreSQL volume and `ARMM_SECRET_KEY`, set `ARMM_IMAGE_TAG=1.0.0`, then pull and recreate the ARMM services. See the [release notes](releases/1.0.0.md).
+Tracked image examples select **1.1.0**. Upgrading from 1.0.0 requires no new database migration or required environment variable. Keep your PostgreSQL volume and `ARMM_SECRET_KEY`, set `ARMM_IMAGE_TAG=1.1.0`, then pull and recreate the ARMM services. See the [release notes](releases/1.1.0.md).
 
 | Starting point | Changes requiring attention | Detailed guide |
 | --- | --- | --- |
@@ -9,6 +9,7 @@ Tracked image examples select **1.0.0**. Upgrading from 0.2.8 requires no new da
 | 0.2.6 → 0.2.7 | Parent/child inheritance, parent-controlled ordering and a sequence editor. Additive migrations `003_base_modsets` and `004_base_export_order`; existing modsets keep independent ordering. | [Parent/Child guide](parent-child-modsets.md), [release notes](releases/0.2.7.md) |
 | 0.2.7 → 0.2.8 | Administrator-managed Sync access with saved configuration/encrypted keys. Additive migrations `005_modset_sync_access` and `006_sync_configuration`; existing modsets, groups, sessions and exports are retained. | [Sync access](sync-access.md), [release notes](releases/0.2.8.md) |
 | 0.2.8 → 1.0.0 | ARMM version and release notices, Sync access deletion and runtime/security updates. No new database migration. | [Release notes](releases/1.0.0.md) |
+| 1.0.0 → 1.1.0 | Workspace and administration redesign, group grant visibility, and separate Sync access enable, disable and key renewal actions. No new migration. | [Release notes](releases/1.1.0.md) |
 
 The redesign, URL navigation, resource recovery and atomic user update add no schema migration. Persistent manual jobs add `002_mod_refresh_jobs`; it runs automatically at startup. No new required environment variables or additional service is needed.
 

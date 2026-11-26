@@ -54,4 +54,4 @@ Modset activity and administrator audit reads support `limit`/`offset`. Audit ca
 
 ## Sync access
 
-Version 0.2.8 adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. On current `main`, administrators can enable a valid existing key and renew a key through separate endpoints. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.
+Version 0.2.8 adds export-only bearer keys and `armm-sync.json` with a server-generated `exportPath`. Starting in 1.1.0, administrators can enable a valid existing key and renew a key through separate endpoints. See [sync access](sync-access.md) for authentication, endpoints, import fields and parent/child permissions. Existing session-authenticated routes retain their permissions.

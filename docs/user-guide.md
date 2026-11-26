@@ -1,6 +1,6 @@
 # User guide
 
-This guide describes the interface on current `main`. For the published 1.0.0 release, see its [release notes](releases/1.0.0.md). Screenshots use fictional [demonstration data](screenshots.md).
+This guide describes the **1.1.0** interface. See the [release notes](releases/1.1.0.md). Screenshots use fictional [demonstration data](screenshots.md).
 
 ## ARMM version and release updates
 
